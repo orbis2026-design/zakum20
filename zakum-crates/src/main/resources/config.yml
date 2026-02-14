@@ -1,31 +1,33 @@
-crates:
-  starter:
-    name: "&bStarter Crate"
-    publicOpen: false
-    publicRadius: 8
+﻿# Zakum Crates Configuration
+settings:
+  storage:
+    table-prefix: "orbis_crates_"
+  
+  gui:
+    title: "Global Crates"
+    rows: 3
+    fill-item: GRAY_STAINED_GLASS_PANE
 
+crates:
+  vote:
+    name: "&a&lVote Crate"
+    type: ROULETTE
+    preview: true
+    block: ENDER_CHEST
     key:
       material: TRIPWIRE_HOOK
-      name: "&bStarter Key"
+      name: "&aVote Key"
       lore:
-        - "&7Use on a crate block"
-        - "&7or /ocrates open starter"
-      modelData: 0
-
-    rewards:
-      - weight: 70
-        messages:
-          - "&aYou won &f$250&a!"
-        commands:
-          - "eco give {player} 250"
-
-      - weight: 30
-        messages:
-          - "&dYou won a diamond!"
-        items:
-          - material: DIAMOND
-            amount: 1
-
-animation:
-  steps: 30
-  ticksPerStep: 2
+        - "&7Use this at the crate area"
+        - "&7to win rewards!"
+      glow: true
+  
+  rare:
+    name: "&6&lRare Crate"
+    type: CSGO
+    preview: true
+    block: TRAPPED_CHEST
+    key:
+      material: BLAZE_ROD
+      name: "&6Rare Key"
+      glow: true

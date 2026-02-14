@@ -1,0 +1,31 @@
+﻿rewards:
+  vote_diamond:
+    crate: vote
+    chance: 50.0
+    display:
+      material: DIAMOND
+      name: "&b2x Diamonds"
+    commands:
+      - "give %player% diamond 2"
+  
+  vote_cash:
+    crate: vote
+    chance: 20.0
+    display:
+      material: PAPER
+      name: "&a$1000 Cash"
+    commands:
+      - "eco give %player% 1000"
+
+  rare_sword:
+    crate: rare
+    chance: 5.0
+    display:
+      material: DIAMOND_SWORD
+      name: "&6Legendary Sword"
+      enchanted: true
+    items:
+      - material: DIAMOND_SWORD
+        name: "&6Legendary Sword"
+        enchantments:
+          DAMAGE_ALL: 5
