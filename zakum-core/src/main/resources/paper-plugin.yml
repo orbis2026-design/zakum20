@@ -5,6 +5,7 @@ bootstrapper: net.orbis.zakum.core.bootstrap.ZakumBootstrap
 api-version: "1.21"
 author: Orbis Network
 description: Network core library (Zakum). Provides DB + shared services.
+softdepend: [DecentHolograms, PacketEvents]
 
 commands:
   zakum:

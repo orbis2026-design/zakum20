@@ -29,6 +29,7 @@ public final class ZakumSettingsLoader {
       str(cfg, "controlPlane.baseUrl", "").trim(),
       str(cfg, "controlPlane.apiKey", "")
     );
+    var cloud = loadCloud(cfg, serverId, cp);
 
     var http = loadHttp(cfg);
     var cache = loadCache(cfg);
@@ -36,18 +37,23 @@ public final class ZakumSettingsLoader {
     var ent = loadEntitlements(cfg);
     var boosters = loadBoosters(cfg);
     var actions = loadActions(cfg);
+    var chat = loadChat(cfg);
+    var visuals = loadVisuals(cfg);
     var packets = loadPackets(cfg);
 
     return new ZakumSettings(
       new ZakumSettings.Server(serverId),
       db,
       cp,
+      cloud,
       http,
       cache,
       obs,
       ent,
       boosters,
       actions,
+      chat,
+      visuals,
       packets
     );
   }
@@ -92,6 +98,39 @@ public final class ZakumSettingsLoader {
         maxPool, minIdle, connTimeout, valTimeout, idleTimeout, maxLife, leakMs
       ),
       new ZakumSettings.Database.Failover(retry)
+    );
+  }
+
+  private static ZakumSettings.Cloud loadCloud(FileConfiguration cfg, String defaultServerId, ZakumSettings.ControlPlane cp) {
+    boolean enabled = bool(cfg, "cloud.enabled", false);
+    String baseUrl = firstNonBlank(
+      str(cfg, "cloud.baseUrl", "").trim(),
+      str(cfg, "cloud.base_url", "").trim(),
+      cp.baseUrl()
+    );
+    String networkSecret = firstNonBlank(
+      str(cfg, "cloud.networkSecret", "").trim(),
+      str(cfg, "cloud.network_secret", "").trim()
+    );
+    String serverId = firstNonBlank(
+      str(cfg, "cloud.serverId", "").trim(),
+      str(cfg, "cloud.server_id", "").trim(),
+      defaultServerId
+    );
+    if (serverId.isBlank()) serverId = defaultServerId;
+
+    int pollIntervalTicks = clampI(cfg.getInt("cloud.pollIntervalTicks", 20), 1, 20 * 60);
+    long requestTimeoutMs = clampL(cfg.getLong("cloud.requestTimeoutMs", 6000), 250, 120_000);
+    boolean identityOnJoin = bool(cfg, "cloud.identityOnJoin", true);
+
+    return new ZakumSettings.Cloud(
+      enabled,
+      baseUrl,
+      networkSecret,
+      serverId,
+      pollIntervalTicks,
+      requestTimeoutMs,
+      identityOnJoin
     );
   }
 
@@ -203,6 +242,20 @@ public final class ZakumSettingsLoader {
     return new ZakumSettings.Actions(enabled, emitters, movement, deferred);
   }
 
+  private static ZakumSettings.Chat loadChat(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "chat.bufferCache.enabled", true);
+    long max = clampL(cfg.getLong("chat.bufferCache.maximumSize", 100_000), 1_000, 5_000_000);
+    long expireAfterAccess = clampL(cfg.getLong("chat.bufferCache.expireAfterAccessSeconds", 300), 5, 86_400);
+    return new ZakumSettings.Chat(new ZakumSettings.Chat.BufferCache(enabled, max, expireAfterAccess));
+  }
+
+  private static ZakumSettings.Visuals loadVisuals(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "visuals.lod.enabled", true);
+    int maxPing = clampI(cfg.getInt("visuals.lod.maxPingMs", 180), 25, 2_000);
+    double minTps = clampF((float) cfg.getDouble("visuals.lod.minTps", 18.5d), 5.0f, 20.0f);
+    return new ZakumSettings.Visuals(new ZakumSettings.Visuals.Lod(enabled, maxPing, minTps));
+  }
+
   private static ZakumSettings.Packets loadPackets(FileConfiguration cfg) {
     boolean enabled = bool(cfg, "packets.enabled", false);
 
@@ -244,5 +297,13 @@ public final class ZakumSettingsLoader {
   private static float clampF(float v, float min, float max) {
     if (v < min) return min;
     return Math.min(v, max);
+  }
+
+  private static String firstNonBlank(String... values) {
+    if (values == null) return "";
+    for (String value : values) {
+      if (value != null && !value.isBlank()) return value;
+    }
+    return "";
   }
 }

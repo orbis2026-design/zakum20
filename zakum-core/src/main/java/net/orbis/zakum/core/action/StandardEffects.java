@@ -3,6 +3,8 @@ package net.orbis.zakum.core.action;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
+import net.orbis.zakum.core.bridge.DecentHologramsBridge;
+import net.orbis.zakum.core.world.ZakumRtpService;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Baseline ACE effect library used by battlepass/crates/pets modules.
@@ -59,6 +62,8 @@ public final class StandardEffects {
     registerGamemode(engine);
     registerSetModel(engine);
     registerGuiEffects(engine);
+    registerRtp(engine);
+    registerHologram(engine);
   }
 
   private static void registerConsoleCommand(AceEngine engine) {
@@ -443,6 +448,43 @@ public final class StandardEffects {
     });
   }
 
+  private static void registerRtp(AceEngine engine) {
+    var rtp = new ZakumRtpService();
+    engine.registerEffect("RTP", (ctx, targets, params) -> {
+      int min = intParam(params, "min", intParam(params, "minrange", 256));
+      int max = intParam(params, "max", intParam(params, "maxrange", 2048));
+      if (max < min) {
+        int tmp = min;
+        min = max;
+        max = tmp;
+      }
+      int finalMin = Math.max(1, min);
+      int finalMax = Math.max(finalMin, max);
+      for (Entity target : targets) {
+        if (target instanceof Player player) {
+          rtp.searchAndTeleport(player, finalMin, finalMax);
+        }
+      }
+    });
+  }
+
+  private static void registerHologram(AceEngine engine) {
+    engine.registerEffect("HOLOGRAM", (ctx, targets, params) -> {
+      String text = firstNonBlank(params.get("text"), raw(params));
+      if (text == null || text.isBlank()) return;
+
+      String baseId = firstNonBlank(params.get("id"), "zakum-" + UUID.randomUUID());
+      for (Entity target : targets) {
+        Location location = resolveHologramLocation(params, target);
+        if (location == null || location.getWorld() == null) continue;
+
+        String line = placeholders(text, ctx, target);
+        String id = sanitizeHologramId(placeholders(baseId, ctx, target));
+        runAtLocation(location, () -> DecentHologramsBridge.createHologram(id, location, List.of(line)));
+      }
+    });
+  }
+
   private static void runGlobal(Runnable task) {
     ZakumApi.get().getScheduler().runGlobal(task);
   }
@@ -453,6 +495,14 @@ public final class StandardEffects {
       return;
     }
     ZakumApi.get().getScheduler().runAtEntity(entity, task);
+  }
+
+  private static void runAtLocation(Location location, Runnable task) {
+    if (location == null) {
+      runGlobal(task);
+      return;
+    }
+    ZakumApi.get().getScheduler().runAtLocation(location, task);
   }
 
   private static String raw(Map<String, String> params) {
@@ -585,5 +635,27 @@ public final class StandardEffects {
     } catch (Exception ex) {
       return null;
     }
+  }
+
+  private static Location resolveHologramLocation(Map<String, String> params, Entity target) {
+    if (target == null || target.getWorld() == null) return null;
+
+    String worldName = params.get("world");
+    double x = doubleParam(params, "x", Double.NaN);
+    double y = doubleParam(params, "y", Double.NaN);
+    double z = doubleParam(params, "z", Double.NaN);
+    if (!Double.isNaN(x) && !Double.isNaN(y) && !Double.isNaN(z)) {
+      var world = worldName == null ? target.getWorld() : Bukkit.getWorld(worldName);
+      if (world == null) return null;
+      return new Location(world, x, y, z);
+    }
+
+    double yOffset = doubleParam(params, "y_offset", 2.2d);
+    return target.getLocation().clone().add(0.0d, yOffset, 0.0d);
+  }
+
+  private static String sanitizeHologramId(String value) {
+    if (value == null || value.isBlank()) return "zakum-" + UUID.randomUUID();
+    return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
   }
 }

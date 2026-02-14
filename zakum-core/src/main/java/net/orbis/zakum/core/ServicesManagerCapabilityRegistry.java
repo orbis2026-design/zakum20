@@ -32,6 +32,8 @@ final class ServicesManagerCapabilityRegistry implements CapabilityRegistry {
       ZakumCapabilities.ENTITLEMENTS,
       ZakumCapabilities.BOOSTERS,
       ZakumCapabilities.CONTROL_PLANE,
+      ZakumCapabilities.DATA_STORE,
+      ZakumCapabilities.SOCIAL,
       ZakumCapabilities.PACKETS,
       ZakumCapabilities.PLACEHOLDERS,
       ZakumCapabilities.ECONOMY,

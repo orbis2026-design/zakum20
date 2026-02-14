@@ -19,13 +19,15 @@ import java.util.concurrent.CompletableFuture;
 public final class MongoDataStore implements DataStore, AutoCloseable {
 
   private final ZakumScheduler scheduler;
+  private final MongoClient mongoClient;
   private final MongoCollection<Document> profiles;
   private final JedisPool jedisPool;
 
   public MongoDataStore(MongoClient mongoClient, JedisPool jedisPool, String databaseName, ZakumScheduler scheduler) {
     this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+    this.mongoClient = Objects.requireNonNull(mongoClient, "mongoClient");
     this.jedisPool = Objects.requireNonNull(jedisPool, "jedisPool");
-    this.profiles = Objects.requireNonNull(mongoClient, "mongoClient")
+    this.profiles = this.mongoClient
       .getDatabase(Objects.requireNonNull(databaseName, "databaseName"))
       .getCollection("player_profiles");
   }
@@ -75,7 +77,11 @@ public final class MongoDataStore implements DataStore, AutoCloseable {
 
   @Override
   public void close() {
-    jedisPool.close();
+    try {
+      jedisPool.close();
+    } finally {
+      mongoClient.close();
+    }
   }
 
   private static String sessionKey(UUID uuid, String key) {

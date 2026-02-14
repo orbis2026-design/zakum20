@@ -1,5 +1,7 @@
 package net.orbis.zakum.api;
 
+import net.orbis.zakum.api.concurrent.ZakumScheduler;
+
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -23,10 +25,16 @@ public final class ZakumApiProvider {
   }
 
   public static void set(ZakumApi api) {
-    REF.set(Objects.requireNonNull(api, "api"));
+    ZakumApi resolved = Objects.requireNonNull(api, "api");
+    Objects.requireNonNull(resolved.getScheduler(), "api.scheduler");
+    REF.set(resolved);
   }
 
   public static void clear() {
     REF.set(null);
+  }
+
+  public static ZakumScheduler scheduler() {
+    return get().getScheduler();
   }
 }

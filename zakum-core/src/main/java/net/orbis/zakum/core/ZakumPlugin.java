@@ -1,11 +1,15 @@
 package net.orbis.zakum.core;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
+import net.orbis.zakum.api.social.SocialService;
+import net.orbis.zakum.api.storage.DataStore;
 import net.orbis.zakum.core.action.ZakumAceEngine;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
 import net.orbis.zakum.core.config.ZakumSettingsLoader;
@@ -15,14 +19,26 @@ import net.orbis.zakum.core.actions.emitters.*;
 import net.orbis.zakum.core.asset.InMemoryAssetManager;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.bridge.SimpleBridgeManager;
+import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.concurrent.EarlySchedulerRuntime;
 import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.db.SqlManager;
 import net.orbis.zakum.core.entitlements.SqlEntitlementService;
+import net.orbis.zakum.core.listeners.ChatListener;
+import net.orbis.zakum.core.listeners.CloudIdentityListener;
+import net.orbis.zakum.core.metrics.MetricsMonitor;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
-import net.orbis.zakum.core.packet.AnimationService1_21_11;
+import net.orbis.zakum.core.packet.AnimationService;
+import net.orbis.zakum.core.profile.PlayerJoinListener;
+import net.orbis.zakum.core.profile.ProfileProvider;
 import net.orbis.zakum.core.progression.ProgressionServiceImpl;
+import net.orbis.zakum.core.social.CaffeineSocialService;
+import net.orbis.zakum.core.social.ChatBufferCache;
+import net.orbis.zakum.core.social.CloudTabRenderer;
+import net.orbis.zakum.core.social.OrbisChatRenderer;
+import net.orbis.zakum.core.social.SocialSnapshotLifecycleListener;
+import net.orbis.zakum.core.storage.MongoDataStore;
 import net.orbis.zakum.core.storage.StorageServiceImpl;
 import net.orbis.zakum.core.ui.NoopGuiBridge;
 import net.orbis.zakum.core.ui.ServiceBackedGuiBridge;
@@ -34,9 +50,12 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.OfflinePlayer;
+import redis.clients.jedis.JedisPool;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -54,6 +73,17 @@ public final class ZakumPlugin extends JavaPlugin {
   private SqlBoosterService boosters;
   private CapabilityRegistry capabilityRegistry;
   private ZakumSchedulerImpl scheduler;
+  private MongoDataStore dataStore;
+  private PlayerJoinListener playerJoinListener;
+  private ProfileProvider profileProvider;
+  private SecureCloudClient cloudClient;
+  private CloudIdentityListener cloudIdentityListener;
+  private ChatListener chatListener;
+  private int cloudPollTaskId = -1;
+  private MetricsMonitor metricsMonitor;
+  private CloudTabRenderer cloudTabRenderer;
+  private OrbisChatRenderer chatRenderer;
+  private SocialService socialService;
 
   private MovementSampler movementSampler;
 
@@ -76,6 +106,7 @@ public final class ZakumPlugin extends JavaPlugin {
 
     this.metrics = new MetricsService(getLogger(), settings.observability().metrics(), async);
     this.metrics.start();
+    this.metricsMonitor = new MetricsMonitor(metrics.registry());
 
     this.sql = new SqlManager(this, async, clock, settings, metrics.registry());
     this.sql.start();
@@ -97,10 +128,17 @@ public final class ZakumPlugin extends JavaPlugin {
     this.scheduler = new ZakumSchedulerImpl(this, EarlySchedulerRuntime.claimOrCreateExecutor());
     var aceEngine = new ZakumAceEngine();
     var storageService = new StorageServiceImpl(sql);
-    var animations = new AnimationService1_21_11(this, scheduler);
+    var animations = new AnimationService(this, scheduler, settings.visuals());
     var bridgeManager = new SimpleBridgeManager();
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();
+    assets.init();
+    var chatBufferCfg = settings.chat().bufferCache();
+    var chatBufferCache = new ChatBufferCache(
+      chatBufferCfg.enabled(),
+      chatBufferCfg.maximumSize(),
+      chatBufferCfg.expireAfterAccessSeconds()
+    );
     var gui = new ServiceBackedGuiBridge(new NoopGuiBridge());
 
     this.api = new ZakumApiImpl(
@@ -124,6 +162,10 @@ public final class ZakumPlugin extends JavaPlugin {
       settings,
       capabilityRegistry
     );
+    this.cloudTabRenderer = new CloudTabRenderer(api, assets);
+    this.chatRenderer = new OrbisChatRenderer(assets, chatBufferCache);
+    this.chatListener = new ChatListener(chatRenderer);
+    getServer().getPluginManager().registerEvents(chatListener, this);
 
     // Register Services
     var sm = Bukkit.getServicesManager();
@@ -133,7 +175,28 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(net.orbis.zakum.api.boosters.BoosterService.class, boosters, this, ServicePriority.Highest);
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
+
+    this.dataStore = createMongoDataStore();
+    if (dataStore != null) {
+      sm.register(DataStore.class, dataStore, this, ServicePriority.Highest);
+      this.profileProvider = new ProfileProvider(dataStore);
+      getServer().getPluginManager().registerEvents(profileProvider, this);
+      this.playerJoinListener = new PlayerJoinListener(scheduler, dataStore, cloudTabRenderer, profileProvider);
+      getServer().getPluginManager().registerEvents(playerJoinListener, this);
+    }
+    long socialTtl = settings.cache().defaults().expireAfterAccessSeconds();
+    if (socialTtl <= 0L) socialTtl = 300L;
+    this.socialService = new CaffeineSocialService(
+      scheduler,
+      dataStore,
+      settings.cache().defaults().maximumSize(),
+      Duration.ofSeconds(socialTtl)
+    );
+    sm.register(SocialService.class, socialService, this, ServicePriority.Highest);
+    getServer().getPluginManager().registerEvents(new SocialSnapshotLifecycleListener(socialService), this);
+
     ZakumApiProvider.set(api);
+    startCloudPolling();
 
     registerCoreActionEmitters(clock);
 
@@ -150,16 +213,40 @@ public final class ZakumPlugin extends JavaPlugin {
     if (boosters != null) sm.unregister(net.orbis.zakum.api.boosters.BoosterService.class, boosters);
     if (deferred != null) sm.unregister(DeferredActionService.class, deferred);
     if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
+    if (dataStore != null) sm.unregister(DataStore.class, dataStore);
+    if (socialService != null) sm.unregister(SocialService.class, socialService);
     ZakumApiProvider.clear();
 
     if (movementSampler != null) {
       movementSampler.stop();
       movementSampler = null;
     }
+    if (playerJoinListener != null) {
+      playerJoinListener.close();
+      playerJoinListener = null;
+    }
+    if (profileProvider != null) {
+      profileProvider.clear();
+      profileProvider = null;
+    }
+    if (cloudPollTaskId > 0 && scheduler != null) {
+      scheduler.cancelTask(cloudPollTaskId);
+    }
+    cloudPollTaskId = -1;
+    cloudIdentityListener = null;
+    cloudClient = null;
+    cloudTabRenderer = null;
+    chatRenderer = null;
+    chatListener = null;
+    metricsMonitor = null;
 
     if (metrics != null) metrics.stop();
 
     if (boosters != null) boosters.shutdown();
+    if (dataStore != null) {
+      dataStore.close();
+      dataStore = null;
+    }
     if (scheduler != null) scheduler.shutdown();
 
     if (sql != null) sql.shutdown();
@@ -176,11 +263,106 @@ public final class ZakumPlugin extends JavaPlugin {
     deferred = null;
     capabilityRegistry = null;
     scheduler = null;
+    socialService = null;
+  }
+
+  private void startCloudPolling() {
+    var cloud = settings.cloud();
+    if (!cloud.enabled()) return;
+
+    if (cloud.baseUrl() == null || cloud.baseUrl().isBlank()) {
+      getLogger().warning("Cloud polling enabled but cloud.baseUrl is blank.");
+      return;
+    }
+    if (cloud.networkSecret() == null || cloud.networkSecret().isBlank()) {
+      getLogger().warning("Cloud polling enabled but cloud.networkSecret is blank.");
+      return;
+    }
+    if (cloud.serverId() == null || cloud.serverId().isBlank()) {
+      getLogger().warning("Cloud polling enabled but cloud.serverId is blank.");
+      return;
+    }
+
+    this.cloudClient = new SecureCloudClient(api, cloud, getLogger(), metricsMonitor);
+    if (cloud.identityOnJoin()) {
+      this.cloudIdentityListener = new CloudIdentityListener(api, cloudClient, cloudTabRenderer, getLogger());
+      getServer().getPluginManager().registerEvents(cloudIdentityListener, this);
+    }
+
+    int intervalTicks = Math.max(1, cloud.pollIntervalTicks());
+    this.cloudPollTaskId = scheduler.runTaskTimerAsynchronously(this, cloudClient::poll, intervalTicks, intervalTicks);
+    scheduler.runAsync(cloudClient::poll);
+  }
+
+  private MongoDataStore createMongoDataStore() {
+    if (!getConfig().getBoolean("datastore.enabled", false)) return null;
+
+    String mongoUri = getConfig().getString("datastore.mongoUri", "").trim();
+    String mongoDatabase = getConfig().getString("datastore.mongoDatabase", "").trim();
+    String redisUri = getConfig().getString("datastore.redisUri", "").trim();
+    if (mongoUri.isBlank() || mongoDatabase.isBlank() || redisUri.isBlank()) {
+      getLogger().warning("DataStore is enabled but datastore.mongoUri/datastore.mongoDatabase/datastore.redisUri are not fully configured.");
+      return null;
+    }
+
+    try {
+      MongoClient mongoClient = MongoClients.create(mongoUri);
+      JedisPool jedisPool = new JedisPool(URI.create(redisUri));
+      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler);
+    } catch (Throwable ex) {
+      getLogger().warning("Failed to initialize Mongo DataStore: " + ex.getMessage());
+      return null;
+    }
   }
 
   // --- Command Handling & Helpers omitted for brevity (kept standard) ---
-  // The minimal necessary for compilation is onEnable/onDisable and imports.
-  // We re-inject the critical resolving methods below.
+  // The minimal necessary for compilation is onEnable/onDisable and cloud status.
+
+  @Override
+  public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    if (!command.getName().equalsIgnoreCase("zakum")) return false;
+
+    if (args.length >= 2 && args[0].equalsIgnoreCase("cloud") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendCloudStatus(sender);
+      return true;
+    }
+
+    sender.sendMessage("Usage: /" + label + " cloud status");
+    return true;
+  }
+
+  private void sendCloudStatus(CommandSender sender) {
+    sender.sendMessage("Zakum Cloud Status");
+    sender.sendMessage("enabled=" + settings.cloud().enabled());
+    sender.sendMessage("configuredServerId=" + settings.cloud().serverId());
+    sender.sendMessage("pollTaskId=" + cloudPollTaskId);
+
+    if (cloudClient == null) {
+      sender.sendMessage("client=offline (cloud disabled or not configured)");
+      return;
+    }
+
+    var snap = cloudClient.statusSnapshot();
+    sender.sendMessage("client=online");
+    sender.sendMessage("baseUrl=" + snap.baseUrl());
+    sender.sendMessage("serverId=" + snap.serverId());
+    sender.sendMessage("lastPollAttempt=" + formatEpochMillis(snap.lastPollAttemptMs()));
+    sender.sendMessage("lastPollSuccess=" + formatEpochMillis(snap.lastPollSuccessMs()));
+    sender.sendMessage("lastHttpStatus=" + snap.lastHttpStatus());
+    sender.sendMessage("lastBatchSize=" + snap.lastBatchSize());
+    sender.sendMessage("totalQueueActions=" + snap.totalQueueActions());
+    String err = snap.lastError();
+    sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+  }
+
+  private static String formatEpochMillis(long epochMillis) {
+    if (epochMillis <= 0L) return "never";
+    return Instant.ofEpochMilli(epochMillis).toString();
+  }
 
   private static UUID resolveUuid(CommandSender sender, String token) {
     if (token.contains("-")) {

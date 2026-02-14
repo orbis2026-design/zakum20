@@ -89,7 +89,7 @@ public class AnimationService1_21_11 implements AnimationService {
     }
   }
 
-  private boolean tryDestroyPacketDisplay(Player viewer, int entityId) {
+  protected boolean tryDestroyPacketDisplay(Player viewer, int entityId) {
     try {
       Class<?> packetEventsClass = Class.forName("com.github.retrooper.packetevents.PacketEvents");
       Object api = packetEventsClass.getMethod("getAPI").invoke(null);

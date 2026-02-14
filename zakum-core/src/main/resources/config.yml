@@ -27,6 +27,18 @@ controlPlane:
   baseUrl: "http://127.0.0.1:8080"
   apiKey: ""
 
+cloud:
+  enabled: false
+  baseUrl: "https://api.orbis.network"
+  base_url: "https://api.orbis.network"
+  networkSecret: ""
+  network_secret: ""
+  serverId: "survival-1"
+  server_id: "survival-1"
+  pollIntervalTicks: 20
+  requestTimeoutMs: 6000
+  identityOnJoin: true
+
 entitlements:
   cache:
     maximumSize: 50000
@@ -41,6 +53,11 @@ boosters:
     intervalSeconds: 600
     deleteLimit: 5000
 
+datastore:
+  enabled: false
+  mongoUri: "mongodb://127.0.0.1:27017"
+  mongoDatabase: "zakum"
+  redisUri: "redis://127.0.0.1:6379"
 
 actions:
   enabled: true
@@ -114,6 +131,18 @@ cache:
     maximumSize: 100000
     expireAfterWriteSeconds: 60
     expireAfterAccessSeconds: 0
+
+chat:
+  bufferCache:
+    enabled: true
+    maximumSize: 100000
+    expireAfterAccessSeconds: 300
+
+visuals:
+  lod:
+    enabled: true
+    maxPingMs: 180
+    minTps: 18.5
 
 observability:
   metrics:

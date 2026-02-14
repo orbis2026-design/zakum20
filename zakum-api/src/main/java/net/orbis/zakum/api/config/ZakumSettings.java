@@ -15,12 +15,15 @@ public record ZakumSettings(
   Server server,
   Database database,
   ControlPlane controlPlane,
+  Cloud cloud,
   Http http,
   Cache cache,
   Observability observability,
   Entitlements entitlements,
   Boosters boosters,
   Actions actions,
+  Chat chat,
+  Visuals visuals,
   Packets packets
 ) {
 
@@ -58,6 +61,16 @@ public record ZakumSettings(
     boolean enabled,
     String baseUrl,
     String apiKey
+  ) {}
+
+  public record Cloud(
+    boolean enabled,
+    String baseUrl,
+    String networkSecret,
+    String serverId,
+    int pollIntervalTicks,
+    long requestTimeoutMs,
+    boolean identityOnJoin
   ) {}
 
   public record Http(
@@ -132,6 +145,25 @@ public record ZakumSettings(
     ) {}
   }
 
+  public record Chat(
+    BufferCache bufferCache
+  ) {
+    public record BufferCache(
+      boolean enabled,
+      long maximumSize,
+      long expireAfterAccessSeconds
+    ) {}
+  }
+
+  public record Visuals(
+    Lod lod
+  ) {
+    public record Lod(
+      boolean enabled,
+      int maxPingMs,
+      double minTps
+    ) {}
+  }
 
 
   public record Packets(

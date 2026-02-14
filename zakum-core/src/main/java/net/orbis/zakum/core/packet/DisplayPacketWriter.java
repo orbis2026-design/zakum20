@@ -1,0 +1,120 @@
+package net.orbis.zakum.core.packet;
+
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Packet-only display helper for 1.21.11.
+ */
+public final class DisplayPacketWriter {
+
+  private static final int DISPLAY_ITEM_METADATA_INDEX = 23;
+
+  private DisplayPacketWriter() {}
+
+  public static void spawnGhostItem(Player viewer, Location loc, int entityId) {
+    spawnGhostItem(viewer, loc, null, entityId);
+  }
+
+  public static void spawnGhostItem(Player viewer, Location loc, ItemStack item, int entityId) {
+    if (viewer == null || loc == null) return;
+    try {
+      Class<?> packetEventsClass = Class.forName("com.github.retrooper.packetevents.PacketEvents");
+      Object api = packetEventsClass.getMethod("getAPI").invoke(null);
+      if (api == null) return;
+
+      Class<?> entityTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.type.EntityTypes");
+      Object itemDisplayType = entityTypesClass.getField("ITEM_DISPLAY").get(null);
+
+      Class<?> vector3dClass = Class.forName("com.github.retrooper.packetevents.util.Vector3d");
+      Object position = vector3dClass
+        .getConstructor(double.class, double.class, double.class)
+        .newInstance(loc.getX(), loc.getY(), loc.getZ());
+
+      Class<?> spawnClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity");
+      Constructor<?> ctor = findSpawnConstructor(spawnClass);
+      if (ctor == null) return;
+      Object spawnPacket = newSpawnPacket(ctor, entityId, itemDisplayType, position);
+
+      sendPacket(api, viewer, spawnPacket);
+      if (item != null) {
+        Object metadataPacket = createItemMetadataPacket(entityId, item);
+        if (metadataPacket != null) {
+          sendPacket(api, viewer, metadataPacket);
+        }
+      }
+    } catch (Throwable ignored) {
+      // Packet backend is optional.
+    }
+  }
+
+  private static Constructor<?> findSpawnConstructor(Class<?> spawnClass) {
+    for (Constructor<?> ctor : spawnClass.getConstructors()) {
+      Class<?>[] params = ctor.getParameterTypes();
+      if (params.length != 9) continue;
+      if (params[0] != int.class) continue;
+      if (params[4] != float.class || params[5] != float.class || params[6] != float.class) continue;
+      if (params[7] != int.class) continue;
+      return ctor;
+    }
+    return null;
+  }
+
+  private static Object newSpawnPacket(Constructor<?> ctor, int entityId, Object type, Object position) throws Exception {
+    Class<?>[] params = ctor.getParameterTypes();
+    Object[] args = new Object[9];
+    args[0] = entityId;
+    args[1] = Optional.class.isAssignableFrom(params[1]) ? Optional.of(UUID.randomUUID()) : UUID.randomUUID();
+    args[2] = type;
+    args[3] = position;
+    args[4] = 0f;
+    args[5] = 0f;
+    args[6] = 0f;
+    args[7] = 0;
+    args[8] = Optional.class.isAssignableFrom(params[8]) ? Optional.empty() : null;
+    return ctor.newInstance(args);
+  }
+
+  private static Object createItemMetadataPacket(int entityId, ItemStack item) throws Exception {
+    Class<?> conversionClass = loadSpigotConversionUtil();
+    Object peItem = conversionClass.getMethod("fromBukkitItemStack", ItemStack.class).invoke(null, item);
+
+    Class<?> entityDataTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes");
+    Object itemType = entityDataTypesClass.getField("ITEMSTACK").get(null);
+
+    Class<?> entityDataTypeClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataType");
+    Class<?> entityDataClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityData");
+    Object entityData = entityDataClass
+      .getConstructor(int.class, entityDataTypeClass, Object.class)
+      .newInstance(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
+
+    Class<?> metadataClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata");
+    return metadataClass.getConstructor(int.class, List.class).newInstance(entityId, List.of(entityData));
+  }
+
+  private static Class<?> loadSpigotConversionUtil() throws ClassNotFoundException {
+    try {
+      return Class.forName("com.github.retrooper.packetevents.util.SpigotConversionUtil");
+    } catch (ClassNotFoundException ignored) {
+      return Class.forName("io.github.retrooper.packetevents.util.SpigotConversionUtil");
+    }
+  }
+
+  private static void sendPacket(Object api, Player viewer, Object packet) throws Exception {
+    Method getPlayerManager = api.getClass().getMethod("getPlayerManager");
+    Object playerManager = getPlayerManager.invoke(api);
+    for (Method method : playerManager.getClass().getMethods()) {
+      if (!method.getName().equals("sendPacket")) continue;
+      if (method.getParameterCount() != 2) continue;
+      method.invoke(playerManager, viewer, packet);
+      return;
+    }
+  }
+}

@@ -1,6 +1,9 @@
 package net.orbis.zakum.core.action;
 
+import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
+import net.orbis.zakum.api.capability.ZakumCapabilities;
+import net.orbis.zakum.api.social.SocialService;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -13,11 +16,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.UUID;
 
 public final class ZakumAceEngine implements AceEngine {
 
   // Syntax: [EFFECT] value @TARGETER {param=value ...}
-  private static final Pattern ACE_PATTERN = Pattern.compile("\\[(\\w+)]\\s*([^@\\{]+)?(?:@(\\w+))?\\s*(?:\\{(.*)})?");
+  private static final Pattern ACE_PATTERN = Pattern.compile(
+    "^\\[(?<effect>\\w+)]\\s*(?<value>[^@\\{]+)?(?:@(?<targeter>\\w+))?\\s*(?:\\{(?<params>.*)})?$"
+  );
 
   private final Map<String, EffectAction> effects;
 
@@ -36,12 +42,12 @@ public final class ZakumAceEngine implements AceEngine {
       if (line.isEmpty() || line.startsWith("#")) continue;
 
       Matcher m = ACE_PATTERN.matcher(line);
-      if (!m.find()) continue;
+      if (!m.matches()) continue;
 
-      String effectKey = normalize(m.group(1));
-      String value = trim(m.group(2));
-      String targetKey = trim(m.group(3));
-      String inlineParams = trim(m.group(4));
+      String effectKey = normalize(m.group("effect"));
+      String value = trim(m.group("value"));
+      String targetKey = trim(m.group("targeter"));
+      String inlineParams = trim(m.group("params"));
 
       EffectAction action = effects.get(effectKey);
       if (action == null) continue;
@@ -82,6 +88,8 @@ public final class ZakumAceEngine implements AceEngine {
       case "ALL" -> new ArrayList<>(actor.getWorld().getPlayers());
       case "RADIUS", "NEARBY" -> nearby(actor, params);
       case "ALLIES" -> allies(actor);
+      case "FRIENDS" -> friends(actor);
+      case "RIVALS" -> rivals(actor);
       default -> List.of(actor);
     };
   }
@@ -101,6 +109,9 @@ public final class ZakumAceEngine implements AceEngine {
   }
 
   private static List<Entity> allies(Player actor) {
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.ALLY);
+    if (!fromSocial.isEmpty()) return fromSocial;
+
     var board = actor.getScoreboard();
     if (board == null) return List.of(actor);
     var team = board.getEntryTeam(actor.getName());
@@ -116,6 +127,48 @@ public final class ZakumAceEngine implements AceEngine {
       }
     }
     return out;
+  }
+
+  private static List<Entity> friends(Player actor) {
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.FRIEND);
+    return fromSocial.isEmpty() ? List.of(actor) : fromSocial;
+  }
+
+  private static List<Entity> rivals(Player actor) {
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.RIVAL);
+    return fromSocial.isEmpty() ? List.of(actor) : fromSocial;
+  }
+
+  private static List<Entity> selectBySocial(Player actor, SocialRelation relation) {
+    ZakumApi api = ZakumApi.get();
+    if (api == null) return List.of();
+    SocialService social = api.capability(ZakumCapabilities.SOCIAL).orElse(null);
+    if (social == null) return List.of();
+
+    SocialService.SocialSnapshot snapshot = social.snapshot(actor.getUniqueId());
+    if (snapshot == null) return List.of();
+    var ids = switch (relation) {
+      case FRIEND -> snapshot.friends();
+      case ALLY -> snapshot.allies();
+      case RIVAL -> snapshot.rivals();
+    };
+    if (ids.isEmpty()) return List.of();
+
+    List<Entity> out = new ArrayList<>();
+    out.add(actor);
+    for (Player player : actor.getWorld().getPlayers()) {
+      UUID id = player.getUniqueId();
+      if (!id.equals(actor.getUniqueId()) && ids.contains(id)) {
+        out.add(player);
+      }
+    }
+    return out;
+  }
+
+  private enum SocialRelation {
+    FRIEND,
+    ALLY,
+    RIVAL
   }
 
   private static Map<String, String> parseParams(String value, String tail) {

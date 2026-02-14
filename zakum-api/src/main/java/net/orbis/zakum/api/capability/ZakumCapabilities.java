@@ -8,6 +8,7 @@ import net.orbis.zakum.api.luckperms.LuckPermsService;
 import net.orbis.zakum.api.net.ControlPlaneClient;
 import net.orbis.zakum.api.packets.PacketService;
 import net.orbis.zakum.api.placeholders.PlaceholderService;
+import net.orbis.zakum.api.social.SocialService;
 import net.orbis.zakum.api.storage.DataStore;
 import net.orbis.zakum.api.vault.EconomyService;
 
@@ -32,6 +33,8 @@ public final class ZakumCapabilities {
     Capability.of("zakum:control_plane", ControlPlaneClient.class);
   public static final Capability<DataStore> DATA_STORE =
     Capability.of("zakum:data_store", DataStore.class);
+  public static final Capability<SocialService> SOCIAL =
+    Capability.of("zakum:social", SocialService.class);
 
   public static final Capability<PacketService> PACKETS =
     Capability.of("zakum:packets", PacketService.class);
