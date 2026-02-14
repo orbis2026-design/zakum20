@@ -1,4 +1,4 @@
-﻿package net.orbis.zakum.crates.keys;
+package net.orbis.zakum.crates.keys;
 
 import net.orbis.zakum.crates.model.CrateDef;
 import org.bukkit.Material;

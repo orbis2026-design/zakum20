@@ -1,4 +1,4 @@
-# Database System
+﻿# Database System
 
 Core: `zakum-core/.../db/SqlManager.java`
 
@@ -14,3 +14,7 @@ Key features:
 Tables are owned by each feature module, but migrations are centralized
 in Zakum core for shared tables and in feature modules for their own tables.
 (We will standardize migration strategy as plugins grow.)
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

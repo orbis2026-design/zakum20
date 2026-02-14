@@ -1,4 +1,4 @@
-# Zakum Core (Orbis Network) Overview
+﻿# Zakum Core (Orbis Network) Overview
 
 Zakum is the shared core ("XXXlib") for the Orbis Minecraft network.
 
@@ -74,3 +74,7 @@ On the proxy (Velocity) side:
 See: `docs/01-MODULES.md` for deeper details.
 
 - `docs/13-CONFIG-FOLDERS.md` (per-plugin config folders)
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

@@ -1,4 +1,4 @@
-﻿package net.orbis.zakum.crates.storage;
+package net.orbis.zakum.crates.storage;
 
 import net.orbis.zakum.api.ZakumApi;
 import java.sql.*;

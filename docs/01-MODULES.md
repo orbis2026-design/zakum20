@@ -1,4 +1,4 @@
-# Modules and Interaction Map
+﻿# Modules and Interaction Map
 
 ## zakum-api (stable surface)
 
@@ -82,3 +82,7 @@ Bridges must:
 See: `docs/05-BRIDGES.md`.
 
 Bridge inventory is documented there (including `zakum-bridge-commandapi`).
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

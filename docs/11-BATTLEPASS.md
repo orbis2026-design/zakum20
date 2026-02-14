@@ -1,4 +1,4 @@
-# BattlePass (OrbisBattlePass)
+﻿# BattlePass (OrbisBattlePass)
 
 This module is the **AdvancedTeam-style BattlePass** foundation, built on Zakum services.
 
@@ -131,3 +131,7 @@ Quest placeholders:
 - `%orbisbp_quest_<questId>_step%`
 - `%orbisbp_quest_<questId>_progress%`
 - `%orbisbp_quest_<questId>_required%`
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

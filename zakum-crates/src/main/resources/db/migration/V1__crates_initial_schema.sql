@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS orbis_crates_keys (
+CREATE TABLE IF NOT EXISTS orbis_crates_keys (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     server_id VARCHAR(32) NOT NULL,
     player_uuid VARCHAR(36) NOT NULL,

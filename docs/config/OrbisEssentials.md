@@ -1,4 +1,4 @@
-# OrbisEssentials Configuration
+﻿# OrbisEssentials Configuration
 
 Config folder: `plugins/OrbisEssentials/`
 
@@ -18,3 +18,7 @@ Keys:
 
 Notes:
 - Homes/warps/back are DB-backed; if Zakum DB is offline they degrade gracefully.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

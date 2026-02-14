@@ -1,4 +1,4 @@
-# Command System (CommandAPI Bridge)
+﻿# Command System (CommandAPI Bridge)
 
 Zakum supports two command layers:
 
@@ -34,3 +34,7 @@ Command spam can kill performance if you:
 - do long formatting on main thread
 
 The bridge keeps commands lightweight and typed.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

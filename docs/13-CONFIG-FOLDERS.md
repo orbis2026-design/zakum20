@@ -1,4 +1,4 @@
-# Plugin Configuration Folders
+﻿# Plugin Configuration Folders
 
 This is the per-plugin configuration index.
 
@@ -16,3 +16,7 @@ Bridges:
 - `docs/config/OrbisBridgeJobs.md`
 - `docs/config/OrbisBridgeEssentialsX.md`
 - `docs/config/OrbisBridgeVotifier.md`
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

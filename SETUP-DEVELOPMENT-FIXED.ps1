@@ -1,114 +1,100 @@
 ﻿# ============================================================================
-# ZAKUM SUITE - RESOURCE FIXER
-# Generates missing config and SQL files for Zakum Crates
+# ZAKUM SUITE - DOCUMENTATION UPDATE (INTELLIJ STANDARD)
+# "Subliminally" integrates the new IntelliJ-first workflow into all docs.
 # ============================================================================
 
 $PROJECT_ROOT = $PSScriptRoot
-$CRATES_RES = "$PROJECT_ROOT\zakum-crates\src\main\resources"
+$DOCS_DIR = "$PROJECT_ROOT\docs"
+$README = "$PROJECT_ROOT\README.md"
+$DEV_GUIDE = "$PROJECT_ROOT\DEVELOPMENT-GUIDE.md"
 
-# Ensure directories exist
-New-Item -ItemType Directory -Path "$CRATES_RES\db\migration" -Force | Out-Null
+Write-Host "Updating documentation to reflect IntelliJ standardization..." -ForegroundColor Cyan
 
-# 1. Generate config.yml
-$configYml = @'
-# Zakum Crates Configuration
-settings:
-  storage:
-    table-prefix: "orbis_crates_"
-  
-  gui:
-    title: "Global Crates"
-    rows: 3
-    fill-item: GRAY_STAINED_GLASS_PANE
+# ----------------------------------------------------------------------------
+# 1. REWRITE DEVELOPMENT-GUIDE.md (The New Source of Truth)
+# ----------------------------------------------------------------------------
+$newGuideContent = @"
+# ZAKUM SUITE - DEVELOPMENT GUIDE
 
-crates:
-  vote:
-    name: "&a&lVote Crate"
-    type: ROULETTE
-    preview: true
-    block: ENDER_CHEST
-    key:
-      material: TRIPWIRE_HOOK
-      name: "&aVote Key"
-      lore:
-        - "&7Use this at the crate area"
-        - "&7to win rewards!"
-      glow: true
-  
-  rare:
-    name: "&6&lRare Crate"
-    type: CSGO
-    preview: true
-    block: TRAPPED_CHEST
-    key:
-      material: BLAZE_ROD
-      name: "&6Rare Key"
-      glow: true
-'@
-Set-Content -Path "$CRATES_RES\config.yml" -Value $configYml -Encoding UTF8
-Write-Host "✓ Created config.yml" -ForegroundColor Green
+> **STANDARD:** This project is strictly developed using **IntelliJ IDEA (2024.1+)**.
+> **JAVA VERSION:** Java 21 (Temurin/Adprium recommended).
 
-# 2. Generate rewards.yml
-$rewardsYml = @'
-rewards:
-  vote_diamond:
-    crate: vote
-    chance: 50.0
-    display:
-      material: DIAMOND
-      name: "&b2x Diamonds"
-    commands:
-      - "give %player% diamond 2"
-  
-  vote_cash:
-    crate: vote
-    chance: 20.0
-    display:
-      material: PAPER
-      name: "&a$1000 Cash"
-    commands:
-      - "eco give %player% 1000"
+## 1. The "Architect & Builder" Workflow
 
-  rare_sword:
-    crate: rare
-    chance: 5.0
-    display:
-      material: DIAMOND_SWORD
-      name: "&6Legendary Sword"
-      enchanted: true
-    items:
-      - material: DIAMOND_SWORD
-        name: "&6Legendary Sword"
-        enchantments:
-          DAMAGE_ALL: 5
-'@
-Set-Content -Path "$CRATES_RES\rewards.yml" -Value $rewardsYml -Encoding UTF8
-Write-Host "✓ Created rewards.yml" -ForegroundColor Green
+We have moved away from shell-script generation. 
+- **You (The Architect):** Manage the IDE, run builds, and resolve imports.
+- **AI (The Builder):** Generates specific class implementations to be pasted into the IDE.
 
-# 3. Generate SQL Schema
-$sqlSchema = @'
-CREATE TABLE IF NOT EXISTS orbis_crates_keys (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    server_id VARCHAR(32) NOT NULL,
-    player_uuid VARCHAR(36) NOT NULL,
-    crate_id VARCHAR(32) NOT NULL,
-    quantity INT DEFAULT 0,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_player_crate (server_id, player_uuid, crate_id),
-    INDEX idx_player (player_uuid)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+## 2. Setting Up IntelliJ
 
-CREATE TABLE IF NOT EXISTS orbis_crates_history (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    player_uuid VARCHAR(36) NOT NULL,
-    crate_id VARCHAR(32) NOT NULL,
-    reward_id VARCHAR(64) NOT NULL,
-    opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_history_player (player_uuid)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-'@
-Set-Content -Path "$CRATES_RES\db\migration\V1__crates_initial_schema.sql" -Value $sqlSchema -Encoding UTF8
-Write-Host "✓ Created V1__crates_initial_schema.sql" -ForegroundColor Green
+1. **Open Project:** Launch IntelliJ -> \`File\` -> \`Open\` -> Select \`C:\Zakum\zakum-v20\`.
+2. **Import Gradle:** Click "Load Gradle Project" when prompted.
+3. **Verify SDK:** Go to \`File\` -> \`Project Structure\` -> \`Project\`. Ensure SDK is set to **21**.
+4. **Sync:** Open the Gradle tab (right sidebar) and click the **Reload All Gradle Projects** (recycle icon).
+
+## 3. Building the Suite
+
+**DO NOT use \`build-all.bat\` for active development.** Use the IDE.
+
+1. Open the **Gradle** tab on the right.
+2. Expand \`zakum-core\` -> \`Tasks\` -> \`build\`.
+3. Double-click \`build\`.
+4. Fix any "red" errors in the editor (Alt+Enter to import missing classes).
+5. Repeat for \`zakum-crates\`, \`zakum-battlepass\`, etc.
+
+## 4. Common Troubleshooting
+
+### "Package does not exist" (e.g., Micrometer, OkHttp)
+* **Fix:** Click the **Reload Gradle Changes** button in the Gradle tab.
+
+### "Byte Order Mark (BOM)" / "Illegal Character \ufeff"
+* **Fix:** The file was saved with Windows encoding. Open file in IntelliJ -> Bottom Right -> Select \`UTF-8\` -> \`Convert\`.
+
+### "ExecutorService is not a functional interface"
+* **Fix:** You cannot use lambdas (\`r -> ...\`) for \`ExecutorService\`. Pass the object directly.
+
+## 5. Module Status
+- **zakum-core:** 🟢 Stable (Needs IntelliJ Sync)
+- **zakum-battlepass:** 🟢 Complete
+- **zakum-crates:** 🟡 In Progress (Needs CrateAnimator implementation)
+- **zakum-pets:** 🔴 Stubbed
+"@
+
+[System.IO.File]::WriteAllText($DEV_GUIDE, $newGuideContent, [System.Text.Encoding]::UTF8)
+Write-Host "✓ Rewrote DEVELOPMENT-GUIDE.md" -ForegroundColor Green
+
+# ----------------------------------------------------------------------------
+# 2. UPDATE README.md (The Front Door)
+# ----------------------------------------------------------------------------
+if (Test-Path $README) {
+    $readmeContent = [System.IO.File]::ReadAllText($README)
+    
+    # Prepend the warning if not present
+    if ($readmeContent -notmatch "Recommended Environment") {
+        $badge = "`n> **DEVELOPMENT NOTE:** This project is built with **IntelliJ IDEA** and **Java 21**. CLI builds are deprecated.`n`n"
+        $readmeContent = $badge + $readmeContent
+        [System.IO.File]::WriteAllText($README, $readmeContent, [System.Text.Encoding]::UTF8)
+        Write-Host "✓ Updated README.md header" -ForegroundColor Green
+    }
+}
+
+# ----------------------------------------------------------------------------
+# 3. UPDATE ALL DOCS/*.md (The Subliminal Context)
+# ----------------------------------------------------------------------------
+# We append a footer to every doc file ensuring the reader knows the toolchain.
+
+$footerNote = "`n`n---`n*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*"
+
+Get-ChildItem -Path $DOCS_DIR -Recurse -Filter *.md | ForEach-Object {
+    $content = [System.IO.File]::ReadAllText($_.FullName)
+    
+    if ($content -notmatch "Development Note:") {
+        $content = $content + $footerNote
+        [System.IO.File]::WriteAllText($_.FullName, $content, [System.Text.Encoding]::UTF8)
+        Write-Host "  + Updated $($_.Name)" -ForegroundColor Gray
+    }
+}
 
 Write-Host ""
-Write-Host "Resources repaired. You can now build the project." -ForegroundColor Cyan
+Write-Host "✓ Documentation Standardized to IntelliJ Workflow." -ForegroundColor Green
+Write-Host "You are ready to open IntelliJ." -ForegroundColor Cyan

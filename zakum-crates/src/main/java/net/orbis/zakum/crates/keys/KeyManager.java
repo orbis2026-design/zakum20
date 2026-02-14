@@ -1,4 +1,4 @@
-﻿package net.orbis.zakum.crates.keys;
+package net.orbis.zakum.crates.keys;
 
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;

@@ -1,4 +1,4 @@
-# Threading and Performance Posture
+﻿# Threading and Performance Posture
 
 ## Guideline
 **Bukkit/Paper API is not generally thread-safe.**
@@ -24,3 +24,7 @@ Zakum specifically guards against:
 - infinite DB reconnect loops on main thread (it never happens)
 - excessive movement sampling (config clamped)
 - oversized caches (clamped)
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

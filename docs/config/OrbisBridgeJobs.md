@@ -1,4 +1,4 @@
-# OrbisBridgeJobs Configuration
+﻿# OrbisBridgeJobs Configuration
 
 Config folder: `plugins/OrbisBridgeJobs/`
 
@@ -14,3 +14,7 @@ Emits actions:
 - `jobs_action` (amount=1, key=job_action, value=<job>:<actionType>)
 - `jobs_money` (amount=scaled money, key=job, value=<job>)
 - `jobs_exp` (amount=scaled exp, key=job, value=<job>)
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

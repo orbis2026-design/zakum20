@@ -1,4 +1,4 @@
-# Bridges
+﻿# Bridges
 
 Bridges are optional adapters to external plugins.
 
@@ -30,3 +30,7 @@ Do not:
 - `zakum-bridge-commandapi` (**hard**, optional install): replaces `/zakum` with a typed CommandAPI command tree.
   - Requires installing the `CommandAPI` plugin.
   - On enable, it unregisters the fallback `/zakum` command node from `zakum-core` to avoid duplicates.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

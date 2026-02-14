@@ -1,4 +1,4 @@
-﻿# Zakum Crates Configuration
+# Zakum Crates Configuration
 settings:
   storage:
     table-prefix: "orbis_crates_"

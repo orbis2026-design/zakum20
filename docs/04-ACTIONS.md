@@ -1,4 +1,4 @@
-# Action System (Quest Triggers)
+﻿# Action System (Quest Triggers)
 
 Zakum's ActionBus is the canonical event stream that feature plugins consume.
 
@@ -31,3 +31,7 @@ This prevents:
 Controlled by:
 - `actions.deferredReplay.enabled`
 - `actions.deferredReplay.claimLimit`
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

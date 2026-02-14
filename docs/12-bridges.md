@@ -1,4 +1,4 @@
-# Bridges (third‑party integrations)
+﻿# Bridges (third‑party integrations)
 
 Zakum emits **vanilla action events** out of the box (block break, movement, kills, etc).
 Bridges add **plugin-specific action events** when the external plugin is installed.
@@ -56,3 +56,7 @@ Example quest step:
   value: "*"
   required: 1
 ```
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

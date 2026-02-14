@@ -1,4 +1,4 @@
-# Packets (ZakumPackets + PacketEvents)
+﻿# Packets (ZakumPackets + PacketEvents)
 
 ZakumPackets provides a **stable packet hook API** (`PacketService`) so feature plugins
 can observe/cancel packets without directly depending on PacketEvents.
@@ -72,3 +72,7 @@ if (ps != null) {
   ));
 }
 ```
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

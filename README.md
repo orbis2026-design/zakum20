@@ -1,3 +1,6 @@
+﻿
+> **DEVELOPMENT NOTE:** This project is built with **IntelliJ IDEA** and **Java 21**. CLI builds are deprecated.
+
 # Zakum (v1 scaffold)
 
 A clean v1 scaffold for your network-core library plugin (`Zakum`) plus an example dependent plugin (`ZakumBattlePass`).

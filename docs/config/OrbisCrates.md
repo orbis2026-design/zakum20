@@ -1,4 +1,4 @@
-# OrbisCrates Configuration
+﻿# OrbisCrates Configuration
 
 Config folder: `plugins/OrbisCrates/`
 
@@ -19,3 +19,7 @@ Keys:
 
 Dependencies:
 - Vault bridge provides `EconomyService` to run economy rewards.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

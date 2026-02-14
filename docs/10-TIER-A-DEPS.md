@@ -1,4 +1,4 @@
-# Tier-A Dependencies Policy
+﻿# Tier-A Dependencies Policy
 
 Goal: replicate AdvancedTeam-style products while keeping the network stable.
 
@@ -35,3 +35,7 @@ These projects represent years of edge-case fixes across:
 - third-party expectations
 
 Owning them means owning their churn forever.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

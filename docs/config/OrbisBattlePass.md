@@ -1,4 +1,4 @@
-# OrbisBattlePass Configuration
+﻿# OrbisBattlePass Configuration
 
 Config folder: `plugins/OrbisBattlePass/`
 
@@ -26,3 +26,7 @@ Gameplay-facing:
 - `/battlepass` opens GUI
 - `/battlepass claim|claimall` for reward claiming
 - `/battlepass top` shows leaderboard (chat)
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

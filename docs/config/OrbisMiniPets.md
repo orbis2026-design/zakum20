@@ -1,4 +1,4 @@
-# OrbisMiniPets Configuration
+﻿# OrbisMiniPets Configuration
 
 Config folder: `plugins/OrbisMiniPets/`
 
@@ -13,3 +13,7 @@ Keys:
 - `pets.<id>.rideEntity` (optional)
 - `follow.intervalTicks`
 - `flush.intervalSeconds`
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

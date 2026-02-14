@@ -1,4 +1,4 @@
-# Central Configuration
+﻿# Central Configuration
 
 Config file: `plugins/Zakum/config.yml`
 
@@ -53,3 +53,7 @@ Loader: `zakum-core/.../ZakumSettingsLoader.java`
 - clamps ranges
 - normalizes allowlists
 - avoids nulls and blank config hazards
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

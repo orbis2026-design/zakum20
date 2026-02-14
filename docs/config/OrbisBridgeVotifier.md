@@ -1,4 +1,4 @@
-# OrbisBridgeVotifier Configuration
+﻿# OrbisBridgeVotifier Configuration
 
 Config folder: `plugins/OrbisBridgeVotifier/`
 
@@ -13,3 +13,7 @@ Keys:
 Emits actions:
 - `vote` (immediate for online players)
 - Deferred replay uses Zakum `DeferredActionService` for offline claims.
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

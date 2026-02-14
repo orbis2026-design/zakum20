@@ -29,7 +29,7 @@ public final class SqlDeferredActionService implements DeferredActionService {
   }
 
   @Override
-  public CompletableFuture<Void> enqueue(String serverId, String playerName, ActionEvent event, long ttlSeconds, String source) {
+  public CompletableFuture<Void> enqueue(String serverId, String playerName, DeferredAction action, long ttlSeconds, String source) {
     Objects.requireNonNull(playerName, "playerName");
     Objects.requireNonNull(action, "action");
 
@@ -57,7 +57,7 @@ public final class SqlDeferredActionService implements DeferredActionService {
   }
 
   @Override
-  public CompletableFuture<List<ActionEvent>> claim(String serverId, String playerName, int limit) {
+  public CompletableFuture<List<ActionEvent>> claim(String serverId, String playerName, UUID playerId, int limit) {
     Objects.requireNonNull(serverId, "serverId");
     Objects.requireNonNull(playerName, "playerName");
     Objects.requireNonNull(playerId, "playerId");
@@ -96,7 +96,6 @@ public final class SqlDeferredActionService implements DeferredActionService {
       }
 
       // delete claimed ids
-      // build "IN" statement safely (bounded limit)
       StringBuilder sb = new StringBuilder("DELETE FROM zakum_deferred_actions WHERE id IN (");
       for (int i = 0; i < ids.size(); i++) {
         if (i > 0) sb.append(',');

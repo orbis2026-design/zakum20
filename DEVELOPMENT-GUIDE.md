@@ -1,131 +1,44 @@
 ﻿# ZAKUM SUITE - DEVELOPMENT GUIDE
 
-## Project Structure
+> **STANDARD:** This project is strictly developed using **IntelliJ IDEA (2024.1+)**.
+> **JAVA VERSION:** Java 21 (Temurin/Adprium recommended).
 
-\\\
-zakum/
-├── zakum-api/              # Stable API interfaces
-├── zakum-core/             # Core implementation
-├── zakum-battlepass/       # ✅ 100% Complete
-├── zakum-crates/           # 🚧 Generated stubs (needs completion)
-├── zakum-pets/             # ⏰ Needs implementation
-├── zakum-miniaturepets/    # ⚠️ Needs optimization
-├── zakum-packets/          # ✅ Complete
-├── zakum-bridge-*/         # ✅ All bridges complete
-└── orbis-essentials/       # ✅ Complete
-\\\
+## 1. The "Architect & Builder" Workflow
 
-## Building the Project
+We have moved away from shell-script generation. 
+- **You (The Architect):** Manage the IDE, run builds, and resolve imports.
+- **AI (The Builder):** Generates specific class implementations to be pasted into the IDE.
 
-### Using Gradle (Recommended)
-\\\ash
-# Build all modules
-./gradlew build
+## 2. Setting Up IntelliJ
 
-# Build specific module
-./gradlew :zakum-crates:build
+1. **Open Project:** Launch IntelliJ -> \File\ -> \Open\ -> Select \C:\Zakum\zakum-v20\.
+2. **Import Gradle:** Click "Load Gradle Project" when prompted.
+3. **Verify SDK:** Go to \File\ -> \Project Structure\ -> \Project\. Ensure SDK is set to **21**.
+4. **Sync:** Open the Gradle tab (right sidebar) and click the **Reload All Gradle Projects** (recycle icon).
 
-# Run tests
-./gradlew test
+## 3. Building the Suite
 
-# Generate JAR without tests
-./gradlew jar -x test
-\\\
+**DO NOT use \uild-all.bat\ for active development.** Use the IDE.
 
-### Using Maven
-\\\ash
-# Build all
-mvn clean package
+1. Open the **Gradle** tab on the right.
+2. Expand \zakum-core\ -> \Tasks\ -> \uild\.
+3. Double-click \uild\.
+4. Fix any "red" errors in the editor (Alt+Enter to import missing classes).
+5. Repeat for \zakum-crates\, \zakum-battlepass\, etc.
 
-# Skip tests
-mvn clean package -DskipTests
-\\\
+## 4. Common Troubleshooting
 
-## Development Workflow
+### "Package does not exist" (e.g., Micrometer, OkHttp)
+* **Fix:** Click the **Reload Gradle Changes** button in the Gradle tab.
 
-### 1. Complete Crates Implementation
-Priority files to implement:
-- \CrateOpenListener.java\ - Handle crate block interactions
-- \RewardExecutor.java\ - Execute reward commands/items
-- \AnimationEngine.java\ - Crate opening animations
-- \CrateGUI.java\ - Preview and opening menus
+### "Byte Order Mark (BOM)" / "Illegal Character \ufeff"
+* **Fix:** The file was saved with Windows encoding. Open file in IntelliJ -> Bottom Right -> Select \UTF-8\ -> \Convert\.
 
-### 2. Implement Pets System
-Structure:
-\\\
-zakum-pets/src/main/java/net/orbis/zakum/pets/
-├── PetManager.java
-├── PetInstance.java
-├── abilities/
-│   ├── AbilityRegistry.java
-│   └── impl/  (60+ ability classes)
-├── leveling/
-│   └── PetXp.java
-└── gui/
-    └── PetInventoryGUI.java
-\\\
+### "ExecutorService is not a functional interface"
+* **Fix:** You cannot use lambdas (\ -> ...\) for \ExecutorService\. Pass the object directly.
 
-### 3. Optimize MiniPets
-Key changes needed:
-- Add chunk load/unload listeners
-- Implement entity count limits
-- Optimize follow pathfinding
-
-## Testing
-
-### Local Test Server Setup
-1. Copy built JARs to \	est-server/plugins/\
-2. Start server: \java -jar paper.jar\
-3. Monitor logs for errors
-4. Test in-game with \/zakum status\
-
-### Unit Tests
-Run with: \./gradlew test\
-
-Location: \*/src/test/java/\
-
-## Database Setup for Development
-
-\\\sql
-CREATE DATABASE zakum_dev;
-USE zakum_dev;
-
--- Run migrations
-SOURCE zakum-core/src/main/resources/db/migration/V1__initial.sql;
-SOURCE zakum-crates/src/main/resources/db/migration/V1__crates_initial_schema.sql;
-\\\
-
-## Configuration
-
-All default configs are in:
-\\\
-*/src/main/resources/config.yml
-\\\
-
-Optimized defaults are now set for production use.
-
-## Next Steps
-
-1. ✅ Default configs optimized
-2. ✅ Crates key system generated
-3. ⏰ Complete remaining crates classes
-4. ⏰ Implement pets system
-5. ⏰ Optimize minipets
-6. ⏰ Write unit tests
-7. ⏰ Integration testing
-
-## Code Standards
-
-- Use try-with-resources for all JDBC
-- Async for all DB/HTTP operations
-- Sync for all Bukkit API calls
-- Comment all public methods
-- Keep methods under 50 lines
-- Use immutable records where possible
-
-## Support
-
-See:
-- \ZAKUM_STATUS_ANALYSIS.md\ - Current status
-- \DEPLOYMENT_ROADMAP.md\ - Implementation plan
-- \README_DEPLOYMENT.md\ - Production deployment guide
+## 5. Module Status
+- **zakum-core:** 🟢 Stable (Needs IntelliJ Sync)
+- **zakum-battlepass:** 🟢 Complete
+- **zakum-crates:** 🟡 In Progress (Needs CrateAnimator implementation)
+- **zakum-pets:** 🔴 Stubbed

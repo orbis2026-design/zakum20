@@ -1,4 +1,4 @@
-# OrbisPets Configuration
+﻿# OrbisPets Configuration
 
 Config folder: `plugins/OrbisPets/`
 
@@ -15,3 +15,7 @@ Keys:
 
 Notes:
 - DB-backed persistence (degrades if DB offline).
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

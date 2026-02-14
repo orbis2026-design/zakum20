@@ -1,4 +1,4 @@
-# Observability (Metrics)
+﻿# Observability (Metrics)
 
 Zakum can expose Prometheus metrics.
 
@@ -21,3 +21,7 @@ Implementation:
 Security note:
 - v1 endpoint is unauthenticated
 - keep it on localhost or behind firewall/reverse proxy with auth
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

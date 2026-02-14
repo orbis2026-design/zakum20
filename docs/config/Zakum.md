@@ -1,4 +1,4 @@
-# Zakum (core) Configuration
+﻿# Zakum (core) Configuration
 
 Config folder: `plugins/Zakum/`
 
@@ -23,3 +23,7 @@ Related docs:
 - `docs/06-DATABASE.md`
 - `docs/07-OBSERVABILITY.md`
 - `docs/08-PACKETS.md`
+
+
+---
+*Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*
