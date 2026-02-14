@@ -122,6 +122,22 @@ public final class PacketCullingKernel implements AutoCloseable {
     return runtimeEnabled;
   }
 
+  public void requestSample(Player player) {
+    if (player == null || scheduler == null) return;
+    scheduler.runAtEntity(player, () -> samplePlayerDensity(player));
+  }
+
+  public SampleSnapshot sampleSnapshot(UUID playerId) {
+    if (playerId == null) return null;
+    DensitySample sample = densitySamples.get(playerId);
+    if (sample == null) return null;
+    return new SampleSnapshot(sample.density(), sample.sampledAtMs(), sample.mode(), sample.bypass());
+  }
+
+  public int thresholdFor(PlayerVisualModeService.Mode mode) {
+    return cullThreshold(mode);
+  }
+
   public Snapshot snapshot() {
     PacketService service = this.packetService;
     long observed = packetsObserved.sum();
@@ -187,10 +203,7 @@ public final class PacketCullingKernel implements AutoCloseable {
       return;
     }
 
-    int threshold = cfg.densityThreshold();
-    if (respectPerfMode && mode == PlayerVisualModeService.Mode.PERFORMANCE) {
-      threshold = Math.max(1, threshold / 2);
-    }
+    int threshold = cullThreshold(mode);
     if (sample.density() < threshold) return;
 
     ctx.cancel();
@@ -289,6 +302,14 @@ public final class PacketCullingKernel implements AutoCloseable {
     return Math.max(1, Math.min(onlineCount, required));
   }
 
+  private int cullThreshold(PlayerVisualModeService.Mode mode) {
+    int threshold = cfg.densityThreshold();
+    if (respectPerfMode && mode == PlayerVisualModeService.Mode.PERFORMANCE) {
+      threshold = Math.max(1, threshold / 2);
+    }
+    return threshold;
+  }
+
   private PlayerVisualModeService.Mode resolveMode(Player player) {
     if (!respectPerfMode || visualModeService == null) {
       return PlayerVisualModeService.Mode.AUTO;
@@ -306,6 +327,13 @@ public final class PacketCullingKernel implements AutoCloseable {
   }
 
   private record DensitySample(
+    int density,
+    long sampledAtMs,
+    PlayerVisualModeService.Mode mode,
+    boolean bypass
+  ) {}
+
+  public record SampleSnapshot(
     int density,
     long sampledAtMs,
     PlayerVisualModeService.Mode mode,

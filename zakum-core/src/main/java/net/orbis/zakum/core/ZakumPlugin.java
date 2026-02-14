@@ -802,7 +802,7 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
     if (args.length < 2) {
-      sender.sendMessage("Usage: /zakum packetcull status|enable|disable");
+      sender.sendMessage("Usage: /zakum packetcull status|enable|disable|sample|refresh");
       return true;
     }
     String sub = args[1].toLowerCase(java.util.Locale.ROOT);
@@ -820,8 +820,59 @@ public final class ZakumPlugin extends JavaPlugin {
       sender.sendMessage("Packet culling runtime disabled.");
       return true;
     }
-    sender.sendMessage("Usage: /zakum packetcull status|enable|disable");
+    if (sub.equals("refresh")) {
+      Player target = resolvePacketCullTarget(sender, args);
+      if (target == null) return true;
+      packetCullingKernel.requestSample(target);
+      sender.sendMessage("Packet culling sample queued for " + target.getName() + ".");
+      return true;
+    }
+    if (sub.equals("sample")) {
+      Player target = resolvePacketCullTarget(sender, args);
+      if (target == null) return true;
+      var sample = packetCullingKernel.sampleSnapshot(target.getUniqueId());
+      if (sample == null) {
+        packetCullingKernel.requestSample(target);
+        sender.sendMessage("No sample yet for " + target.getName() + ". Sample queued; run again shortly.");
+        return true;
+      }
+      long ageMs = Math.max(0L, System.currentTimeMillis() - sample.sampledAtMs());
+      int threshold = packetCullingKernel.thresholdFor(sample.mode());
+      boolean runtimeEnabled = packetCullingKernel.runtimeEnabled();
+      boolean configuredEnabled = settings.packets().culling().enabled();
+      boolean wouldDrop = runtimeEnabled
+        && configuredEnabled
+        && !sample.bypass()
+        && (!settings.packets().culling().respectPerfMode() || sample.mode() != PlayerVisualModeService.Mode.QUALITY)
+        && ageMs <= settings.packets().culling().maxSampleAgeMs()
+        && sample.density() >= threshold;
+
+      sender.sendMessage("Packet cull sample: " + target.getName());
+      sender.sendMessage("density=" + sample.density());
+      sender.sendMessage("ageMs=" + ageMs);
+      sender.sendMessage("mode=" + sample.mode().displayName());
+      sender.sendMessage("bypass=" + sample.bypass());
+      sender.sendMessage("threshold=" + threshold);
+      sender.sendMessage("configuredEnabled=" + configuredEnabled);
+      sender.sendMessage("runtimeEnabled=" + runtimeEnabled);
+      sender.sendMessage("wouldDrop=" + wouldDrop);
+      return true;
+    }
+    sender.sendMessage("Usage: /zakum packetcull status|enable|disable|sample|refresh");
     return true;
+  }
+
+  private Player resolvePacketCullTarget(CommandSender sender, String[] args) {
+    if (args.length >= 3) {
+      Player target = Bukkit.getPlayerExact(args[2]);
+      if (target == null) {
+        sender.sendMessage("Player not found: " + args[2]);
+      }
+      return target;
+    }
+    if (sender instanceof Player player) return player;
+    sender.sendMessage("Console usage: /zakum packetcull <sample|refresh> <player>");
+    return null;
   }
 
   private void sendPacketCullStatus(CommandSender sender) {
