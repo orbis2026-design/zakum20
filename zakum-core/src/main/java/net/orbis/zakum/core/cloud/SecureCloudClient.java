@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
+import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
 import org.bson.BsonArray;
@@ -11,6 +12,7 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -32,22 +34,33 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
-public final class SecureCloudClient {
+public final class SecureCloudClient implements AutoCloseable {
 
   private static final String EMPTY_BODY = "";
 
   private final ZakumApi api;
+  private final Plugin plugin;
+  private final ZakumScheduler scheduler;
   private final Logger logger;
   private final String baseUrl;
   private final String serverId;
   private final String networkSecret;
   private final Duration requestTimeout;
+  private final boolean ackEnabled;
+  private final String ackPath;
+  private final int ackBatchSize;
+  private final int ackFlushSeconds;
+  private final int ackMaxAttempts;
+  private final long inflightTtlSeconds;
+  private final int maxFailureAttempts;
   private final HttpClient httpClient;
   private final MetricsMonitor metrics;
   private final AtomicLong lastPollAttemptMs;
@@ -56,16 +69,44 @@ public final class SecureCloudClient {
   private final AtomicLong lastBatchSize;
   private final AtomicLong totalQueueActions;
   private final AtomicLong duplicateQueueSkips;
+  private final AtomicLong inflightQueueSkips;
+  private final AtomicLong offlineQueueSkips;
+  private final AtomicLong invalidQueueSkips;
+  private final AtomicLong queueFailures;
   private final AtomicReference<String> lastError;
   private final Cache<String, Boolean> processedQueueIds;
+  private final Cache<String, Boolean> inflightQueueIds;
+  private final Cache<String, Integer> failureCounts;
+  private final ConcurrentLinkedQueue<QueueAck> pendingAcks;
+  private final AtomicBoolean ackFlushRunning;
+  private final AtomicLong ackQueued;
+  private final AtomicLong ackSent;
+  private final AtomicLong ackFailed;
+  private final AtomicLong ackDropped;
+  private final AtomicLong ackRetried;
+  private final AtomicLong lastAckAttemptMs;
+  private final AtomicLong lastAckSuccessMs;
+  private final AtomicInteger lastAckStatus;
+  private final AtomicReference<String> lastAckError;
+  private volatile boolean ackDisabled;
+  private volatile int ackTaskId;
 
-  public SecureCloudClient(ZakumApi api, ZakumSettings.Cloud cloud, Logger logger, MetricsMonitor metrics) {
+  public SecureCloudClient(ZakumApi api, ZakumSettings.Cloud cloud, Plugin plugin, Logger logger, MetricsMonitor metrics) {
     this.api = api;
+    this.plugin = plugin;
+    this.scheduler = api.getScheduler();
     this.logger = logger;
     this.baseUrl = normalizeBaseUrl(cloud.baseUrl());
     this.serverId = cloud.serverId();
     this.networkSecret = cloud.networkSecret();
     this.requestTimeout = Duration.ofMillis(cloud.requestTimeoutMs());
+    this.ackEnabled = cloud.ackEnabled();
+    this.ackPath = cloud.ackPath();
+    this.ackBatchSize = Math.max(1, cloud.ackBatchSize());
+    this.ackFlushSeconds = Math.max(1, cloud.ackFlushSeconds());
+    this.ackMaxAttempts = Math.max(1, cloud.ackMaxAttempts());
+    this.inflightTtlSeconds = Math.max(5L, cloud.inflightTtlSeconds());
+    this.maxFailureAttempts = Math.max(0, cloud.maxFailureAttempts());
     this.metrics = metrics;
     this.lastPollAttemptMs = new AtomicLong(0L);
     this.lastPollSuccessMs = new AtomicLong(0L);
@@ -73,6 +114,10 @@ public final class SecureCloudClient {
     this.lastBatchSize = new AtomicLong(0L);
     this.totalQueueActions = new AtomicLong(0L);
     this.duplicateQueueSkips = new AtomicLong(0L);
+    this.inflightQueueSkips = new AtomicLong(0L);
+    this.offlineQueueSkips = new AtomicLong(0L);
+    this.invalidQueueSkips = new AtomicLong(0L);
+    this.queueFailures = new AtomicLong(0L);
     this.lastError = new AtomicReference<>("");
     this.processedQueueIds = cloud.dedupeEnabled()
       ? Caffeine.newBuilder()
@@ -80,10 +125,51 @@ public final class SecureCloudClient {
       .expireAfterWrite(Duration.ofSeconds(Math.max(10L, cloud.dedupeTtlSeconds())))
       .build()
       : null;
+    this.inflightQueueIds = cloud.dedupeEnabled()
+      ? Caffeine.newBuilder()
+      .maximumSize(Math.max(100L, cloud.dedupeMaximumSize()))
+      .expireAfterWrite(Duration.ofSeconds(inflightTtlSeconds))
+      .build()
+      : null;
+    this.failureCounts = cloud.dedupeEnabled() && maxFailureAttempts > 0
+      ? Caffeine.newBuilder()
+      .maximumSize(Math.max(100L, cloud.dedupeMaximumSize()))
+      .expireAfterWrite(Duration.ofSeconds(Math.max(30L, cloud.dedupeTtlSeconds())))
+      .build()
+      : null;
+    this.pendingAcks = new ConcurrentLinkedQueue<>();
+    this.ackFlushRunning = new AtomicBoolean(false);
+    this.ackQueued = new AtomicLong(0L);
+    this.ackSent = new AtomicLong(0L);
+    this.ackFailed = new AtomicLong(0L);
+    this.ackDropped = new AtomicLong(0L);
+    this.ackRetried = new AtomicLong(0L);
+    this.lastAckAttemptMs = new AtomicLong(0L);
+    this.lastAckSuccessMs = new AtomicLong(0L);
+    this.lastAckStatus = new AtomicInteger(0);
+    this.lastAckError = new AtomicReference<>("");
+    this.ackDisabled = false;
+    this.ackTaskId = -1;
     this.httpClient = HttpClient.newBuilder()
       .executor(api.getScheduler().asyncExecutor())
       .connectTimeout(this.requestTimeout)
       .build();
+  }
+
+  public void start() {
+    if (!ackEnabled || plugin == null || scheduler == null) return;
+    if (ackTaskId > 0) return;
+    long ticks = Math.max(1L, ackFlushSeconds) * 20L;
+    ackTaskId = scheduler.runTaskTimer(plugin, this::flushAcks, ticks, ticks);
+  }
+
+  @Override
+  public void close() {
+    if (ackTaskId > 0 && scheduler != null) {
+      scheduler.cancelTask(ackTaskId);
+    }
+    ackTaskId = -1;
+    pendingAcks.clear();
   }
 
   public void poll() {
@@ -121,6 +207,73 @@ public final class SecureCloudClient {
       });
   }
 
+  private void flushAcks() {
+    if (!ackEnabled || ackDisabled) return;
+    if (baseUrl.isBlank() || networkSecret == null || networkSecret.isBlank()) return;
+    if (!ackFlushRunning.compareAndSet(false, true)) return;
+    if (ackPath == null || ackPath.isBlank()) {
+      ackDisabled = true;
+      ackFlushRunning.set(false);
+      lastAckError.set("ack_path_blank");
+      return;
+    }
+
+    List<QueueAck> batch = new ArrayList<>();
+    for (int i = 0; i < ackBatchSize; i++) {
+      QueueAck ack = pendingAcks.poll();
+      if (ack == null) break;
+      batch.add(ack);
+    }
+    if (batch.isEmpty()) {
+      ackFlushRunning.set(false);
+      return;
+    }
+
+    String payload = buildAckPayload(batch);
+    if (payload == null || payload.isBlank()) {
+      ackFlushRunning.set(false);
+      return;
+    }
+
+    long now = System.currentTimeMillis();
+    lastAckAttemptMs.set(now);
+    HttpRequest request = signedPost(resolveAckPath(), payload);
+    httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+      .handle((response, error) -> {
+        if (error != null || response == null) {
+          lastAckError.set(error == null ? "ack_error" : error.getMessage());
+          lastAckStatus.set(0);
+          record("cloud_ack_error");
+          requeueAcks(batch, "exception");
+          return null;
+        }
+
+        int status = response.statusCode();
+        lastAckStatus.set(status);
+        if (status >= 200 && status < 300) {
+          lastAckSuccessMs.set(System.currentTimeMillis());
+          ackSent.addAndGet(batch.size());
+          record("cloud_ack_sent");
+          return null;
+        }
+
+        lastAckError.set("HTTP " + status);
+        if (status == 404 || status == 501) {
+          ackDisabled = true;
+          ackFailed.addAndGet(batch.size());
+          record("cloud_ack_disabled");
+          pendingAcks.clear();
+          return null;
+        }
+
+        ackFailed.addAndGet(batch.size());
+        record("cloud_ack_failed");
+        requeueAcks(batch, "http_" + status);
+        return null;
+      })
+      .whenComplete((response, error) -> ackFlushRunning.set(false));
+  }
+
   public CompletableFuture<IdentitySnapshot> fetchIdentity(UUID uuid) {
     if (uuid == null) return CompletableFuture.completedFuture(IdentitySnapshot.EMPTY);
     if (baseUrl.isBlank() || networkSecret == null || networkSecret.isBlank()) {
@@ -143,16 +296,35 @@ public final class SecureCloudClient {
   private void applyQueueEntry(Document document) {
     if (document == null || document.isEmpty()) return;
 
+    String queueId = extractQueueId(document);
+    if (queueId != null) {
+      if (isProcessed(queueId)) {
+        duplicateQueueSkips.incrementAndGet();
+        record("cloud_queue_duplicate");
+        enqueueAck(queueId, "duplicate", "processed");
+        return;
+      }
+      if (isInflight(queueId)) {
+        inflightQueueSkips.incrementAndGet();
+        record("cloud_queue_inflight");
+        return;
+      }
+    }
+
     Player player = resolvePlayer(document);
-    if (player == null || !player.isOnline()) return;
+    if (player == null || !player.isOnline()) {
+      offlineQueueSkips.incrementAndGet();
+      record("cloud_queue_offline");
+      return;
+    }
 
     List<String> script = parseScript(document.get("script"));
     if (script.isEmpty()) script = parseScript(document.get("ace_script"));
-    if (script.isEmpty()) return;
-    String queueId = extractQueueId(document);
-    if (queueId != null && processedQueueIds != null && processedQueueIds.getIfPresent(queueId) != null) {
-      duplicateQueueSkips.incrementAndGet();
-      record("cloud_queue_duplicate");
+    if (script.isEmpty()) {
+      invalidQueueSkips.incrementAndGet();
+      record("cloud_queue_invalid");
+      markProcessed(queueId);
+      enqueueAck(queueId, "invalid", "empty_script");
       return;
     }
 
@@ -162,16 +334,125 @@ public final class SecureCloudClient {
     copyValue(document, "id", metadata, "cloud_id");
     copyValue(document, "type", metadata, "cloud_type");
 
-    List<String> finalScript = script;
-    if (queueId != null && processedQueueIds != null) {
-      processedQueueIds.put(queueId, Boolean.TRUE);
+    if (queueId != null) {
+      markInflight(queueId);
     }
+    List<String> finalScript = script;
     api.getScheduler().runAtEntity(player, () -> {
-      if (!player.isOnline()) return;
-      api.getAceEngine().executeScript(finalScript, new AceEngine.ActionContext(player, Optional.empty(), metadata));
-      totalQueueActions.incrementAndGet();
-      record("cloud_queue_ace");
+      if (!player.isOnline()) {
+        offlineQueueSkips.incrementAndGet();
+        record("cloud_queue_offline");
+        clearInflight(queueId);
+        return;
+      }
+      try {
+        api.getAceEngine().executeScript(finalScript, new AceEngine.ActionContext(player, Optional.empty(), metadata));
+        totalQueueActions.incrementAndGet();
+        record("cloud_queue_ace");
+        markProcessed(queueId);
+        clearInflight(queueId);
+        enqueueAck(queueId, "applied", null);
+      } catch (Throwable ex) {
+        queueFailures.incrementAndGet();
+        record("cloud_queue_failure");
+        clearInflight(queueId);
+        boolean terminal = shouldAckFailure(queueId);
+        if (terminal) {
+          markProcessed(queueId);
+          enqueueAck(queueId, "failed", ex.getMessage());
+        }
+      }
     });
+  }
+
+  private boolean isProcessed(String queueId) {
+    if (queueId == null || queueId.isBlank() || processedQueueIds == null) return false;
+    return processedQueueIds.getIfPresent(queueId) != null;
+  }
+
+  private boolean isInflight(String queueId) {
+    if (queueId == null || queueId.isBlank() || inflightQueueIds == null) return false;
+    return inflightQueueIds.getIfPresent(queueId) != null;
+  }
+
+  private void markProcessed(String queueId) {
+    if (queueId == null || queueId.isBlank() || processedQueueIds == null) return;
+    processedQueueIds.put(queueId, Boolean.TRUE);
+    if (failureCounts != null) {
+      failureCounts.invalidate(queueId);
+    }
+  }
+
+  private void markInflight(String queueId) {
+    if (queueId == null || queueId.isBlank() || inflightQueueIds == null) return;
+    inflightQueueIds.put(queueId, Boolean.TRUE);
+  }
+
+  private void clearInflight(String queueId) {
+    if (queueId == null || queueId.isBlank() || inflightQueueIds == null) return;
+    inflightQueueIds.invalidate(queueId);
+  }
+
+  private boolean shouldAckFailure(String queueId) {
+    if (queueId == null || queueId.isBlank()) return false;
+    if (maxFailureAttempts <= 0 || failureCounts == null) return false;
+
+    Integer current = failureCounts.getIfPresent(queueId);
+    int next = current == null ? 1 : current + 1;
+    if (next >= maxFailureAttempts) {
+      failureCounts.invalidate(queueId);
+      return true;
+    }
+    failureCounts.put(queueId, next);
+    return false;
+  }
+
+  private void enqueueAck(String queueId, String status, String reason) {
+    if (!ackEnabled || ackDisabled) return;
+    if (queueId == null || queueId.isBlank()) return;
+    String finalStatus = status == null || status.isBlank() ? "applied" : status.trim().toLowerCase(Locale.ROOT);
+    String finalReason = reason == null || reason.isBlank() ? null : reason.trim();
+    pendingAcks.add(new QueueAck(queueId, finalStatus, finalReason, 1));
+    ackQueued.incrementAndGet();
+    record("cloud_ack_queued");
+  }
+
+  private void requeueAcks(List<QueueAck> batch, String error) {
+    if (batch == null || batch.isEmpty()) return;
+    for (QueueAck ack : batch) {
+      if (ack == null) continue;
+      int nextAttempt = ack.attempt() + 1;
+      if (nextAttempt > ackMaxAttempts) {
+        ackDropped.incrementAndGet();
+        record("cloud_ack_dropped");
+        continue;
+      }
+      ackRetried.incrementAndGet();
+      pendingAcks.add(new QueueAck(ack.queueId(), ack.status(), ack.reason(), nextAttempt));
+      record("cloud_ack_retry");
+    }
+    if (error != null && !error.isBlank()) {
+      lastAckError.set(error);
+    }
+  }
+
+  private String buildAckPayload(List<QueueAck> batch) {
+    if (batch == null || batch.isEmpty()) return "";
+    List<Document> docs = new ArrayList<>(batch.size());
+    for (QueueAck ack : batch) {
+      if (ack == null) continue;
+      Document doc = new Document("id", ack.queueId())
+        .append("status", ack.status())
+        .append("attempt", ack.attempt());
+      if (ack.reason() != null && !ack.reason().isBlank()) {
+        doc.append("reason", ack.reason());
+      }
+      docs.add(doc);
+    }
+    Document root = new Document("server_id", serverId)
+      .append("serverId", serverId)
+      .append("acks", docs);
+    return root.toJson();
   }
 
   private Player resolvePlayer(Document document) {
@@ -259,6 +540,24 @@ public final class SecureCloudClient {
       .build();
   }
 
+  private HttpRequest signedPost(String path, String body) {
+    long ts = System.currentTimeMillis();
+    String nonce = Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 16);
+    String payload = body == null ? "" : body;
+    String signature = generateSignature(ts + nonce + payload);
+
+    return HttpRequest.newBuilder()
+      .uri(resolveUri(path))
+      .timeout(requestTimeout)
+      .header("Accept", "application/json")
+      .header("Content-Type", "application/json")
+      .header("X-Orbis-Signature", signature)
+      .header("X-Orbis-TS", String.valueOf(ts))
+      .header("X-Orbis-Nonce", nonce)
+      .POST(HttpRequest.BodyPublishers.ofString(payload))
+      .build();
+  }
+
   private String generateSignature(String data) {
     try {
       Mac mac = Mac.getInstance("HmacSHA256");
@@ -277,6 +576,23 @@ public final class SecureCloudClient {
     }
     if (!normalizedPath.startsWith("/")) normalizedPath = "/" + normalizedPath;
     return URI.create(baseUrl + normalizedPath);
+  }
+
+  private String resolveAckPath() {
+    String path = ackPath == null ? "" : ackPath.trim();
+    if (path.contains("{serverId}")) {
+      path = path.replace("{serverId}", encodePath(serverId));
+    }
+    if (path.isBlank()) {
+      return "/v1/agent/queue/ack";
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    if (!path.startsWith("/")) {
+      return "/" + path;
+    }
+    return path;
   }
 
   private static String normalizeBaseUrl(String raw) {
@@ -443,7 +759,12 @@ public final class SecureCloudClient {
     }
   }
 
+  private record QueueAck(String queueId, String status, String reason, int attempt) {}
+
   public CloudStatusSnapshot statusSnapshot() {
+    long processedSize = processedQueueIds == null ? 0L : processedQueueIds.estimatedSize();
+    long inflightSize = inflightQueueIds == null ? 0L : inflightQueueIds.estimatedSize();
+    int pendingSize = pendingAcks.size();
     return new CloudStatusSnapshot(
       serverId,
       baseUrl,
@@ -453,6 +774,24 @@ public final class SecureCloudClient {
       lastBatchSize.get(),
       totalQueueActions.get(),
       duplicateQueueSkips.get(),
+      inflightQueueSkips.get(),
+      offlineQueueSkips.get(),
+      invalidQueueSkips.get(),
+      queueFailures.get(),
+      processedSize,
+      inflightSize,
+      ackEnabled,
+      ackDisabled,
+      pendingSize,
+      ackQueued.get(),
+      ackSent.get(),
+      ackFailed.get(),
+      ackRetried.get(),
+      ackDropped.get(),
+      lastAckAttemptMs.get(),
+      lastAckSuccessMs.get(),
+      lastAckStatus.get(),
+      lastAckError.get(),
       lastError.get()
     );
   }
@@ -466,6 +805,24 @@ public final class SecureCloudClient {
     long lastBatchSize,
     long totalQueueActions,
     long duplicateQueueSkips,
+    long inflightQueueSkips,
+    long offlineQueueSkips,
+    long invalidQueueSkips,
+    long queueFailures,
+    long processedIds,
+    long inflightIds,
+    boolean ackEnabled,
+    boolean ackDisabled,
+    int pendingAcks,
+    long ackQueued,
+    long ackSent,
+    long ackFailed,
+    long ackRetried,
+    long ackDropped,
+    long lastAckAttemptMs,
+    long lastAckSuccessMs,
+    int lastAckStatus,
+    String lastAckError,
     String lastError
   ) {}
 }

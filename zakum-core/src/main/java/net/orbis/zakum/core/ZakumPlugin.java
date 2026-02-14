@@ -310,6 +310,9 @@ public final class ZakumPlugin extends JavaPlugin {
     }
     socialRefreshTaskId = -1;
     cloudIdentityListener = null;
+    if (cloudClient != null) {
+      try { cloudClient.close(); } catch (Exception ignored) {}
+    }
     cloudClient = null;
     cloudTabRenderer = null;
     chatRenderer = null;
@@ -382,7 +385,8 @@ public final class ZakumPlugin extends JavaPlugin {
       return;
     }
 
-    this.cloudClient = new SecureCloudClient(api, cloud, getLogger(), metricsMonitor);
+    this.cloudClient = new SecureCloudClient(api, cloud, this, getLogger(), metricsMonitor);
+    cloudClient.start();
     if (cloud.identityOnJoin()) {
       this.cloudIdentityListener = new CloudIdentityListener(api, cloudClient, cloudTabRenderer, getLogger());
       getServer().getPluginManager().registerEvents(cloudIdentityListener, this);
@@ -617,6 +621,25 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("lastBatchSize=" + snap.lastBatchSize());
     sender.sendMessage("totalQueueActions=" + snap.totalQueueActions());
     sender.sendMessage("duplicateQueueSkips=" + snap.duplicateQueueSkips());
+    sender.sendMessage("inflightQueueSkips=" + snap.inflightQueueSkips());
+    sender.sendMessage("offlineQueueSkips=" + snap.offlineQueueSkips());
+    sender.sendMessage("invalidQueueSkips=" + snap.invalidQueueSkips());
+    sender.sendMessage("queueFailures=" + snap.queueFailures());
+    sender.sendMessage("processedIds=" + snap.processedIds());
+    sender.sendMessage("inflightIds=" + snap.inflightIds());
+    sender.sendMessage("ack.enabled=" + snap.ackEnabled());
+    sender.sendMessage("ack.disabled=" + snap.ackDisabled());
+    sender.sendMessage("ack.pending=" + snap.pendingAcks());
+    sender.sendMessage("ack.queued=" + snap.ackQueued());
+    sender.sendMessage("ack.sent=" + snap.ackSent());
+    sender.sendMessage("ack.failed=" + snap.ackFailed());
+    sender.sendMessage("ack.retried=" + snap.ackRetried());
+    sender.sendMessage("ack.dropped=" + snap.ackDropped());
+    sender.sendMessage("ack.lastAttempt=" + formatEpochMillis(snap.lastAckAttemptMs()));
+    sender.sendMessage("ack.lastSuccess=" + formatEpochMillis(snap.lastAckSuccessMs()));
+    sender.sendMessage("ack.lastStatus=" + snap.lastAckStatus());
+    String ackErr = snap.lastAckError();
+    sender.sendMessage("ack.lastError=" + (ackErr == null || ackErr.isBlank() ? "none" : ackErr));
     String err = snap.lastError();
     sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
   }

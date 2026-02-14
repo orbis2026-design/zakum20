@@ -79,7 +79,14 @@ public record ZakumSettings(
     boolean identityOnJoin,
     boolean dedupeEnabled,
     long dedupeTtlSeconds,
-    long dedupeMaximumSize
+    long dedupeMaximumSize,
+    boolean ackEnabled,
+    String ackPath,
+    int ackBatchSize,
+    int ackFlushSeconds,
+    int ackMaxAttempts,
+    long inflightTtlSeconds,
+    int maxFailureAttempts
   ) {}
 
   public record Http(

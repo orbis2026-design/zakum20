@@ -135,6 +135,15 @@ public final class ZakumSettingsLoader {
     boolean dedupeEnabled = bool(cfg, "cloud.dedupe.enabled", true);
     long dedupeTtlSeconds = clampL(cfg.getLong("cloud.dedupe.ttlSeconds", 300), 10, 86_400);
     long dedupeMaximumSize = clampL(cfg.getLong("cloud.dedupe.maximumSize", 50_000), 100, 5_000_000);
+    long inflightTtlSeconds = clampL(cfg.getLong("cloud.dedupe.inflightTtlSeconds", 120), 10, 86_400);
+
+    boolean ackEnabled = bool(cfg, "cloud.ack.enabled", true);
+    String ackPath = str(cfg, "cloud.ack.path", "/v1/agent/queue/ack").trim();
+    int ackBatchSize = clampI(cfg.getInt("cloud.ack.batchSize", 200), 1, 5_000);
+    int ackFlushSeconds = clampI(cfg.getInt("cloud.ack.flushSeconds", 2), 1, 300);
+    int ackMaxAttempts = clampI(cfg.getInt("cloud.ack.maxAttempts", 5), 1, 50);
+
+    int maxFailureAttempts = clampI(cfg.getInt("cloud.delivery.maxFailures", 3), 0, 1000);
 
     return new ZakumSettings.Cloud(
       enabled,
@@ -146,7 +155,14 @@ public final class ZakumSettingsLoader {
       identityOnJoin,
       dedupeEnabled,
       dedupeTtlSeconds,
-      dedupeMaximumSize
+      dedupeMaximumSize,
+      ackEnabled,
+      ackPath,
+      ackBatchSize,
+      ackFlushSeconds,
+      ackMaxAttempts,
+      inflightTtlSeconds,
+      maxFailureAttempts
     );
   }
 

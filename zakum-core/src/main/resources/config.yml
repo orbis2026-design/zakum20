@@ -42,6 +42,16 @@ cloud:
     enabled: true
     ttlSeconds: 300
     maximumSize: 50000
+    inflightTtlSeconds: 120
+  ack:
+    enabled: true
+    path: "/v1/agent/queue/ack"
+    batchSize: 200
+    flushSeconds: 2
+    maxAttempts: 5
+  delivery:
+    # Max local failures before we ack as failed to prevent infinite replay.
+    maxFailures: 3
 
 anticheat:
   grim:
