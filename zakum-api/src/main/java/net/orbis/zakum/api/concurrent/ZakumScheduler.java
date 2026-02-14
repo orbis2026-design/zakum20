@@ -4,7 +4,9 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.Plugin;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 public interface ZakumScheduler {
 
@@ -15,6 +17,10 @@ public interface ZakumScheduler {
   void runAtEntity(Entity entity, Runnable task);
 
   Executor asyncExecutor();
+
+  default <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
+    return CompletableFuture.supplyAsync(supplier, asyncExecutor());
+  }
 
   // Compatibility/transition helpers for legacy BukkitScheduler patterns.
   void runGlobal(Runnable task);

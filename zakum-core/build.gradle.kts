@@ -14,6 +14,8 @@ dependencies {
   implementation(libs.flyway.core)
   implementation(libs.mysql)
   implementation(libs.caffeine)
+  implementation(libs.mongodb.driver.sync)
+  implementation(libs.jedis)
 
   // Central config + mapping
   implementation(libs.configurate.yaml)
@@ -64,6 +66,9 @@ tasks.named<ShadowJar>("shadowJar") {
   relocate("io.github.resilience4j", "net.orbis.zakum.shaded.resilience4j")
   relocate("io.micrometer", "net.orbis.zakum.shaded.micrometer")
   relocate("io.prometheus", "net.orbis.zakum.shaded.prometheus")
+  relocate("com.mongodb", "net.orbis.zakum.shaded.mongodb")
+  relocate("org.bson", "net.orbis.zakum.shaded.bson")
+  relocate("redis.clients", "net.orbis.zakum.shaded.redis")
   relocate("kotlin", "net.orbis.zakum.shaded.kotlin")
   relocate("kotlinx", "net.orbis.zakum.shaded.kotlinx")
   relocate("io.vavr", "net.orbis.zakum.shaded.vavr")
