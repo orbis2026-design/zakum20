@@ -110,6 +110,19 @@ actions:
     enabled: true
     claimLimit: 200
 
+operations:
+  circuitBreaker:
+    enabled: true
+    disableBelowTps: 18.0
+    resumeAboveTps: 18.8
+    sampleTicks: 40
+    stableSamplesToClose: 6
+  stress:
+    enabled: false
+    defaultIterations: 100
+    maxIterations: 5000
+    cooldownSeconds: 30
+
 http:
   # Default client used by Zakum (controlPlane, future bridges).
   connectTimeoutMs: 3000

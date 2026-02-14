@@ -4,6 +4,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.core.bridge.DecentHologramsBridge;
+import net.orbis.zakum.core.perf.VisualCircuitState;
 import net.orbis.zakum.core.util.PdcKeys;
 import net.orbis.zakum.core.world.ZakumRtpService;
 import org.bukkit.Bukkit;
@@ -674,6 +675,7 @@ public final class StandardEffects {
 
   private static boolean isVisualSuppressed(Map<String, String> params) {
     if (boolParam(params, "force", false)) return false;
+    if (VisualCircuitState.isOpen()) return true;
     double tps = currentTps();
     double minTps = 18.0d;
     try {

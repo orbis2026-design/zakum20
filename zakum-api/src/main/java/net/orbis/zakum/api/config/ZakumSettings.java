@@ -23,6 +23,7 @@ public record ZakumSettings(
   Entitlements entitlements,
   Boosters boosters,
   Actions actions,
+  Operations operations,
   Chat chat,
   Visuals visuals,
   Packets packets
@@ -143,6 +144,26 @@ public record ZakumSettings(
       boolean enabled,
       int intervalSeconds,
       int deleteLimit
+    ) {}
+  }
+
+  public record Operations(
+    CircuitBreaker circuitBreaker,
+    Stress stress
+  ) {
+    public record CircuitBreaker(
+      boolean enabled,
+      double disableBelowTps,
+      double resumeAboveTps,
+      int sampleTicks,
+      int stableSamplesToClose
+    ) {}
+
+    public record Stress(
+      boolean enabled,
+      int defaultIterations,
+      int maxIterations,
+      int cooldownSeconds
     ) {}
   }
 

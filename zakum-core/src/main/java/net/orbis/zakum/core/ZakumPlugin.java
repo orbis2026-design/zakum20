@@ -5,6 +5,7 @@ import com.mongodb.client.MongoClients;
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
+import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
@@ -32,6 +33,7 @@ import net.orbis.zakum.core.metrics.MetricsMonitor;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.packet.AnimationService;
+import net.orbis.zakum.core.perf.VisualCircuitBreaker;
 import net.orbis.zakum.core.profile.PlayerJoinListener;
 import net.orbis.zakum.core.profile.ProfileProvider;
 import net.orbis.zakum.core.progression.ProgressionServiceImpl;
@@ -49,6 +51,7 @@ import net.orbis.zakum.core.util.Async;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.Plugin;
@@ -59,6 +62,7 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -90,6 +94,8 @@ public final class ZakumPlugin extends JavaPlugin {
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
   private GrimFlagBridge grimFlagBridge;
+  private VisualCircuitBreaker visualCircuitBreaker;
+  private volatile long nextStressAllowedAtMs;
 
   private MovementSampler movementSampler;
 
@@ -132,6 +138,9 @@ public final class ZakumPlugin extends JavaPlugin {
     this.boosters.start();
 
     this.scheduler = new ZakumSchedulerImpl(this, EarlySchedulerRuntime.claimOrCreateExecutor());
+    this.nextStressAllowedAtMs = 0L;
+    this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
+    this.visualCircuitBreaker.start(scheduler, this);
     var aceEngine = new ZakumAceEngine();
     var storageService = new StorageServiceImpl(sql);
     var animations = new AnimationService(this, scheduler, settings.visuals());
@@ -255,6 +264,11 @@ public final class ZakumPlugin extends JavaPlugin {
     chatListener = null;
     metricsMonitor = null;
     grimFlagBridge = null;
+    if (visualCircuitBreaker != null) {
+      visualCircuitBreaker.stop(scheduler);
+      visualCircuitBreaker = null;
+    }
+    nextStressAllowedAtMs = 0L;
 
     if (metrics != null) metrics.stop();
 
@@ -359,7 +373,28 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("perf") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendPerfStatus(sender);
+      return true;
+    }
+
+    if (args.length >= 2 && args[0].equalsIgnoreCase("stress") && args[1].equalsIgnoreCase("run")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      int requested = parseInt(args.length >= 3 ? args[2] : null, settings.operations().stress().defaultIterations());
+      runStressHarness(sender, requested);
+      return true;
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status");
+    sender.sendMessage("Usage: /" + label + " perf status");
+    sender.sendMessage("Usage: /" + label + " stress run [iterations]");
     return true;
   }
 
@@ -387,6 +422,64 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
   }
 
+  private void sendPerfStatus(CommandSender sender) {
+    sender.sendMessage("Zakum Performance Status");
+    var breakerCfg = settings.operations().circuitBreaker();
+    sender.sendMessage("circuit.enabled=" + breakerCfg.enabled());
+
+    if (visualCircuitBreaker == null) {
+      sender.sendMessage("circuit=offline");
+      return;
+    }
+
+    var snap = visualCircuitBreaker.snapshot();
+    sender.sendMessage("circuit.open=" + snap.open());
+    sender.sendMessage("circuit.lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+    sender.sendMessage("circuit.reason=" + (snap.reason() == null || snap.reason().isBlank() ? "none" : snap.reason()));
+    sender.sendMessage("circuit.changedAt=" + formatEpochMillis(snap.changedAtMs()));
+    sender.sendMessage("circuit.taskId=" + snap.taskId());
+  }
+
+  private void runStressHarness(CommandSender sender, int requestedIterations) {
+    var stressCfg = settings.operations().stress();
+    if (!stressCfg.enabled()) {
+      sender.sendMessage("Stress harness is disabled in config (operations.stress.enabled=false).");
+      return;
+    }
+
+    List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+    if (players.isEmpty()) {
+      sender.sendMessage("No online players to target.");
+      return;
+    }
+
+    long now = System.currentTimeMillis();
+    long cooldownMs = Math.max(0L, stressCfg.cooldownSeconds()) * 1000L;
+    if (now < nextStressAllowedAtMs) {
+      long waitMs = nextStressAllowedAtMs - now;
+      sender.sendMessage("Stress cooldown active. Wait " + Math.max(1L, (waitMs + 999L) / 1000L) + "s.");
+      return;
+    }
+    nextStressAllowedAtMs = now + cooldownMs;
+
+    int iterations = Math.max(1, Math.min(requestedIterations, stressCfg.maxIterations()));
+    List<String> script = List.of(
+      "[GIVE_MONEY] amount=1",
+      "[RTP] @SELF {min=64 max=384}"
+    );
+
+    for (int i = 0; i < iterations; i++) {
+      Player target = players.get(i % players.size());
+      scheduler.runAsync(() -> {
+        if (!target.isOnline()) return;
+        api.getAceEngine().executeScript(script, AceEngine.ActionContext.of(target));
+        if (metricsMonitor != null) metricsMonitor.recordAction("stress_iteration");
+      });
+    }
+
+    sender.sendMessage("Stress started: iterations=" + iterations + ", players=" + players.size());
+  }
+
   private static String formatEpochMillis(long epochMillis) {
     if (epochMillis <= 0L) return "never";
     return Instant.ofEpochMilli(epochMillis).toString();
@@ -400,6 +493,15 @@ public final class ZakumPlugin extends JavaPlugin {
     UUID id = op.getUniqueId();
     if (id == null) sender.sendMessage("Unknown player: " + token);
     return id;
+  }
+
+  private static int parseInt(String raw, int fallback) {
+    if (raw == null || raw.isBlank()) return fallback;
+    try {
+      return Integer.parseInt(raw.trim());
+    } catch (NumberFormatException ignored) {
+      return fallback;
+    }
   }
 
   private void registerCoreActionEmitters(Clock clock) {

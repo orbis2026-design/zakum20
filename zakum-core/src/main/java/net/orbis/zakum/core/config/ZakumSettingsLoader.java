@@ -39,6 +39,7 @@ public final class ZakumSettingsLoader {
     var ent = loadEntitlements(cfg);
     var boosters = loadBoosters(cfg);
     var actions = loadActions(cfg);
+    var operations = loadOperations(cfg);
     var chat = loadChat(cfg);
     var visuals = loadVisuals(cfg);
     var packets = loadPackets(cfg);
@@ -54,6 +55,7 @@ public final class ZakumSettingsLoader {
       ent,
       boosters,
       actions,
+      operations,
       chat,
       visuals,
       packets
@@ -242,6 +244,35 @@ public final class ZakumSettingsLoader {
     var deferred = new ZakumSettings.Actions.DeferredReplay(replay, claim);
 
     return new ZakumSettings.Actions(enabled, emitters, movement, deferred);
+  }
+
+  private static ZakumSettings.Operations loadOperations(FileConfiguration cfg) {
+    boolean breakerEnabled = bool(cfg, "operations.circuitBreaker.enabled", true);
+    double disableBelowTps = clampF((float) cfg.getDouble("operations.circuitBreaker.disableBelowTps", 18.0d), 1.0f, 20.0f);
+    double resumeAboveTps = clampF((float) cfg.getDouble("operations.circuitBreaker.resumeAboveTps", 18.8d), (float) disableBelowTps, 20.0f);
+    int sampleTicks = clampI(cfg.getInt("operations.circuitBreaker.sampleTicks", 40), 1, 20 * 60);
+    int stableSamplesToClose = clampI(cfg.getInt("operations.circuitBreaker.stableSamplesToClose", 6), 1, 120);
+
+    boolean stressEnabled = bool(cfg, "operations.stress.enabled", false);
+    int defaultIterations = clampI(cfg.getInt("operations.stress.defaultIterations", 100), 1, 100_000);
+    int maxIterations = clampI(cfg.getInt("operations.stress.maxIterations", 5_000), defaultIterations, 200_000);
+    int cooldownSeconds = clampI(cfg.getInt("operations.stress.cooldownSeconds", 30), 0, 3600);
+
+    return new ZakumSettings.Operations(
+      new ZakumSettings.Operations.CircuitBreaker(
+        breakerEnabled,
+        disableBelowTps,
+        resumeAboveTps,
+        sampleTicks,
+        stableSamplesToClose
+      ),
+      new ZakumSettings.Operations.Stress(
+        stressEnabled,
+        defaultIterations,
+        maxIterations,
+        cooldownSeconds
+      )
+    );
   }
 
   private static ZakumSettings.Chat loadChat(FileConfiguration cfg) {

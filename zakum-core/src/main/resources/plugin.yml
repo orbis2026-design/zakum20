@@ -9,7 +9,7 @@ softdepend: [DecentHolograms, PacketEvents]
 commands:
   zakum:
     description: Zakum admin command
-    usage: /zakum status
+    usage: /zakum cloud status|perf status|stress run [iterations]
     permission: zakum.admin
 
 permissions:
