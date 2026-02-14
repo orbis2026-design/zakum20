@@ -75,7 +75,10 @@ public record ZakumSettings(
     String serverId,
     int pollIntervalTicks,
     long requestTimeoutMs,
-    boolean identityOnJoin
+    boolean identityOnJoin,
+    boolean dedupeEnabled,
+    long dedupeTtlSeconds,
+    long dedupeMaximumSize
   ) {}
 
   public record Http(

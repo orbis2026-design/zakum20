@@ -132,6 +132,9 @@ public final class ZakumSettingsLoader {
     int pollIntervalTicks = clampI(cfg.getInt("cloud.pollIntervalTicks", 20), 1, 20 * 60);
     long requestTimeoutMs = clampL(cfg.getLong("cloud.requestTimeoutMs", 6000), 250, 120_000);
     boolean identityOnJoin = bool(cfg, "cloud.identityOnJoin", true);
+    boolean dedupeEnabled = bool(cfg, "cloud.dedupe.enabled", true);
+    long dedupeTtlSeconds = clampL(cfg.getLong("cloud.dedupe.ttlSeconds", 300), 10, 86_400);
+    long dedupeMaximumSize = clampL(cfg.getLong("cloud.dedupe.maximumSize", 50_000), 100, 5_000_000);
 
     return new ZakumSettings.Cloud(
       enabled,
@@ -140,7 +143,10 @@ public final class ZakumSettingsLoader {
       serverId,
       pollIntervalTicks,
       requestTimeoutMs,
-      identityOnJoin
+      identityOnJoin,
+      dedupeEnabled,
+      dedupeTtlSeconds,
+      dedupeMaximumSize
     );
   }
 

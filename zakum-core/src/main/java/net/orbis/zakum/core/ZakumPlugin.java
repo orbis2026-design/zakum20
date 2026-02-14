@@ -573,6 +573,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("lastHttpStatus=" + snap.lastHttpStatus());
     sender.sendMessage("lastBatchSize=" + snap.lastBatchSize());
     sender.sendMessage("totalQueueActions=" + snap.totalQueueActions());
+    sender.sendMessage("duplicateQueueSkips=" + snap.duplicateQueueSkips());
     String err = snap.lastError();
     sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
   }

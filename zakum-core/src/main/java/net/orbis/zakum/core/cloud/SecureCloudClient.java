@@ -1,5 +1,7 @@
 package net.orbis.zakum.core.cloud;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.config.ZakumSettings;
@@ -53,7 +55,9 @@ public final class SecureCloudClient {
   private final AtomicInteger lastHttpStatus;
   private final AtomicLong lastBatchSize;
   private final AtomicLong totalQueueActions;
+  private final AtomicLong duplicateQueueSkips;
   private final AtomicReference<String> lastError;
+  private final Cache<String, Boolean> processedQueueIds;
 
   public SecureCloudClient(ZakumApi api, ZakumSettings.Cloud cloud, Logger logger, MetricsMonitor metrics) {
     this.api = api;
@@ -68,7 +72,14 @@ public final class SecureCloudClient {
     this.lastHttpStatus = new AtomicInteger(0);
     this.lastBatchSize = new AtomicLong(0L);
     this.totalQueueActions = new AtomicLong(0L);
+    this.duplicateQueueSkips = new AtomicLong(0L);
     this.lastError = new AtomicReference<>("");
+    this.processedQueueIds = cloud.dedupeEnabled()
+      ? Caffeine.newBuilder()
+      .maximumSize(Math.max(100L, cloud.dedupeMaximumSize()))
+      .expireAfterWrite(Duration.ofSeconds(Math.max(10L, cloud.dedupeTtlSeconds())))
+      .build()
+      : null;
     this.httpClient = HttpClient.newBuilder()
       .executor(api.getScheduler().asyncExecutor())
       .connectTimeout(this.requestTimeout)
@@ -138,6 +149,12 @@ public final class SecureCloudClient {
     List<String> script = parseScript(document.get("script"));
     if (script.isEmpty()) script = parseScript(document.get("ace_script"));
     if (script.isEmpty()) return;
+    String queueId = extractQueueId(document);
+    if (queueId != null && processedQueueIds != null && processedQueueIds.getIfPresent(queueId) != null) {
+      duplicateQueueSkips.incrementAndGet();
+      record("cloud_queue_duplicate");
+      return;
+    }
 
     Map<String, Object> metadata = new HashMap<>();
     copyObject(document.get("metadata"), metadata);
@@ -146,6 +163,9 @@ public final class SecureCloudClient {
     copyValue(document, "type", metadata, "cloud_type");
 
     List<String> finalScript = script;
+    if (queueId != null && processedQueueIds != null) {
+      processedQueueIds.put(queueId, Boolean.TRUE);
+    }
     api.getScheduler().runAtEntity(player, () -> {
       if (!player.isOnline()) return;
       api.getAceEngine().executeScript(finalScript, new AceEngine.ActionContext(player, Optional.empty(), metadata));
@@ -398,6 +418,16 @@ public final class SecureCloudClient {
     return (b != null && !b.isBlank()) ? b : null;
   }
 
+  private static String extractQueueId(Document doc) {
+    if (doc == null) return null;
+    for (String key : List.of("id", "queue_id", "event_id", "transaction_id", "delivery_id")) {
+      String value = asString(doc.get(key));
+      if (value == null || value.isBlank()) continue;
+      return value.trim();
+    }
+    return null;
+  }
+
   private static Object firstNonNull(Object a, Object b) {
     return a != null ? a : b;
   }
@@ -422,6 +452,7 @@ public final class SecureCloudClient {
       lastHttpStatus.get(),
       lastBatchSize.get(),
       totalQueueActions.get(),
+      duplicateQueueSkips.get(),
       lastError.get()
     );
   }
@@ -434,6 +465,7 @@ public final class SecureCloudClient {
     int lastHttpStatus,
     long lastBatchSize,
     long totalQueueActions,
+    long duplicateQueueSkips,
     String lastError
   ) {}
 }

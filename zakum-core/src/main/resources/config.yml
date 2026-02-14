@@ -38,6 +38,10 @@ cloud:
   pollIntervalTicks: 20
   requestTimeoutMs: 6000
   identityOnJoin: true
+  dedupe:
+    enabled: true
+    ttlSeconds: 300
+    maximumSize: 50000
 
 anticheat:
   grim:
