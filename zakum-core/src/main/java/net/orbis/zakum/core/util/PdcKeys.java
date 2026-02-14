@@ -9,6 +9,8 @@ public final class PdcKeys {
   public static final NamespacedKey SOULS = new NamespacedKey("orbis", "souls");
   public static final NamespacedKey DEATHS = new NamespacedKey("orbis", "deaths");
   public static final NamespacedKey KILLS = new NamespacedKey("orbis", "kills");
+  public static final NamespacedKey BOSS_BAR_TEXT = new NamespacedKey("orbis", "boss_bar_text");
+  public static final NamespacedKey BOSS_BAR_PROGRESS = new NamespacedKey("orbis", "boss_bar_progress");
   public static final NamespacedKey CLOUD_RANK = new NamespacedKey("orbis", "cloud_rank");
   public static final NamespacedKey CLOUD_DISCORD_LINKED = new NamespacedKey("orbis", "cloud_discord_linked");
   public static final NamespacedKey CLOUD_DISCORD_ID = new NamespacedKey("orbis", "cloud_discord_id");

@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -16,6 +17,8 @@ import java.util.UUID;
 public final class DisplayPacketWriter {
 
   private static final int DISPLAY_ITEM_METADATA_INDEX = 23;
+  private static final int DISPLAY_INTERPOLATION_METADATA_INDEX = 12;
+  private static final int DEFAULT_INTERPOLATION_TICKS = 3;
 
   private DisplayPacketWriter() {}
 
@@ -24,6 +27,10 @@ public final class DisplayPacketWriter {
   }
 
   public static void spawnGhostItem(Player viewer, Location loc, ItemStack item, int entityId) {
+    spawnGhostItem(viewer, loc, item, entityId, DEFAULT_INTERPOLATION_TICKS);
+  }
+
+  public static void spawnGhostItem(Player viewer, Location loc, ItemStack item, int entityId, int interpolationTicks) {
     if (viewer == null || loc == null) return;
     try {
       Class<?> packetEventsClass = Class.forName("com.github.retrooper.packetevents.PacketEvents");
@@ -45,7 +52,7 @@ public final class DisplayPacketWriter {
 
       sendPacket(api, viewer, spawnPacket);
       if (item != null) {
-        Object metadataPacket = createItemMetadataPacket(entityId, item);
+        Object metadataPacket = createItemMetadataPacket(entityId, item, interpolationTicks);
         if (metadataPacket != null) {
           sendPacket(api, viewer, metadataPacket);
         }
@@ -82,21 +89,52 @@ public final class DisplayPacketWriter {
     return ctor.newInstance(args);
   }
 
-  private static Object createItemMetadataPacket(int entityId, ItemStack item) throws Exception {
+  private static Object createItemMetadataPacket(int entityId, ItemStack item, int interpolationTicks) throws Exception {
     Class<?> conversionClass = loadSpigotConversionUtil();
     Object peItem = conversionClass.getMethod("fromBukkitItemStack", ItemStack.class).invoke(null, item);
 
     Class<?> entityDataTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes");
-    Object itemType = entityDataTypesClass.getField("ITEMSTACK").get(null);
+    Object itemType = resolveEntityDataType(entityDataTypesClass, "ITEMSTACK");
+    if (itemType == null) return null;
 
-    Class<?> entityDataTypeClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataType");
-    Class<?> entityDataClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityData");
-    Object entityData = entityDataClass
-      .getConstructor(int.class, entityDataTypeClass, Object.class)
-      .newInstance(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
+    List<Object> entries = new ArrayList<>(2);
+    Object itemData = createEntityData(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
+    if (itemData == null) return null;
+    entries.add(itemData);
+
+    Object interpolationType = resolveEntityDataType(entityDataTypesClass, "INT", "VAR_INT");
+    Object interpolationData = createEntityData(
+      DISPLAY_INTERPOLATION_METADATA_INDEX,
+      interpolationType,
+      Math.max(0, interpolationTicks)
+    );
+    if (interpolationData != null) {
+      entries.add(interpolationData);
+    }
 
     Class<?> metadataClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata");
-    return metadataClass.getConstructor(int.class, List.class).newInstance(entityId, List.of(entityData));
+    return metadataClass.getConstructor(int.class, List.class).newInstance(entityId, entries);
+  }
+
+  private static Object createEntityData(int index, Object dataType, Object value) throws Exception {
+    if (dataType == null) return null;
+    Class<?> entityDataTypeClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataType");
+    Class<?> entityDataClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityData");
+    return entityDataClass
+      .getConstructor(int.class, entityDataTypeClass, Object.class)
+      .newInstance(index, dataType, value);
+  }
+
+  private static Object resolveEntityDataType(Class<?> typesClass, String... names) {
+    for (String name : names) {
+      if (name == null || name.isBlank()) continue;
+      try {
+        return typesClass.getField(name).get(null);
+      } catch (Throwable ignored) {
+        // Probe fallback names.
+      }
+    }
+    return null;
   }
 
   private static Class<?> loadSpigotConversionUtil() throws ClassNotFoundException {

@@ -39,6 +39,13 @@ cloud:
   requestTimeoutMs: 6000
   identityOnJoin: true
 
+anticheat:
+  grim:
+    enabled: false
+    aceScript:
+      - "[MESSAGE] <red>Anticheat flag: <gold>%check%</gold>"
+      - "[SOUND] BLOCK_NOTE_BLOCK_BASS {volume=0.8 pitch=0.8}"
+
 entitlements:
   cache:
     maximumSize: 50000

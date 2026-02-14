@@ -17,6 +17,7 @@ import net.orbis.zakum.core.config.ZakumSettingsLoader;
 import net.orbis.zakum.core.actions.SimpleActionBus;
 import net.orbis.zakum.core.actions.SqlDeferredActionService;
 import net.orbis.zakum.core.actions.emitters.*;
+import net.orbis.zakum.core.anticheat.GrimFlagBridge;
 import net.orbis.zakum.core.asset.InMemoryAssetManager;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.bridge.SimpleBridgeManager;
@@ -58,6 +59,7 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -87,6 +89,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private OrbisChatRenderer chatRenderer;
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
+  private GrimFlagBridge grimFlagBridge;
 
   private MovementSampler movementSampler;
 
@@ -206,6 +209,7 @@ public final class ZakumPlugin extends JavaPlugin {
 
     ZakumApiProvider.set(api);
     startCloudPolling();
+    startGrimBridge();
 
     registerCoreActionEmitters(clock);
 
@@ -250,6 +254,7 @@ public final class ZakumPlugin extends JavaPlugin {
     chatPacketBuffer = null;
     chatListener = null;
     metricsMonitor = null;
+    grimFlagBridge = null;
 
     if (metrics != null) metrics.stop();
 
@@ -303,6 +308,18 @@ public final class ZakumPlugin extends JavaPlugin {
     int intervalTicks = Math.max(1, cloud.pollIntervalTicks());
     this.cloudPollTaskId = scheduler.runTaskTimerAsynchronously(this, cloudClient::poll, intervalTicks, intervalTicks);
     scheduler.runAsync(cloudClient::poll);
+  }
+
+  private void startGrimBridge() {
+    if (!getConfig().getBoolean("anticheat.grim.enabled", false)) return;
+    if (Bukkit.getPluginManager().getPlugin("GrimAC") == null && Bukkit.getPluginManager().getPlugin("Grim") == null) {
+      getLogger().warning("Grim bridge enabled but GrimAC is not installed.");
+      return;
+    }
+
+    List<String> script = GrimFlagBridge.normalizeScript(getConfig().getStringList("anticheat.grim.aceScript"));
+    this.grimFlagBridge = new GrimFlagBridge(api, this, script, getLogger(), metricsMonitor);
+    grimFlagBridge.register();
   }
 
   private MongoDataStore createMongoDataStore() {
@@ -381,7 +398,7 @@ public final class ZakumPlugin extends JavaPlugin {
     }
     OfflinePlayer op = Bukkit.getOfflinePlayer(token);
     UUID id = op.getUniqueId();
-    if (id == null) sender.sendMessage("§cUnknown player: " + token);
+    if (id == null) sender.sendMessage("Unknown player: " + token);
     return id;
   }
 
@@ -430,3 +447,4 @@ public final class ZakumPlugin extends JavaPlugin {
     }
   }
 }
+

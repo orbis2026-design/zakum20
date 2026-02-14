@@ -10,6 +10,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,8 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AnimationService1_21_11 implements AnimationService {
 
   private static final int DISPLAY_ITEM_METADATA_INDEX = 23;
+  private static final int DISPLAY_INTERPOLATION_METADATA_INDEX = 12;
+  private static final int DEFAULT_INTERPOLATION_TICKS = 3;
 
   private final Plugin plugin;
   private final ZakumScheduler scheduler;
@@ -71,15 +74,26 @@ public class AnimationService1_21_11 implements AnimationService {
       Object peItem = conversionClass.getMethod("fromBukkitItemStack", ItemStack.class).invoke(null, item);
 
       Class<?> entityDataTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes");
-      Object itemType = entityDataTypesClass.getField("ITEMSTACK").get(null);
+      Object itemType = resolveEntityDataType(entityDataTypesClass, "ITEMSTACK");
+      if (itemType == null) return false;
 
-      Class<?> entityDataClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityData");
-      Object entityData = entityDataClass
-        .getConstructor(int.class, Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataType"), Object.class)
-        .newInstance(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
+      List<Object> entries = new ArrayList<>(2);
+      Object entityData = createEntityData(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
+      if (entityData == null) return false;
+      entries.add(entityData);
+
+      Object interpolationType = resolveEntityDataType(entityDataTypesClass, "INT", "VAR_INT");
+      Object interpolationData = createEntityData(
+        DISPLAY_INTERPOLATION_METADATA_INDEX,
+        interpolationType,
+        DEFAULT_INTERPOLATION_TICKS
+      );
+      if (interpolationData != null) {
+        entries.add(interpolationData);
+      }
 
       Class<?> metadataClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata");
-      Object metadataPacket = metadataClass.getConstructor(int.class, List.class).newInstance(entityId, List.of(entityData));
+      Object metadataPacket = metadataClass.getConstructor(int.class, List.class).newInstance(entityId, entries);
 
       sendPacket(api, viewer, spawnPacket);
       sendPacket(api, viewer, metadataPacket);
@@ -117,6 +131,27 @@ public class AnimationService1_21_11 implements AnimationService {
       }
     }
     return null;
+  }
+
+  private static Object resolveEntityDataType(Class<?> typesClass, String... names) {
+    for (String name : names) {
+      if (name == null || name.isBlank()) continue;
+      try {
+        return typesClass.getField(name).get(null);
+      } catch (Throwable ignored) {
+        // Probe known aliases.
+      }
+    }
+    return null;
+  }
+
+  private static Object createEntityData(int index, Object dataType, Object value) throws Exception {
+    if (dataType == null) return null;
+    Class<?> entityDataTypeClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataType");
+    Class<?> entityDataClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityData");
+    return entityDataClass
+      .getConstructor(int.class, entityDataTypeClass, Object.class)
+      .newInstance(index, dataType, value);
   }
 
   private static Object newSpawnPacket(Constructor<?> ctor, int entityId, Object itemDisplayType, Object position) throws Exception {

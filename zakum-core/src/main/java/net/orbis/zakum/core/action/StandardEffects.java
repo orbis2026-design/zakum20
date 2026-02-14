@@ -4,6 +4,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.core.bridge.DecentHologramsBridge;
+import net.orbis.zakum.core.util.PdcKeys;
 import net.orbis.zakum.core.world.ZakumRtpService;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -12,11 +13,15 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -27,11 +32,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Baseline ACE effect library used by battlepass/crates/pets modules.
  */
 public final class StandardEffects {
+
+  private static final Map<UUID, BossBar> ACTIVE_BOSS_BARS = new ConcurrentHashMap<>();
 
   private StandardEffects() {}
 
@@ -46,6 +54,7 @@ public final class StandardEffects {
     registerSound(engine);
     registerParticle(engine);
     registerGiveMoney(engine);
+    registerGiveSouls(engine);
     registerGiveXp(engine);
     registerSetXpLevel(engine);
     registerHeal(engine);
@@ -61,6 +70,7 @@ public final class StandardEffects {
     registerLightning(engine);
     registerGamemode(engine);
     registerSetModel(engine);
+    registerBossBar(engine);
     registerGuiEffects(engine);
     registerRtp(engine);
     registerHologram(engine);
@@ -169,6 +179,7 @@ public final class StandardEffects {
 
   private static void registerParticle(AceEngine engine) {
     engine.registerEffect("PARTICLE", (ctx, targets, params) -> {
+      if (isVisualSuppressed(params)) return;
       String id = firstNonBlank(params.get("particle"), firstToken(raw(params)));
       if (id == null || id.isBlank()) return;
 
@@ -205,6 +216,23 @@ public final class StandardEffects {
           }
         }
       });
+    });
+  }
+
+  private static void registerGiveSouls(AceEngine engine) {
+    engine.registerEffect("GIVE_SOULS", (ctx, targets, params) -> {
+      long amount = Math.round(doubleParam(params, "amount", parseNumber(raw(params), 0.0d)));
+      if (amount == 0L) return;
+
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        runAtEntity(player, () -> {
+          var pdc = player.getPersistentDataContainer();
+          long current = readLong(pdc.get(PdcKeys.SOULS, PersistentDataType.LONG), 0L);
+          long next = Math.max(0L, current + amount);
+          pdc.set(PdcKeys.SOULS, PersistentDataType.LONG, next);
+        });
+      }
     });
   }
 
@@ -428,6 +456,65 @@ public final class StandardEffects {
     });
   }
 
+  private static void registerBossBar(AceEngine engine) {
+    engine.registerEffect("BOSS_BAR", (ctx, targets, params) -> {
+      String raw = raw(params);
+      if (raw == null || raw.isBlank()) return;
+
+      String colorRaw = firstNonBlank(params.get("color"), "BLUE");
+      String styleRaw = firstNonBlank(params.get("style"), "SOLID");
+      BarColor color = parseBarColor(colorRaw);
+      BarStyle style = parseBarStyle(styleRaw);
+      double progress = Math.max(0.0d, Math.min(1.0d, doubleParam(params, "progress", 1.0d)));
+      int durationSeconds = Math.max(0, intParam(params, "duration", intParam(params, "seconds", 6)));
+      long durationTicks = Math.max(1L, durationSeconds * 20L);
+
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        String text = placeholders(raw, ctx, target);
+        runAtEntity(player, () -> {
+          BossBar existing = ACTIVE_BOSS_BARS.remove(player.getUniqueId());
+          if (existing != null) existing.removeAll();
+
+          BossBar bar = Bukkit.createBossBar(text, color, style);
+          bar.setProgress(progress);
+          bar.addPlayer(player);
+          ACTIVE_BOSS_BARS.put(player.getUniqueId(), bar);
+
+          var pdc = player.getPersistentDataContainer();
+          pdc.set(PdcKeys.BOSS_BAR_TEXT, PersistentDataType.STRING, text);
+          pdc.set(PdcKeys.BOSS_BAR_PROGRESS, PersistentDataType.DOUBLE, progress);
+
+          if (durationSeconds > 0) {
+            Plugin owner = ZakumApi.get().plugin();
+            ZakumApi.get().getScheduler().runTaskLater(owner, () -> {
+              BossBar active = ACTIVE_BOSS_BARS.get(player.getUniqueId());
+              if (active != bar) return;
+              active.removePlayer(player);
+              active.removeAll();
+              ACTIVE_BOSS_BARS.remove(player.getUniqueId());
+            }, durationTicks);
+          }
+        });
+      }
+    });
+
+    engine.registerEffect("REMOVE_BOSS_BAR", (ctx, targets, params) -> {
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        runAtEntity(player, () -> {
+          BossBar bar = ACTIVE_BOSS_BARS.remove(player.getUniqueId());
+          if (bar != null) {
+            bar.removePlayer(player);
+            bar.removeAll();
+          }
+          player.getPersistentDataContainer().remove(PdcKeys.BOSS_BAR_TEXT);
+          player.getPersistentDataContainer().remove(PdcKeys.BOSS_BAR_PROGRESS);
+        });
+      }
+    });
+  }
+
   private static void registerGuiEffects(AceEngine engine) {
     engine.registerEffect("OPEN_GUI", (ctx, targets, params) -> {
       String id = firstNonBlank(params.get("id"), raw(params));
@@ -470,6 +557,7 @@ public final class StandardEffects {
 
   private static void registerHologram(AceEngine engine) {
     engine.registerEffect("HOLOGRAM", (ctx, targets, params) -> {
+      if (isVisualSuppressed(params)) return;
       String text = firstNonBlank(params.get("text"), raw(params));
       if (text == null || text.isBlank()) return;
 
@@ -564,6 +652,57 @@ public final class StandardEffects {
     String value = params.get(key.toLowerCase(Locale.ROOT));
     if (value == null || value.isBlank()) return fallback;
     return value.equalsIgnoreCase("true") || value.equalsIgnoreCase("yes") || value.equalsIgnoreCase("1");
+  }
+
+  private static BarColor parseBarColor(String value) {
+    if (value == null || value.isBlank()) return BarColor.BLUE;
+    try {
+      return BarColor.valueOf(value.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ignored) {
+      return BarColor.BLUE;
+    }
+  }
+
+  private static BarStyle parseBarStyle(String value) {
+    if (value == null || value.isBlank()) return BarStyle.SOLID;
+    try {
+      return BarStyle.valueOf(value.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ignored) {
+      return BarStyle.SOLID;
+    }
+  }
+
+  private static boolean isVisualSuppressed(Map<String, String> params) {
+    if (boolParam(params, "force", false)) return false;
+    double tps = currentTps();
+    double minTps = 18.0d;
+    try {
+      var cfg = ZakumApi.get().settings().visuals().lod();
+      if (cfg != null) {
+        minTps = Math.max(1.0d, cfg.minTps());
+      }
+    } catch (Throwable ignored) {
+      // Fallback default threshold.
+    }
+    return tps < minTps;
+  }
+
+  private static double currentTps() {
+    try {
+      double[] tps = Bukkit.getTPS();
+      if (tps == null || tps.length == 0) return 20.0d;
+      double oneMinute = tps[0];
+      if (Double.isFinite(oneMinute) && oneMinute > 0.0d) {
+        return oneMinute;
+      }
+    } catch (Throwable ignored) {
+      // Fall through.
+    }
+    return 20.0d;
+  }
+
+  private static long readLong(Long value, long fallback) {
+    return value == null ? fallback : value;
   }
 
   private static String placeholders(String input, AceEngine.ActionContext ctx, Entity target) {

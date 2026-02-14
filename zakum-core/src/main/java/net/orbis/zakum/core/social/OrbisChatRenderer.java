@@ -32,7 +32,7 @@ public final class OrbisChatRenderer {
 
   public Component renderLine(Player source, Component message) {
     Component name = renderName(source);
-    Component separator = bufferCache.parse("<gray> » </gray>");
+    Component separator = bufferCache.parse("<gray> > </gray>");
     return Component.empty().append(name).append(separator).append(message);
   }
 
@@ -49,3 +49,4 @@ public final class OrbisChatRenderer {
       .replace("<secondary>", SECONDARY);
   }
 }
+
