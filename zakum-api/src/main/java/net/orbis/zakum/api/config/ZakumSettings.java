@@ -179,7 +179,18 @@ public record ZakumSettings(
       boolean enabled,
       int defaultIterations,
       int maxIterations,
-      int cooldownSeconds
+      int cooldownSeconds,
+      int virtualPlayers,
+      int iterationsPerTick,
+      int maxDurationSeconds,
+      int minOnlinePlayers,
+      double minTps,
+      int abortBelowTpsSeconds,
+      int maxErrors,
+      boolean allowRtp,
+      boolean allowEconomy,
+      boolean allowChat,
+      boolean allowVisuals
     ) {}
   }
 

@@ -274,9 +274,20 @@ public final class ZakumSettingsLoader {
     int stableSamplesToClose = clampI(cfg.getInt("operations.circuitBreaker.stableSamplesToClose", 6), 1, 120);
 
     boolean stressEnabled = bool(cfg, "operations.stress.enabled", false);
-    int defaultIterations = clampI(cfg.getInt("operations.stress.defaultIterations", 100), 1, 100_000);
-    int maxIterations = clampI(cfg.getInt("operations.stress.maxIterations", 5_000), defaultIterations, 200_000);
+    int defaultIterations = clampI(cfg.getInt("operations.stress.defaultIterations", 5_000), 1, 200_000);
+    int maxIterations = clampI(cfg.getInt("operations.stress.maxIterations", 200_000), defaultIterations, 2_000_000);
     int cooldownSeconds = clampI(cfg.getInt("operations.stress.cooldownSeconds", 30), 0, 3600);
+    int virtualPlayers = clampI(cfg.getInt("operations.stress.virtualPlayers", 500), 1, 50_000);
+    int iterationsPerTick = clampI(cfg.getInt("operations.stress.iterationsPerTick", 25), 1, 10_000);
+    int maxDurationSeconds = clampI(cfg.getInt("operations.stress.maxDurationSeconds", 120), 5, 3600);
+    int minOnlinePlayers = clampI(cfg.getInt("operations.stress.minOnlinePlayers", 1), 1, 10_000);
+    double minTps = clampF((float) cfg.getDouble("operations.stress.minTps", 17.5d), 5.0f, 20.0f);
+    int abortBelowTpsSeconds = clampI(cfg.getInt("operations.stress.abortBelowTpsSeconds", 10), 1, 300);
+    int maxErrors = clampI(cfg.getInt("operations.stress.maxErrors", 250), 0, 1_000_000);
+    boolean allowRtp = bool(cfg, "operations.stress.allowRtp", true);
+    boolean allowEconomy = bool(cfg, "operations.stress.allowEconomy", true);
+    boolean allowChat = bool(cfg, "operations.stress.allowChat", true);
+    boolean allowVisuals = bool(cfg, "operations.stress.allowVisuals", true);
 
     return new ZakumSettings.Operations(
       new ZakumSettings.Operations.CircuitBreaker(
@@ -290,7 +301,18 @@ public final class ZakumSettingsLoader {
         stressEnabled,
         defaultIterations,
         maxIterations,
-        cooldownSeconds
+        cooldownSeconds,
+        virtualPlayers,
+        iterationsPerTick,
+        maxDurationSeconds,
+        minOnlinePlayers,
+        minTps,
+        abortBelowTpsSeconds,
+        maxErrors,
+        allowRtp,
+        allowEconomy,
+        allowChat,
+        allowVisuals
       )
     );
   }

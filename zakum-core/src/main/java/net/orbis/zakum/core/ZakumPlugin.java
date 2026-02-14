@@ -5,7 +5,6 @@ import com.mongodb.client.MongoClients;
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
-import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
@@ -35,6 +34,7 @@ import net.orbis.zakum.core.metrics.MetricsMonitor;
 import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
+import net.orbis.zakum.core.ops.StressHarnessV2;
 import net.orbis.zakum.core.packet.AnimationService;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
@@ -110,7 +110,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private PlayerVisualModeService visualModeService;
   private PacketCullingKernel packetCullingKernel;
   private VisualCircuitBreaker visualCircuitBreaker;
-  private volatile long nextStressAllowedAtMs;
+  private StressHarnessV2 stressHarness;
 
   private MovementSampler movementSampler;
 
@@ -153,7 +153,6 @@ public final class ZakumPlugin extends JavaPlugin {
     this.boosters.start();
 
     this.scheduler = new ZakumSchedulerImpl(this, EarlySchedulerRuntime.claimOrCreateExecutor());
-    this.nextStressAllowedAtMs = 0L;
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
     this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
@@ -260,6 +259,7 @@ public final class ZakumPlugin extends JavaPlugin {
     startSocialRefresh();
 
     ZakumApiProvider.set(api);
+    this.stressHarness = new StressHarnessV2(this, api, settings.operations().stress(), metricsMonitor, getLogger());
     startCloudPolling();
     startGrimBridge();
 
@@ -334,7 +334,10 @@ public final class ZakumPlugin extends JavaPlugin {
       visualCircuitBreaker.stop(scheduler);
       visualCircuitBreaker = null;
     }
-    nextStressAllowedAtMs = 0L;
+    if (stressHarness != null) {
+      try { stressHarness.close(); } catch (Throwable ignored) {}
+      stressHarness = null;
+    }
 
     if (metrics != null) metrics.stop();
 
@@ -498,14 +501,12 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
-    if (args.length >= 2 && args[0].equalsIgnoreCase("stress") && args[1].equalsIgnoreCase("run")) {
+    if (args.length >= 2 && args[0].equalsIgnoreCase("stress")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
         return true;
       }
-      int requested = parseInt(args.length >= 3 ? args[2] : null, settings.operations().stress().defaultIterations());
-      runStressHarness(sender, requested);
-      return true;
+      return handleStressCommand(sender, args);
     }
 
     if (args.length >= 2 && args[0].equalsIgnoreCase("chatbuffer") && args[1].equalsIgnoreCase("status")) {
@@ -544,7 +545,9 @@ public final class ZakumPlugin extends JavaPlugin {
 
     sender.sendMessage("Usage: /" + label + " cloud status");
     sender.sendMessage("Usage: /" + label + " perf status");
-    sender.sendMessage("Usage: /" + label + " stress run [iterations]");
+    sender.sendMessage("Usage: /" + label + " stress start [iterations] [virtualPlayers]");
+    sender.sendMessage("Usage: /" + label + " stress stop");
+    sender.sendMessage("Usage: /" + label + " stress status");
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
@@ -636,44 +639,79 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("circuit.taskId=" + snap.taskId());
   }
 
-  private void runStressHarness(CommandSender sender, int requestedIterations) {
-    var stressCfg = settings.operations().stress();
-    if (!stressCfg.enabled()) {
-      sender.sendMessage("Stress harness is disabled in config (operations.stress.enabled=false).");
+  private boolean handleStressCommand(CommandSender sender, String[] args) {
+    if (stressHarness == null) {
+      sender.sendMessage("Stress harness is not available.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum stress start [iterations] [virtualPlayers]");
+      sender.sendMessage("Usage: /zakum stress stop");
+      sender.sendMessage("Usage: /zakum stress status");
+      return true;
+    }
+
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("start") || sub.equals("run")) {
+      int iterations = parseInt(args.length >= 3 ? args[2] : null, settings.operations().stress().defaultIterations());
+      Integer virtualPlayers = null;
+      if (args.length >= 4) {
+        int parsed = parseInt(args[3], -1);
+        if (parsed > 0) virtualPlayers = parsed;
+      }
+      var result = stressHarness.start(iterations, virtualPlayers);
+      sender.sendMessage(result.message());
+      return true;
+    }
+
+    if (sub.equals("stop")) {
+      var result = stressHarness.stop("command");
+      sender.sendMessage(result.message());
+      return true;
+    }
+
+    if (sub.equals("status")) {
+      sendStressStatus(sender);
+      return true;
+    }
+
+    sender.sendMessage("Usage: /zakum stress start [iterations] [virtualPlayers]");
+    sender.sendMessage("Usage: /zakum stress stop");
+    sender.sendMessage("Usage: /zakum stress status");
+    return true;
+  }
+
+  private void sendStressStatus(CommandSender sender) {
+    if (stressHarness == null) {
+      sender.sendMessage("Stress harness is not available.");
       return;
     }
+    var snap = stressHarness.snapshot();
+    sender.sendMessage("Zakum Stress Harness v2");
+    sender.sendMessage("running=" + snap.running());
+    sender.sendMessage("plannedIterations=" + snap.plannedIterations());
+    sender.sendMessage("scheduledIterations=" + snap.scheduledIterations());
+    sender.sendMessage("completedIterations=" + snap.completedIterations());
+    sender.sendMessage("errors=" + snap.errorCount());
+    sender.sendMessage("skippedNoPlayer=" + snap.skippedNoPlayer());
+    sender.sendMessage("virtualPlayers=" + snap.virtualPlayers());
+    sender.sendMessage("onlinePlayers=" + snap.onlinePlayers());
+    sender.sendMessage("iterationsPerTick=" + snap.iterationsPerTick());
+    sender.sendMessage("lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+    sender.sendMessage("stopReason=" + snap.stopReason());
+    sender.sendMessage("startedAt=" + formatEpochMillis(snap.startedAtMs()));
+    sender.sendMessage("stopAt=" + formatEpochMillis(snap.stopAtMs()));
+    sender.sendMessage("nextAllowedAt=" + formatEpochMillis(snap.nextAllowedAtMs()));
 
-    List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
-    if (players.isEmpty()) {
-      sender.sendMessage("No online players to target.");
-      return;
+    String lastErr = snap.lastError();
+    sender.sendMessage("lastError=" + (lastErr == null || lastErr.isBlank() ? "none" : lastErr));
+    if (snap.lastErrorAtMs() > 0L) {
+      sender.sendMessage("lastErrorAt=" + formatEpochMillis(snap.lastErrorAtMs()));
     }
 
-    long now = System.currentTimeMillis();
-    long cooldownMs = Math.max(0L, stressCfg.cooldownSeconds()) * 1000L;
-    if (now < nextStressAllowedAtMs) {
-      long waitMs = nextStressAllowedAtMs - now;
-      sender.sendMessage("Stress cooldown active. Wait " + Math.max(1L, (waitMs + 999L) / 1000L) + "s.");
-      return;
+    if (snap.scenarioCounts() != null && !snap.scenarioCounts().isEmpty()) {
+      sender.sendMessage("scenarioCounts=" + snap.scenarioCounts());
     }
-    nextStressAllowedAtMs = now + cooldownMs;
-
-    int iterations = Math.max(1, Math.min(requestedIterations, stressCfg.maxIterations()));
-    List<String> script = List.of(
-      "[GIVE_MONEY] amount=1",
-      "[RTP] @SELF {min=64 max=384}"
-    );
-
-    for (int i = 0; i < iterations; i++) {
-      Player target = players.get(i % players.size());
-      scheduler.runAsync(() -> {
-        if (!target.isOnline()) return;
-        api.getAceEngine().executeScript(script, AceEngine.ActionContext.of(target));
-        if (metricsMonitor != null) metricsMonitor.recordAction("stress_iteration");
-      });
-    }
-
-    sender.sendMessage("Stress started: iterations=" + iterations + ", players=" + players.size());
   }
 
   private void sendChatBufferStatus(CommandSender sender) {

@@ -135,9 +135,26 @@ operations:
     stableSamplesToClose: 6
   stress:
     enabled: false
-    defaultIterations: 100
-    maxIterations: 5000
+    # Total script executions per run.
+    defaultIterations: 5000
+    maxIterations: 200000
     cooldownSeconds: 30
+    # Synthetic actor pool size (virtual players).
+    virtualPlayers: 500
+    # How many scripts to schedule per tick.
+    iterationsPerTick: 25
+    # Stop harness after this many seconds even if iterations remain.
+    maxDurationSeconds: 120
+    # Safety gates.
+    minOnlinePlayers: 1
+    minTps: 17.5
+    abortBelowTpsSeconds: 10
+    maxErrors: 250
+    # Feature toggles (ACE matrix filters).
+    allowRtp: true
+    allowEconomy: true
+    allowChat: true
+    allowVisuals: true
 
 http:
   # Default client used by Zakum (controlPlane, future bridges).
