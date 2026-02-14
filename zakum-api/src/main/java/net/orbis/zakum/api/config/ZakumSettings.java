@@ -24,6 +24,7 @@ public record ZakumSettings(
   Boosters boosters,
   Actions actions,
   Operations operations,
+  Moderation moderation,
   Chat chat,
   Visuals visuals,
   Packets packets
@@ -167,9 +168,28 @@ public record ZakumSettings(
     ) {}
   }
 
+  public record Moderation(
+    Toxicity toxicity
+  ) {
+    public record Toxicity(
+      boolean enabled,
+      double threshold,
+      boolean cancelMessage,
+      String notifyPermission,
+      Set<String> lexicon,
+      java.util.List<String> aceScript
+    ) {
+      public Toxicity {
+        lexicon = lexicon == null ? Set.of() : Set.copyOf(lexicon);
+        aceScript = aceScript == null ? java.util.List.of() : java.util.List.copyOf(aceScript);
+      }
+    }
+  }
+
   public record Chat(
     BufferCache bufferCache,
-    Localization localization
+    Localization localization,
+    Bedrock bedrock
   ) {
     public record BufferCache(
       boolean enabled,
@@ -209,6 +229,28 @@ public record ZakumSettings(
             }
           }
           out.put(key, Map.copyOf(localized));
+        }
+        return Map.copyOf(out);
+      }
+    }
+
+    public record Bedrock(
+      boolean enabled,
+      Map<String, String> fallbackGlyphs
+    ) {
+      public Bedrock {
+        fallbackGlyphs = copyGlyphs(fallbackGlyphs);
+      }
+
+      private static Map<String, String> copyGlyphs(Map<String, String> input) {
+        if (input == null || input.isEmpty()) return Map.of();
+        java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : input.entrySet()) {
+          String key = entry.getKey();
+          String value = entry.getValue();
+          if (key == null || key.isBlank()) continue;
+          if (value == null || value.isBlank()) continue;
+          out.put(key, value);
         }
         return Map.copyOf(out);
       }

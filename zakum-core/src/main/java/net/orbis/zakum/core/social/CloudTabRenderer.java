@@ -13,10 +13,19 @@ public final class CloudTabRenderer {
 
   private final ZakumApi api;
   private final AssetManager assets;
+  private final BedrockClientDetector bedrockDetector;
+  private final BedrockGlyphRemapper bedrockRemapper;
 
-  public CloudTabRenderer(ZakumApi api, AssetManager assets) {
+  public CloudTabRenderer(
+    ZakumApi api,
+    AssetManager assets,
+    BedrockClientDetector bedrockDetector,
+    BedrockGlyphRemapper bedrockRemapper
+  ) {
     this.api = api;
     this.assets = assets;
+    this.bedrockDetector = bedrockDetector;
+    this.bedrockRemapper = bedrockRemapper;
   }
 
   public void render(Player player) {
@@ -31,7 +40,13 @@ public final class CloudTabRenderer {
     String footerRaw = assets.resolve("<gray>Server: <aqua>" + api.server().serverId()
       + "</aqua>  <gray>Rank: <gold>" + rank + "</gold>  <gray>Discord: " + linked);
 
-    player.sendPlayerListHeader(MINI.deserialize(headerRaw));
-    player.sendPlayerListFooter(MINI.deserialize(footerRaw));
+    var header = MINI.deserialize(headerRaw);
+    var footer = MINI.deserialize(footerRaw);
+    if (bedrockDetector != null && bedrockRemapper != null && bedrockDetector.isBedrock(player)) {
+      header = bedrockRemapper.remap(header);
+      footer = bedrockRemapper.remap(footer);
+    }
+    player.sendPlayerListHeader(header);
+    player.sendPlayerListFooter(footer);
   }
 }

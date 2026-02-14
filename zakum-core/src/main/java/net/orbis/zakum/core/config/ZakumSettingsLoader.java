@@ -40,6 +40,7 @@ public final class ZakumSettingsLoader {
     var boosters = loadBoosters(cfg);
     var actions = loadActions(cfg);
     var operations = loadOperations(cfg);
+    var moderation = loadModeration(cfg);
     var chat = loadChat(cfg);
     var visuals = loadVisuals(cfg);
     var packets = loadPackets(cfg);
@@ -56,6 +57,7 @@ public final class ZakumSettingsLoader {
       boosters,
       actions,
       operations,
+      moderation,
       chat,
       visuals,
       packets
@@ -294,6 +296,12 @@ public final class ZakumSettingsLoader {
 
     Map<String, Map<String, String>> templates = loadChatTemplates(cfg.getConfigurationSection("chat.localization.templates"));
 
+    Map<String, String> bedrockGlyphs = loadBedrockGlyphs(cfg.getConfigurationSection("chat.bedrock.fallbackGlyphs"));
+    var bedrock = new ZakumSettings.Chat.Bedrock(
+      bool(cfg, "chat.bedrock.enabled", true),
+      bedrockGlyphs
+    );
+
     return new ZakumSettings.Chat(
       new ZakumSettings.Chat.BufferCache(enabled, max, expireAfterAccess),
       new ZakumSettings.Chat.Localization(
@@ -303,6 +311,51 @@ public final class ZakumSettingsLoader {
         preparedMax,
         warmupOnStart,
         templates
+      ),
+      bedrock
+    );
+  }
+
+  private static Map<String, String> loadBedrockGlyphs(ConfigurationSection section) {
+    if (section == null) return Map.of();
+    LinkedHashMap<String, String> out = new LinkedHashMap<>();
+    for (String key : section.getKeys(false)) {
+      if (key == null || key.isBlank()) continue;
+      String value = section.getString(key, "");
+      if (value == null || value.isBlank()) continue;
+      out.put(key.trim(), value);
+    }
+    return out.isEmpty() ? Map.of() : Map.copyOf(out);
+  }
+
+  private static ZakumSettings.Moderation loadModeration(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "moderation.toxicity.enabled", false);
+    double threshold = clampF((float) cfg.getDouble("moderation.toxicity.threshold", 0.8d), 0.1f, 1.0f);
+    boolean cancelMessage = bool(cfg, "moderation.toxicity.cancelMessage", true);
+    String notifyPermission = str(cfg, "moderation.toxicity.notifyPermission", "zakum.moderation.alerts").trim();
+    if (notifyPermission.isBlank()) notifyPermission = "zakum.moderation.alerts";
+
+    Set<String> lexicon = new HashSet<>();
+    for (String raw : cfg.getStringList("moderation.toxicity.lexicon")) {
+      if (raw == null) continue;
+      String value = raw.trim().toLowerCase(Locale.ROOT);
+      if (!value.isBlank()) lexicon.add(value);
+    }
+
+    java.util.List<String> aceScript = new java.util.ArrayList<>();
+    for (String raw : cfg.getStringList("moderation.toxicity.aceScript")) {
+      if (raw == null || raw.isBlank()) continue;
+      aceScript.add(raw.trim());
+    }
+
+    return new ZakumSettings.Moderation(
+      new ZakumSettings.Moderation.Toxicity(
+        enabled,
+        threshold,
+        cancelMessage,
+        notifyPermission,
+        lexicon,
+        aceScript
       )
     );
   }

@@ -16,3 +16,5 @@ commands:
 permissions:
   zakum.admin:
     default: op
+  zakum.moderation.alerts:
+    default: op

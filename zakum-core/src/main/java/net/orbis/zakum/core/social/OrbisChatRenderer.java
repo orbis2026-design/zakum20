@@ -15,10 +15,19 @@ public final class OrbisChatRenderer {
 
   private final AssetManager assets;
   private final ChatBufferCache bufferCache;
+  private final BedrockClientDetector bedrockDetector;
+  private final BedrockGlyphRemapper bedrockRemapper;
 
-  public OrbisChatRenderer(AssetManager assets, ChatBufferCache bufferCache) {
+  public OrbisChatRenderer(
+    AssetManager assets,
+    ChatBufferCache bufferCache,
+    BedrockClientDetector bedrockDetector,
+    BedrockGlyphRemapper bedrockRemapper
+  ) {
     this.assets = assets;
     this.bufferCache = bufferCache;
+    this.bedrockDetector = bedrockDetector;
+    this.bedrockRemapper = bedrockRemapper;
   }
 
   public Component resolveMessage(Component original) {
@@ -30,10 +39,14 @@ public final class OrbisChatRenderer {
     return bufferCache.parse(resolved);
   }
 
-  public Component renderLine(Player source, Component message) {
+  public Component renderLine(Player source, Component message, Player viewer) {
     Component name = renderName(source);
     Component separator = bufferCache.parse("<gray> > </gray>");
-    return Component.empty().append(name).append(separator).append(message);
+    Component line = Component.empty().append(name).append(separator).append(message);
+    if (viewer != null && bedrockDetector != null && bedrockDetector.isBedrock(viewer) && bedrockRemapper != null) {
+      return bedrockRemapper.remap(line);
+    }
+    return line;
   }
 
   private Component renderName(Player source) {

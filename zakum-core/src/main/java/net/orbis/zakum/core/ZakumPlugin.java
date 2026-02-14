@@ -30,6 +30,7 @@ import net.orbis.zakum.core.entitlements.SqlEntitlementService;
 import net.orbis.zakum.core.listeners.ChatListener;
 import net.orbis.zakum.core.listeners.CloudIdentityListener;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.packet.AnimationService;
@@ -38,6 +39,8 @@ import net.orbis.zakum.core.profile.PlayerJoinListener;
 import net.orbis.zakum.core.profile.ProfileProvider;
 import net.orbis.zakum.core.progression.ProgressionServiceImpl;
 import net.orbis.zakum.core.social.CaffeineSocialService;
+import net.orbis.zakum.core.social.BedrockClientDetector;
+import net.orbis.zakum.core.social.BedrockGlyphRemapper;
 import net.orbis.zakum.core.social.ChatBufferCache;
 import net.orbis.zakum.core.social.CloudTabRenderer;
 import net.orbis.zakum.core.social.LocalizedChatPacketBuffer;
@@ -94,6 +97,9 @@ public final class ZakumPlugin extends JavaPlugin {
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
   private GrimFlagBridge grimFlagBridge;
+  private ToxicityModerationService toxicityModerationService;
+  private BedrockClientDetector bedrockDetector;
+  private BedrockGlyphRemapper bedrockGlyphRemapper;
   private VisualCircuitBreaker visualCircuitBreaker;
   private volatile long nextStressAllowedAtMs;
 
@@ -148,6 +154,8 @@ public final class ZakumPlugin extends JavaPlugin {
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();
     assets.init();
+    this.bedrockDetector = new BedrockClientDetector(settings.chat().bedrock(), getLogger());
+    this.bedrockGlyphRemapper = new BedrockGlyphRemapper(assets, settings.chat().bedrock());
     var chatBufferCfg = settings.chat().bufferCache();
     var chatBufferCache = new ChatBufferCache(
       chatBufferCfg.enabled(),
@@ -182,9 +190,10 @@ public final class ZakumPlugin extends JavaPlugin {
       settings,
       capabilityRegistry
     );
-    this.cloudTabRenderer = new CloudTabRenderer(api, assets);
-    this.chatRenderer = new OrbisChatRenderer(assets, chatBufferCache);
-    this.chatListener = new ChatListener(chatRenderer);
+    this.cloudTabRenderer = new CloudTabRenderer(api, assets, bedrockDetector, bedrockGlyphRemapper);
+    this.chatRenderer = new OrbisChatRenderer(assets, chatBufferCache, bedrockDetector, bedrockGlyphRemapper);
+    this.toxicityModerationService = new ToxicityModerationService(settings.moderation().toxicity(), getLogger(), metricsMonitor);
+    this.chatListener = new ChatListener(api, chatRenderer, toxicityModerationService);
     getServer().getPluginManager().registerEvents(chatListener, this);
 
     // Register Services
@@ -264,6 +273,9 @@ public final class ZakumPlugin extends JavaPlugin {
     chatListener = null;
     metricsMonitor = null;
     grimFlagBridge = null;
+    toxicityModerationService = null;
+    bedrockDetector = null;
+    bedrockGlyphRemapper = null;
     if (visualCircuitBreaker != null) {
       visualCircuitBreaker.stop(scheduler);
       visualCircuitBreaker = null;

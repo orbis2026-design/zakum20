@@ -168,6 +168,23 @@ chat:
         en_us: "<gradient:<primary>:<secondary>>:logo: BattlePass</gradient> <gray>Tier <aqua>%tier%</aqua> unlocked <gray>(%points% pts)"
       battlepass_points_gain:
         en_us: "<gray>+<aqua>%points%</aqua> BattlePass points"
+  bedrock:
+    enabled: true
+    fallbackGlyphs:
+      ":logo:": "[ORBIS]"
+      ":coin:": "$"
+      ":check:": "OK"
+
+moderation:
+  toxicity:
+    enabled: false
+    threshold: 0.80
+    cancelMessage: true
+    notifyPermission: "zakum.moderation.alerts"
+    lexicon: ["slur1", "slur2", "slur3"]
+    aceScript:
+      - "[MESSAGE] <red>Message blocked by moderation.</red>"
+      - "[SOUND] BLOCK_NOTE_BLOCK_BASS {volume=0.7 pitch=0.7}"
 
 visuals:
   lod:
