@@ -22,39 +22,42 @@ scenes:
         slot: 4
         item: EXPERIENCE_BOTTLE
         amount: 1
-        item-name: "&aBattlePass Overview"
+        item-name: "&aOpen BattlePass"
         item-lore:
-          - "&7Track tiers, quests, and rewards."
+          - "&7Tier progress, quests, rewards."
         click-events:
-          message:
-            message: "&aBattlePass UI is wired. Rewards next."
+          command:
+            as: player
+            command: "battlepass menu"
       '2':
         slot: 19
         item: BOOK
         amount: 1
-        item-name: "&fDaily Missions"
+        item-name: "&fQuests"
         item-lore:
-          - "&7Complete daily objectives."
+          - "&7Daily + weekly objectives."
         click-events:
-          message:
-            message: "&7Daily missions are loading soon."
+          command:
+            as: player
+            command: "battlepass quests"
       '3':
         slot: 21
-        item: WRITABLE_BOOK
+        item: MAP
         amount: 1
-        item-name: "&bWeekly Missions"
+        item-name: "&bLeaderboard"
         item-lore:
-          - "&7Long-form progress goals."
+          - "&7Top BattlePass performers."
         click-events:
-          message:
-            message: "&7Weekly missions are loading soon."
+          command:
+            as: player
+            command: "battlepass top"
       '4':
         slot: 23
         item: CHEST
         amount: 1
         item-name: "&eRewards"
         item-lore:
-          - "&7Preview tier rewards."
+          - "&7Preview + claim tiers."
         click-events:
           open-gui:
             id: battlepass.rewards
@@ -62,12 +65,13 @@ scenes:
         slot: 25
         item: NETHER_STAR
         amount: 1
-        item-name: "&6Premium Track"
+        item-name: "&6Premium Status"
         item-lore:
-          - "&7Unlock exclusive rewards."
+          - "&7Check premium access."
         click-events:
-          message:
-            message: "&6Premium track store will be wired."
+          command:
+            as: player
+            command: "battlepass status"
       '6':
         slot: 31
         item: EMERALD
@@ -76,8 +80,9 @@ scenes:
         item-lore:
           - "&7Collect available rewards."
         click-events:
-          message:
-            message: "&aClaiming rewards will be wired."
+          command:
+            as: player
+            command: "battlepass claimall"
       '7':
         slot: 40
         item: ARROW

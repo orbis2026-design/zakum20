@@ -1,7 +1,7 @@
 codeid: crates.preview
 rows: 5
 type: chest
-title: "&eCrates &8| &fPreview"
+title: "&eCrates &8| &f%crate_name%"
 
 empty-fill:
   enabled: true
@@ -24,7 +24,7 @@ scenes:
         amount: 3
         item-name: "&bSample Reward"
         item-lore:
-          - "&7Example item drop."
+          - "&7Example drop from &f%crate_name%&7."
       '2':
         slot: 12
         item: EMERALD
@@ -50,12 +50,15 @@ scenes:
         slot: 22
         item: BEACON
         amount: 1
-        item-name: "&bOpen Crate"
+        item-name: "&bOpen %crate_name%"
         item-lore:
-          - "&7Crate opening will be wired."
+          - "&7Requires: &f%crate_key%"
+          - "&7Crate id: &f%crate_id%"
         click-events:
-          message:
-            message: "&eCrate opening animation will be wired."
+          command:
+            as: player
+            command: "ocrates open %crate_id%"
+          close-inventory: {}
       '6':
         slot: 40
         item: ARROW

@@ -31,4 +31,8 @@ public final class GuiIds {
 
   // Cosmetics
   public static final String COSMETICS_MAIN = "cosmetics.main";
+
+  // Pets
+  public static final String PETS_MAIN = "pets.main";
+  public static final String PETS_MINI = "pets.mini";
 }

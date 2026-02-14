@@ -52,6 +52,8 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
     saveDefaultMenu("SystemMenus/NetworkStatus.yml");
     saveDefaultMenu("SystemMenus/AceLab.yml");
     saveDefaultMenu("SystemMenus/CosmeticsMain.yml");
+    saveDefaultMenu("SystemMenus/PetsMain.yml");
+    saveDefaultMenu("SystemMenus/PetsMini.yml");
     saveDefaultMenu("CustomGuis/example.yml");
 
     this.menus = new MenuRepository(this);

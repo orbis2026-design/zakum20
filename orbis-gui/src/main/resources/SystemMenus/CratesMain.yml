@@ -20,44 +20,59 @@ scenes:
     items:
       '1':
         slot: 11
-        item: CHEST
+        item: ENDER_CHEST
         amount: 1
-        item-name: "&aStarter Crate"
+        item-name: "&aVote Crate"
         item-lore:
-          - "&7Basic rewards for new players."
+          - "&7Basic rewards for votes."
+          - "&7Key: &aVote Key"
         click-events:
-          open-gui:
+          open-context:
             id: crates.preview
+            context:
+              crate_id: "vote"
+              crate_name: "Vote Crate"
+              crate_key: "Vote Key"
       '2':
         slot: 13
         item: TRAPPED_CHEST
         amount: 1
-        item-name: "&eEpic Crate"
+        item-name: "&6Rare Crate"
         item-lore:
-          - "&7Enhanced rewards and boosts."
+          - "&7Enhanced rewards + boosts."
+          - "&7Key: &6Rare Key"
         click-events:
-          open-gui:
+          open-context:
             id: crates.preview
+            context:
+              crate_id: "rare"
+              crate_name: "Rare Crate"
+              crate_key: "Rare Key"
       '3':
         slot: 15
-        item: ENDER_CHEST
+        item: PAPER
         amount: 1
-        item-name: "&dMythic Crate"
+        item-name: "&bCrate Keys"
         item-lore:
-          - "&7Legendary drops and cosmetics."
+          - "&7Collect keys to open crates."
+          - "&7Use &f/ocrates givekey&7 (admin)."
         click-events:
-          open-gui:
-            id: crates.preview
+          message:
+            message: "&7Ask staff for crate keys or vote rewards."
       '4':
         slot: 22
         item: CHEST_MINECART
         amount: 1
         item-name: "&bPreview Rewards"
         item-lore:
-          - "&7See example reward layouts."
+          - "&7View sample drops."
         click-events:
-          open-gui:
+          open-context:
             id: crates.preview
+            context:
+              crate_id: "vote"
+              crate_name: "Vote Crate"
+              crate_key: "Vote Key"
       '5':
         slot: 40
         item: ARROW

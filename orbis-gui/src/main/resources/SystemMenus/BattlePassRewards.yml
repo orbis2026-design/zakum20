@@ -25,7 +25,11 @@ scenes:
         item-name: "&fTier 1"
         item-lore:
           - "&7Starter kit"
-          - "&7Status: &ePreview"
+          - "&7Click to claim (free/premium)."
+        click-events:
+          command:
+            as: player
+            command: "battlepass claim 1 both"
       '2':
         slot: 12
         item: GOLD_INGOT
@@ -33,7 +37,11 @@ scenes:
         item-name: "&eTier 5"
         item-lore:
           - "&7Currency bundle"
-          - "&7Status: &ePreview"
+          - "&7Click to claim (free/premium)."
+        click-events:
+          command:
+            as: player
+            command: "battlepass claim 5 both"
       '3':
         slot: 14
         item: DIAMOND
@@ -41,7 +49,11 @@ scenes:
         item-name: "&bTier 10"
         item-lore:
           - "&7Premium reward"
-          - "&7Status: &ePreview"
+          - "&7Click to claim (free/premium)."
+        click-events:
+          command:
+            as: player
+            command: "battlepass claim 10 both"
       '4':
         slot: 16
         item: NETHERITE_INGOT
@@ -49,18 +61,34 @@ scenes:
         item-name: "&dTier 25"
         item-lore:
           - "&7Mythic reward"
-          - "&7Status: &ePreview"
+          - "&7Click to claim (free/premium)."
+        click-events:
+          command:
+            as: player
+            command: "battlepass claim 25 both"
       '5':
         slot: 22
         item: CHEST_MINECART
         amount: 1
-        item-name: "&aRewards Track"
+        item-name: "&aOpen Full Rewards"
         item-lore:
-          - "&7Full reward timeline"
+          - "&7Launch BattlePass rewards UI."
         click-events:
-          message:
-            message: "&aRewards timeline will be wired."
+          command:
+            as: player
+            command: "battlepass rewards"
       '6':
+        slot: 31
+        item: EMERALD_BLOCK
+        amount: 1
+        item-name: "&aClaim All"
+        item-lore:
+          - "&7Collect every available tier."
+        click-events:
+          command:
+            as: player
+            command: "battlepass claimall"
+      '7':
         slot: 40
         item: ARROW
         amount: 1

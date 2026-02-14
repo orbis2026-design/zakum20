@@ -1,0 +1,94 @@
+codeid: pets.mini
+rows: 5
+type: chest
+title: "&dMini Pets"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: MAGENTA_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: RABBIT_SPAWN_EGG
+        amount: 1
+        item-name: "&fBunny"
+        item-lore:
+          - "&7Summon the bunny mini pet."
+        click-events:
+          command:
+            as: player
+            command: "ominipets summon bunny"
+      '2':
+        slot: 13
+        item: BEE_SPAWN_EGG
+        amount: 1
+        item-name: "&eBee"
+        item-lore:
+          - "&7Summon the bee mini pet."
+        click-events:
+          command:
+            as: player
+            command: "ominipets summon bee"
+      '3':
+        slot: 15
+        item: LEATHER_HELMET
+        amount: 1
+        item-name: "&bToggle Hat"
+        item-lore:
+          - "&7Wear the mini pet hat."
+        click-events:
+          command:
+            as: player
+            command: "ominipets hat"
+      '4':
+        slot: 21
+        item: SADDLE
+        amount: 1
+        item-name: "&6Toggle Ride"
+        item-lore:
+          - "&7Ride your mini pet."
+        click-events:
+          command:
+            as: player
+            command: "ominipets ride"
+      '5':
+        slot: 23
+        item: BARRIER
+        amount: 1
+        item-name: "&cDismiss"
+        item-lore:
+          - "&7Send the mini pet away."
+        click-events:
+          command:
+            as: player
+            command: "ominipets dismiss"
+      '6':
+        slot: 31
+        item: BOOK
+        amount: 1
+        item-name: "&bMini Pet Info"
+        item-lore:
+          - "&7Show active mini pet info."
+        click-events:
+          command:
+            as: player
+            command: "ominipets info"
+      '7':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: pets.main

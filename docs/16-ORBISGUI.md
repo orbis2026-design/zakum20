@@ -67,6 +67,8 @@ Implemented now:
   - `battlepass.rewards`
   - `crates.main`
   - `crates.preview`
+  - `pets.main`
+  - `pets.mini`
   - `profile.main`
   - `social.main`
   - `economy.main`
@@ -74,6 +76,12 @@ Implemented now:
   - `network.status`
   - `ace.lab`
   - `cosmetics.main`
+
+Wired flows (end-to-end):
+
+- BattlePass menus dispatch `/battlepass` actions (menu, quests, rewards, claim).
+- Crates preview dispatches `/ocrates open <crateId>`.
+- Pets menus dispatch `/opets` and `/ominipets` actions.
 
 Known planned gaps for full InfiniteGUI parity:
 
@@ -95,6 +103,7 @@ item names, lore, and click-event context values:
 - `%balance%`
 - `%friends%`, `%allies%`, `%rivals%`
 - `%level%`, `%health%`, `%food%`
+- any `open-context` keys passed between menus (ex: `%crate_id%`, `%crate_name%`, `%crate_key%`)
 
 ## Recommendation
 

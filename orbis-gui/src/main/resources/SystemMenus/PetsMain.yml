@@ -1,0 +1,93 @@
+codeid: pets.main
+rows: 5
+type: chest
+title: "&dPets &8| &fCompanions"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: PURPLE_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: WOLF_SPAWN_EGG
+        amount: 1
+        item-name: "&fWolf"
+        item-lore:
+          - "&7Summon a loyal companion."
+        click-events:
+          command:
+            as: player
+            command: "opets summon wolf"
+      '2':
+        slot: 13
+        item: PARROT_SPAWN_EGG
+        amount: 1
+        item-name: "&aParrot"
+        item-lore:
+          - "&7Summon a colorful companion."
+        click-events:
+          command:
+            as: player
+            command: "opets summon parrot"
+      '3':
+        slot: 15
+        item: LEAD
+        amount: 1
+        item-name: "&eDismiss Pet"
+        item-lore:
+          - "&7Send your pet away."
+        click-events:
+          command:
+            as: player
+            command: "opets dismiss"
+      '4':
+        slot: 21
+        item: BOOK
+        amount: 1
+        item-name: "&bPet Info"
+        item-lore:
+          - "&7Show current pet status."
+        click-events:
+          command:
+            as: player
+            command: "opets info"
+      '5':
+        slot: 23
+        item: PAPER
+        amount: 1
+        item-name: "&dList Pets"
+        item-lore:
+          - "&7View available pet ids."
+        click-events:
+          command:
+            as: player
+            command: "opets list"
+      '6':
+        slot: 31
+        item: RABBIT_FOOT
+        amount: 1
+        item-name: "&dMini Pets"
+        item-lore:
+          - "&7Open mini pet controls."
+        click-events:
+          open-gui:
+            id: pets.mini
+      '7':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: cosmetics.main

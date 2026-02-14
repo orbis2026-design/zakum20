@@ -22,14 +22,24 @@ scenes:
         slot: 11
         item: WOLF_SPAWN_EGG
         amount: 1
-        item-name: "&bPets"
+        item-name: "&bCompanion Pets"
         item-lore:
-          - "&7Mini pets and companions."
+          - "&7Summon and manage pets."
         click-events:
-          message:
-            message: "&7Pets menu will be wired."
+          open-gui:
+            id: pets.main
       '2':
         slot: 13
+        item: RABBIT_SPAWN_EGG
+        amount: 1
+        item-name: "&dMini Pets"
+        item-lore:
+          - "&7Tiny companions + hats."
+        click-events:
+          open-gui:
+            id: pets.mini
+      '3':
+        slot: 15
         item: NAME_TAG
         amount: 1
         item-name: "&aTags"
@@ -38,16 +48,6 @@ scenes:
         click-events:
           message:
             message: "&7Tags menu will be wired."
-      '3':
-        slot: 15
-        item: FIREWORK_STAR
-        amount: 1
-        item-name: "&eParticles"
-        item-lore:
-          - "&7Cosmetic particle trails."
-        click-events:
-          message:
-            message: "&7Particles menu will be wired."
       '4':
         slot: 22
         item: CHEST
