@@ -254,3 +254,7 @@ packets:
       - "WORLD_PARTICLES"
       - "ENTITY_EFFECT"
       - "ENTITY_ANIMATION"
+    # Optional bypass permission (blank = none).
+    bypassPermission: "zakum.packets.cull.bypass"
+    # Respect per-player visual mode (auto/performance/quality).
+    respectPerfMode: true

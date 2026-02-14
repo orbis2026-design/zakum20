@@ -156,16 +156,17 @@ public final class ZakumPlugin extends JavaPlugin {
     this.nextStressAllowedAtMs = 0L;
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
+    this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
+    getServer().getPluginManager().registerEvents(new PlayerVisualModeListener(visualModeService), this);
     this.packetCullingKernel = new PacketCullingKernel(
       this,
       scheduler,
       settings.packets().culling(),
       metricsMonitor,
-      getLogger()
+      getLogger(),
+      visualModeService
     );
     this.packetCullingKernel.start();
-    this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
-    getServer().getPluginManager().registerEvents(new PlayerVisualModeListener(visualModeService), this);
     var aceEngine = new ZakumAceEngine(metricsMonitor);
     var storageService = new StorageServiceImpl(sql);
     var animations = new AnimationService(this, scheduler, settings.visuals(), metricsMonitor, visualModeService);
@@ -838,10 +839,17 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("radius=" + snap.radius());
     sender.sendMessage("densityThreshold=" + snap.densityThreshold());
     sender.sendMessage("maxSampleAgeMs=" + snap.maxSampleAgeMs());
+    sender.sendMessage("lastOnlineCount=" + snap.lastOnlineCount());
+    sender.sendMessage("lastSampleBatch=" + snap.lastSampleBatch());
+    sender.sendMessage("respectPerfMode=" + snap.respectPerfMode());
+    String bypass = snap.bypassPermission();
+    sender.sendMessage("bypassPermission=" + (bypass == null || bypass.isBlank() ? "none" : bypass));
     sender.sendMessage("sampledPlayers=" + snap.sampledPlayers());
     sender.sendMessage("sampleRuns=" + snap.sampleRuns());
     sender.sendMessage("sampleUpdates=" + snap.sampleUpdates());
     sender.sendMessage("serviceProbeRuns=" + snap.serviceProbeRuns());
+    sender.sendMessage("bypassSkips=" + snap.bypassSkips());
+    sender.sendMessage("qualitySkips=" + snap.qualitySkips());
     sender.sendMessage("packetsObserved=" + snap.packetsObserved());
     sender.sendMessage("packetsDropped=" + snap.packetsDropped());
     sender.sendMessage("dropRate=" + String.format(java.util.Locale.ROOT, "%.2f%%", snap.dropRate() * 100.0d));

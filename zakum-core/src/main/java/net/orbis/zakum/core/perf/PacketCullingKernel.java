@@ -11,11 +11,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.logging.Logger;
 
@@ -33,13 +36,22 @@ public final class PacketCullingKernel implements AutoCloseable {
   private final ZakumSettings.Packets.Culling cfg;
   private final MetricsMonitor metrics;
   private final Logger logger;
+  private final PlayerVisualModeService visualModeService;
+  private final String bypassPermission;
+  private final boolean respectPerfMode;
   private final PacketHook outboundHook;
   private final ConcurrentHashMap<UUID, DensitySample> densitySamples;
+  private final AtomicInteger sampleCursor;
   private final LongAdder sampleRuns;
   private final LongAdder sampleUpdates;
   private final LongAdder packetsObserved;
   private final LongAdder packetsDropped;
   private final LongAdder serviceProbeRuns;
+  private final LongAdder bypassSkips;
+  private final LongAdder qualitySkips;
+
+  private volatile int lastSampleBatch;
+  private volatile int lastOnlineCount;
 
   private volatile PacketService packetService;
   private volatile boolean runtimeEnabled;
@@ -52,13 +64,17 @@ public final class PacketCullingKernel implements AutoCloseable {
     ZakumScheduler scheduler,
     ZakumSettings.Packets.Culling cfg,
     MetricsMonitor metrics,
-    Logger logger
+    Logger logger,
+    PlayerVisualModeService visualModeService
   ) {
     this.plugin = Objects.requireNonNull(plugin, "plugin");
     this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
     this.cfg = Objects.requireNonNull(cfg, "cfg");
     this.metrics = metrics;
     this.logger = logger;
+    this.visualModeService = visualModeService;
+    this.bypassPermission = cfg.bypassPermission();
+    this.respectPerfMode = cfg.respectPerfMode();
     this.outboundHook = new PacketHook(
       PacketDirection.OUTBOUND,
       PacketHookPriority.HIGH,
@@ -66,11 +82,16 @@ public final class PacketCullingKernel implements AutoCloseable {
       this::handleOutbound
     );
     this.densitySamples = new ConcurrentHashMap<>();
+    this.sampleCursor = new AtomicInteger();
     this.sampleRuns = new LongAdder();
     this.sampleUpdates = new LongAdder();
     this.packetsObserved = new LongAdder();
     this.packetsDropped = new LongAdder();
     this.serviceProbeRuns = new LongAdder();
+    this.bypassSkips = new LongAdder();
+    this.qualitySkips = new LongAdder();
+    this.lastSampleBatch = 0;
+    this.lastOnlineCount = 0;
     this.runtimeEnabled = cfg.enabled();
     this.hookRegistered = false;
     this.sampleTaskId = -1;
@@ -115,10 +136,16 @@ public final class PacketCullingKernel implements AutoCloseable {
       cfg.radius(),
       cfg.densityThreshold(),
       cfg.maxSampleAgeMs(),
+      lastOnlineCount,
+      lastSampleBatch,
+      respectPerfMode,
+      bypassPermission,
       densitySamples.size(),
       sampleRuns.sum(),
       sampleUpdates.sum(),
       serviceProbeRuns.sum(),
+      bypassSkips.sum(),
+      qualitySkips.sum(),
       observed,
       dropped,
       dropRate
@@ -150,7 +177,21 @@ public final class PacketCullingKernel implements AutoCloseable {
     if (sample == null) return;
     long ageMs = Math.max(0L, System.currentTimeMillis() - sample.sampledAtMs());
     if (ageMs > cfg.maxSampleAgeMs()) return;
-    if (sample.density() < cfg.densityThreshold()) return;
+    if (sample.bypass()) {
+      bypassSkips.increment();
+      return;
+    }
+    PlayerVisualModeService.Mode mode = sample.mode();
+    if (respectPerfMode && mode == PlayerVisualModeService.Mode.QUALITY) {
+      qualitySkips.increment();
+      return;
+    }
+
+    int threshold = cfg.densityThreshold();
+    if (respectPerfMode && mode == PlayerVisualModeService.Mode.PERFORMANCE) {
+      threshold = Math.max(1, threshold / 2);
+    }
+    if (sample.density() < threshold) return;
 
     ctx.cancel();
     packetsDropped.increment();
@@ -159,20 +200,43 @@ public final class PacketCullingKernel implements AutoCloseable {
 
   private void sampleOnlinePlayers() {
     sampleRuns.increment();
-    Set<UUID> online = new HashSet<>();
-    for (Player player : Bukkit.getOnlinePlayers()) {
-      UUID playerId = player.getUniqueId();
-      online.add(playerId);
-      scheduler.runAtEntity(player, () -> samplePlayerDensity(player));
+    List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+    int onlineCount = players.size();
+    lastOnlineCount = onlineCount;
+    if (onlineCount == 0) {
+      densitySamples.clear();
+      lastSampleBatch = 0;
+      return;
+    }
+
+    Set<UUID> online = new HashSet<>(onlineCount);
+    for (Player player : players) {
+      online.add(player.getUniqueId());
     }
     densitySamples.keySet().retainAll(online);
+
+    int batch = computeSampleBatch(onlineCount);
+    lastSampleBatch = batch;
+    int start = Math.floorMod(sampleCursor.getAndAdd(batch), onlineCount);
+    for (int i = 0; i < batch; i++) {
+      Player player = players.get((start + i) % onlineCount);
+      scheduler.runAtEntity(player, () -> samplePlayerDensity(player));
+    }
   }
 
   private void samplePlayerDensity(Player player) {
     if (player == null || !player.isOnline()) return;
     int radius = cfg.radius();
     int nearby = player.getNearbyEntities(radius, radius, radius).size();
-    densitySamples.put(player.getUniqueId(), new DensitySample(nearby + 1, System.currentTimeMillis()));
+    densitySamples.put(
+      player.getUniqueId(),
+      new DensitySample(
+        nearby + 1,
+        System.currentTimeMillis(),
+        resolveMode(player),
+        hasBypassPermission(player)
+      )
+    );
     sampleUpdates.increment();
   }
 
@@ -217,7 +281,36 @@ public final class PacketCullingKernel implements AutoCloseable {
     packetService = null;
   }
 
-  private record DensitySample(int density, long sampledAtMs) {}
+  private int computeSampleBatch(int onlineCount) {
+    long intervalMs = Math.max(1L, cfg.sampleTicks()) * 50L;
+    long maxAgeMs = Math.max(1L, cfg.maxSampleAgeMs());
+    long intervals = Math.max(1L, maxAgeMs / intervalMs);
+    int required = (int) Math.ceil(onlineCount / (double) intervals);
+    return Math.max(1, Math.min(onlineCount, required));
+  }
+
+  private PlayerVisualModeService.Mode resolveMode(Player player) {
+    if (!respectPerfMode || visualModeService == null) {
+      return PlayerVisualModeService.Mode.AUTO;
+    }
+    return visualModeService.mode(player);
+  }
+
+  private boolean hasBypassPermission(Player player) {
+    if (bypassPermission == null || bypassPermission.isBlank()) return false;
+    try {
+      return player.hasPermission(bypassPermission);
+    } catch (Throwable ignored) {
+      return false;
+    }
+  }
+
+  private record DensitySample(
+    int density,
+    long sampledAtMs,
+    PlayerVisualModeService.Mode mode,
+    boolean bypass
+  ) {}
 
   public record Snapshot(
     boolean runtimeEnabled,
@@ -228,13 +321,18 @@ public final class PacketCullingKernel implements AutoCloseable {
     int radius,
     int densityThreshold,
     long maxSampleAgeMs,
+    int lastOnlineCount,
+    int lastSampleBatch,
+    boolean respectPerfMode,
+    String bypassPermission,
     int sampledPlayers,
     long sampleRuns,
     long sampleUpdates,
     long serviceProbeRuns,
+    long bypassSkips,
+    long qualitySkips,
     long packetsObserved,
     long packetsDropped,
     double dropRate
   ) {}
 }
-

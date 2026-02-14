@@ -322,10 +322,13 @@ public record ZakumSettings(
       int radius,
       int densityThreshold,
       long maxSampleAgeMs,
-      Set<String> packetNames
+      Set<String> packetNames,
+      String bypassPermission,
+      boolean respectPerfMode
     ) {
       public Culling {
         packetNames = normalizePacketNames(packetNames);
+        bypassPermission = bypassPermission == null ? "" : bypassPermission.trim();
       }
 
       private static Set<String> normalizePacketNames(Set<String> values) {

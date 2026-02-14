@@ -459,6 +459,8 @@ public final class ZakumSettingsLoader {
     int radius = clampI(cfg.getInt("packets.culling.radius", 16), 1, 64);
     int densityThreshold = clampI(cfg.getInt("packets.culling.densityThreshold", 40), 1, 5_000);
     long maxSampleAgeMs = clampL(cfg.getLong("packets.culling.maxSampleAgeMs", 5_000L), 50L, 120_000L);
+    String bypassPermission = str(cfg, "packets.culling.bypassPermission", "zakum.packets.cull.bypass").trim();
+    boolean respectPerfMode = bool(cfg, "packets.culling.respectPerfMode", true);
     Set<String> packetNames = new HashSet<>();
     for (String raw : cfg.getStringList("packets.culling.packetNames")) {
       if (raw == null || raw.isBlank()) continue;
@@ -477,7 +479,9 @@ public final class ZakumSettingsLoader {
         radius,
         densityThreshold,
         maxSampleAgeMs,
-        packetNames
+        packetNames,
+        bypassPermission,
+        respectPerfMode
       )
     );
   }
