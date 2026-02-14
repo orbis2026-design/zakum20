@@ -325,6 +325,7 @@ public final class ZakumSettingsLoader {
     boolean localizationEnabled = bool(cfg, "chat.localization.enabled", true);
     String defaultLocale = normalizeLocale(str(cfg, "chat.localization.defaultLocale", "en_us"));
     long preparedMax = clampL(cfg.getLong("chat.localization.preparedMaximumSize", 100_000), 1_000, 5_000_000);
+    boolean packetDispatchEnabled = bool(cfg, "chat.localization.packetDispatchEnabled", true);
     boolean warmupOnStart = bool(cfg, "chat.localization.warmupOnStart", true);
 
     Set<String> supportedLocales = new HashSet<>();
@@ -349,6 +350,7 @@ public final class ZakumSettingsLoader {
         defaultLocale,
         supportedLocales,
         preparedMax,
+        packetDispatchEnabled,
         warmupOnStart,
         templates
       ),
@@ -452,8 +454,32 @@ public final class ZakumSettingsLoader {
     boolean inbound = bool(cfg, "packets.inbound", true);
     boolean outbound = bool(cfg, "packets.outbound", true);
     int maxHooksPerPlugin = clampI(cfg.getInt("packets.maxHooksPerPlugin", 64), 0, 10_000);
+    boolean cullingEnabled = bool(cfg, "packets.culling.enabled", true);
+    int sampleTicks = clampI(cfg.getInt("packets.culling.sampleTicks", 20), 1, 20 * 60);
+    int radius = clampI(cfg.getInt("packets.culling.radius", 16), 1, 64);
+    int densityThreshold = clampI(cfg.getInt("packets.culling.densityThreshold", 40), 1, 5_000);
+    long maxSampleAgeMs = clampL(cfg.getLong("packets.culling.maxSampleAgeMs", 5_000L), 50L, 120_000L);
+    Set<String> packetNames = new HashSet<>();
+    for (String raw : cfg.getStringList("packets.culling.packetNames")) {
+      if (raw == null || raw.isBlank()) continue;
+      packetNames.add(raw.trim().toUpperCase(Locale.ROOT));
+    }
 
-    return new ZakumSettings.Packets(enabled, backend, inbound, outbound, maxHooksPerPlugin);
+    return new ZakumSettings.Packets(
+      enabled,
+      backend,
+      inbound,
+      outbound,
+      maxHooksPerPlugin,
+      new ZakumSettings.Packets.Culling(
+        cullingEnabled,
+        sampleTicks,
+        radius,
+        densityThreshold,
+        maxSampleAgeMs,
+        packetNames
+      )
+    );
   }
 
 

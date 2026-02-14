@@ -10,10 +10,10 @@ import net.orbis.zakum.api.config.ZakumSettings;
 import org.bukkit.entity.Player;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.logging.Logger;
@@ -31,6 +31,8 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   private final ChatBufferCache parseCache;
   private final Logger logger;
   private final String defaultLocale;
+  private final Set<String> supportedLocales;
+  private final PacketChatTransport packetTransport;
   private final Cache<String, PreparedMessage> preparedCache;
   private final Map<String, Map<String, String>> templates;
   private final LongAdder resolveRequests;
@@ -48,6 +50,20 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     this.parseCache = parseCache;
     this.logger = logger;
     this.defaultLocale = normalizeLocale(localization == null ? "en_us" : localization.defaultLocale());
+    Set<String> configuredLocales = localization == null ? Set.of() : localization.supportedLocales();
+    if (configuredLocales == null || configuredLocales.isEmpty()) {
+      this.supportedLocales = Set.of(defaultLocale);
+    } else {
+      java.util.LinkedHashSet<String> normalized = new java.util.LinkedHashSet<>();
+      for (String locale : configuredLocales) {
+        String value = normalizeLocale(locale);
+        if (!value.isBlank()) normalized.add(value);
+      }
+      if (normalized.isEmpty()) normalized.add(defaultLocale);
+      this.supportedLocales = Set.copyOf(normalized);
+    }
+    boolean packetDispatchEnabled = localization != null && localization.packetDispatchEnabled();
+    this.packetTransport = new PacketChatTransport(packetDispatchEnabled, logger);
     long preparedMax = localization == null ? 100_000L : localization.preparedMaximumSize();
     this.preparedCache = Caffeine.newBuilder()
       .maximumSize(Math.max(1_000L, preparedMax))
@@ -92,10 +108,9 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   @Override
   public void warmup() {
     int prepared = 0;
-    for (Map.Entry<String, Map<String, String>> entry : templates.entrySet()) {
-      String key = entry.getKey();
-      for (String locale : entry.getValue().keySet()) {
-        PreparedMessage message = resolve(key, locale, Map.of());
+    for (String key : templates.keySet()) {
+      for (String locale : supportedLocales) {
+        PreparedMessage message = resolve(key, normalizeLocale(locale), Map.of());
         if (message != PreparedMessage.EMPTY) prepared++;
       }
     }
@@ -132,17 +147,26 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     PreparedMessage message = resolve(key, locale, placeholders);
     if (message == PreparedMessage.EMPTY) return;
     sendCount.increment();
+    if (packetTransport.sendSystem(player, message.serializedJson())) {
+      return;
+    }
+    packetTransport.recordFallback();
     player.sendMessage(message.component());
   }
 
   public Stats stats() {
     return new Stats(
       templates.size(),
+      packetTransport.enabled(),
+      packetTransport.available(),
       preparedCache.estimatedSize(),
       resolveRequests.sum(),
       resolveHits.sum(),
       resolveMisses.sum(),
-      sendCount.sum()
+      sendCount.sum(),
+      packetTransport.packetSends(),
+      packetTransport.fallbackSends(),
+      packetTransport.sendFailures()
     );
   }
 
@@ -205,10 +229,15 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   public record Stats(
     int templateKeys,
+    boolean packetDispatchEnabled,
+    boolean packetDispatchAvailable,
     long preparedCacheSize,
     long resolveRequests,
     long resolveHits,
     long resolveMisses,
-    long sends
+    long sends,
+    long packetSends,
+    long fallbackSends,
+    long packetFailures
   ) {}
 }

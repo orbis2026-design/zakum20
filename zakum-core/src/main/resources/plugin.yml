@@ -9,7 +9,7 @@ softdepend: [DecentHolograms, PacketEvents]
 commands:
   zakum:
     description: Zakum admin command
-    usage: /zakum cloud|perf|stress|chatbuffer|economy ...
+    usage: /zakum cloud|perf|stress|chatbuffer|economy|packetcull ...
     permission: zakum.admin
   perfmode:
     description: Toggle Hugster-style animation performance mode

@@ -36,6 +36,7 @@ import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.packet.AnimationService;
+import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.VisualCircuitBreaker;
@@ -107,6 +108,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private BedrockClientDetector bedrockDetector;
   private BedrockGlyphRemapper bedrockGlyphRemapper;
   private PlayerVisualModeService visualModeService;
+  private PacketCullingKernel packetCullingKernel;
   private VisualCircuitBreaker visualCircuitBreaker;
   private volatile long nextStressAllowedAtMs;
 
@@ -154,6 +156,14 @@ public final class ZakumPlugin extends JavaPlugin {
     this.nextStressAllowedAtMs = 0L;
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
+    this.packetCullingKernel = new PacketCullingKernel(
+      this,
+      scheduler,
+      settings.packets().culling(),
+      metricsMonitor,
+      getLogger()
+    );
+    this.packetCullingKernel.start();
     this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
     getServer().getPluginManager().registerEvents(new PlayerVisualModeListener(visualModeService), this);
     var aceEngine = new ZakumAceEngine(metricsMonitor);
@@ -278,6 +288,10 @@ public final class ZakumPlugin extends JavaPlugin {
     if (profileProvider != null) {
       profileProvider.clear();
       profileProvider = null;
+    }
+    if (packetCullingKernel != null) {
+      packetCullingKernel.close();
+      packetCullingKernel = null;
     }
     if (cloudPollTaskId > 0 && scheduler != null) {
       scheduler.cancelTask(cloudPollTaskId);
@@ -512,11 +526,20 @@ public final class ZakumPlugin extends JavaPlugin {
       return handleEconomyCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("packetcull")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handlePacketCullCommand(sender, args);
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress run [iterations]");
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
+    sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
   }
@@ -666,6 +689,11 @@ public final class ZakumPlugin extends JavaPlugin {
       sender.sendMessage("prepared.resolveHits=" + prepared.resolveHits());
       sender.sendMessage("prepared.resolveMisses=" + prepared.resolveMisses());
       sender.sendMessage("prepared.sends=" + prepared.sends());
+      sender.sendMessage("prepared.packetDispatchEnabled=" + prepared.packetDispatchEnabled());
+      sender.sendMessage("prepared.packetDispatchAvailable=" + prepared.packetDispatchAvailable());
+      sender.sendMessage("prepared.packetSends=" + prepared.packetSends());
+      sender.sendMessage("prepared.fallbackSends=" + prepared.fallbackSends());
+      sender.sendMessage("prepared.packetFailures=" + prepared.packetFailures());
       return;
     }
     sender.sendMessage("prepared.buffer=not-localized");
@@ -758,6 +786,58 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /zakum economy add <player|uuid> <amount>");
     sender.sendMessage("Usage: /zakum economy take <player|uuid> <amount>");
     return true;
+  }
+
+  private boolean handlePacketCullCommand(CommandSender sender, String[] args) {
+    if (packetCullingKernel == null) {
+      sender.sendMessage("Packet culling kernel is offline.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum packetcull status|enable|disable");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("status")) {
+      sendPacketCullStatus(sender);
+      return true;
+    }
+    if (sub.equals("enable")) {
+      packetCullingKernel.setRuntimeEnabled(true);
+      sender.sendMessage("Packet culling runtime enabled.");
+      return true;
+    }
+    if (sub.equals("disable")) {
+      packetCullingKernel.setRuntimeEnabled(false);
+      sender.sendMessage("Packet culling runtime disabled.");
+      return true;
+    }
+    sender.sendMessage("Usage: /zakum packetcull status|enable|disable");
+    return true;
+  }
+
+  private void sendPacketCullStatus(CommandSender sender) {
+    if (packetCullingKernel == null) {
+      sender.sendMessage("Packet culling kernel is offline.");
+      return;
+    }
+    var snap = packetCullingKernel.snapshot();
+    sender.sendMessage("Zakum Packet Culling");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("hookRegistered=" + snap.hookRegistered());
+    sender.sendMessage("backend=" + snap.backend());
+    sender.sendMessage("hookCount=" + snap.hookCount());
+    sender.sendMessage("radius=" + snap.radius());
+    sender.sendMessage("densityThreshold=" + snap.densityThreshold());
+    sender.sendMessage("maxSampleAgeMs=" + snap.maxSampleAgeMs());
+    sender.sendMessage("sampledPlayers=" + snap.sampledPlayers());
+    sender.sendMessage("sampleRuns=" + snap.sampleRuns());
+    sender.sendMessage("sampleUpdates=" + snap.sampleUpdates());
+    sender.sendMessage("serviceProbeRuns=" + snap.serviceProbeRuns());
+    sender.sendMessage("packetsObserved=" + snap.packetsObserved());
+    sender.sendMessage("packetsDropped=" + snap.packetsDropped());
+    sender.sendMessage("dropRate=" + String.format(java.util.Locale.ROOT, "%.2f%%", snap.dropRate() * 100.0d));
   }
 
   private static String formatEpochMillis(long epochMillis) {

@@ -183,6 +183,8 @@ chat:
     defaultLocale: "en_us"
     supportedLocales: ["en_us"]
     preparedMaximumSize: 100000
+    # Hugster-style: send cached JSON directly through packet backend when available.
+    packetDispatchEnabled: true
     warmupOnStart: true
     templates:
       battlepass_level_up:
@@ -240,3 +242,15 @@ packets:
   inbound: true
   outbound: true
   maxHooksPerPlugin: 64
+  culling:
+    # Packet-level visual culling kernel (high-density optimization).
+    enabled: true
+    sampleTicks: 20
+    radius: 16
+    densityThreshold: 40
+    maxSampleAgeMs: 5000
+    packetNames:
+      - "ENTITY_METADATA"
+      - "WORLD_PARTICLES"
+      - "ENTITY_EFFECT"
+      - "ENTITY_ANIMATION"

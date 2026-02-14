@@ -1,6 +1,7 @@
 package net.orbis.zakum.api.config;
 
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -228,6 +229,7 @@ public record ZakumSettings(
       String defaultLocale,
       Set<String> supportedLocales,
       long preparedMaximumSize,
+      boolean packetDispatchEnabled,
       boolean warmupOnStart,
       Map<String, Map<String, String>> templates
     ) {
@@ -306,11 +308,50 @@ public record ZakumSettings(
     Backend backend,
     boolean inbound,
     boolean outbound,
-    int maxHooksPerPlugin
+    int maxHooksPerPlugin,
+    Culling culling
   ) {
     public enum Backend {
       NONE,
       PACKETEVENTS
+    }
+
+    public record Culling(
+      boolean enabled,
+      int sampleTicks,
+      int radius,
+      int densityThreshold,
+      long maxSampleAgeMs,
+      Set<String> packetNames
+    ) {
+      public Culling {
+        packetNames = normalizePacketNames(packetNames);
+      }
+
+      private static Set<String> normalizePacketNames(Set<String> values) {
+        if (values == null || values.isEmpty()) {
+          return Set.of(
+            "ENTITY_METADATA",
+            "WORLD_PARTICLES",
+            "ENTITY_EFFECT",
+            "ENTITY_ANIMATION"
+          );
+        }
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (String value : values) {
+          if (value == null || value.isBlank()) continue;
+          out.add(value.trim().toUpperCase(Locale.ROOT));
+        }
+        if (out.isEmpty()) {
+          return Set.of(
+            "ENTITY_METADATA",
+            "WORLD_PARTICLES",
+            "ENTITY_EFFECT",
+            "ENTITY_ANIMATION"
+          );
+        }
+        return Set.copyOf(out);
+      }
     }
   }
   public record Actions(
