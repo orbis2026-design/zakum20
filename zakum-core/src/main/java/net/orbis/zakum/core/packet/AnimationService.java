@@ -73,7 +73,7 @@ public class AnimationService extends AnimationService1_21_11 {
   public void spawnCrateItem(Player viewer, Location loc, ItemStack item) {
     if (viewer == null || loc == null || item == null || loc.getWorld() == null) return;
     if (shouldDowngrade(viewer, loc)) {
-      sendStaticLabel(viewer, item);
+      sendStaticLabel(viewer, loc, item);
       return;
     }
     int entityId = ThreadLocalRandom.current().nextInt(2_100_000, 2_150_000);
@@ -136,8 +136,18 @@ public class AnimationService extends AnimationService1_21_11 {
     }
   }
 
-  private static void sendStaticLabel(Player viewer, ItemStack item) {
+  private void sendStaticLabel(Player viewer, Location loc, ItemStack item) {
     String label = item.getType().name().toLowerCase().replace('_', ' ');
-    viewer.sendActionBar(Component.text(label));
+    Component component = Component.text(label);
+    Location labelLoc = loc == null ? null : loc.clone().add(0.0d, 0.25d, 0.0d);
+    int entityId = ThreadLocalRandom.current().nextInt(2_200_000, 2_250_000);
+    boolean spawned = labelLoc != null && DisplayPacketWriter.spawnTextLabel(viewer, labelLoc, label, entityId);
+    if (spawned) {
+      if (metrics != null) metrics.recordAction("animation_lod_text_display");
+      scheduler.runTaskLater(plugin, () -> tryDestroyPacketDisplay(viewer, entityId), 40L);
+      return;
+    }
+    if (metrics != null) metrics.recordAction("animation_lod_actionbar");
+    viewer.sendActionBar(component);
   }
 }

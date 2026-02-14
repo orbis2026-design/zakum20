@@ -1,5 +1,6 @@
 package net.orbis.zakum.core.packet;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -18,6 +19,7 @@ public final class DisplayPacketWriter {
 
   private static final int DISPLAY_ITEM_METADATA_INDEX = 23;
   private static final int DISPLAY_INTERPOLATION_METADATA_INDEX = 12;
+  private static final int TEXT_DISPLAY_TEXT_METADATA_INDEX = 23;
   private static final int DEFAULT_INTERPOLATION_TICKS = 3;
 
   private DisplayPacketWriter() {}
@@ -62,6 +64,42 @@ public final class DisplayPacketWriter {
     }
   }
 
+  public static boolean spawnTextLabel(Player viewer, Location loc, String label, int entityId) {
+    return spawnTextLabel(viewer, loc, label, entityId, DEFAULT_INTERPOLATION_TICKS);
+  }
+
+  public static boolean spawnTextLabel(Player viewer, Location loc, String label, int entityId, int interpolationTicks) {
+    if (viewer == null || loc == null || label == null) return false;
+    try {
+      Class<?> packetEventsClass = Class.forName("com.github.retrooper.packetevents.PacketEvents");
+      Object api = packetEventsClass.getMethod("getAPI").invoke(null);
+      if (api == null) return false;
+
+      Class<?> entityTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.type.EntityTypes");
+      Object textDisplayType = entityTypesClass.getField("TEXT_DISPLAY").get(null);
+
+      Class<?> vector3dClass = Class.forName("com.github.retrooper.packetevents.util.Vector3d");
+      Object position = vector3dClass
+        .getConstructor(double.class, double.class, double.class)
+        .newInstance(loc.getX(), loc.getY(), loc.getZ());
+
+      Class<?> spawnClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity");
+      Constructor<?> ctor = findSpawnConstructor(spawnClass);
+      if (ctor == null) return false;
+      Object spawnPacket = newSpawnPacket(ctor, entityId, textDisplayType, position);
+
+      Object metadataPacket = createTextMetadataPacket(entityId, Component.text(label), interpolationTicks);
+      if (metadataPacket == null) return false;
+
+      sendPacket(api, viewer, spawnPacket);
+      sendPacket(api, viewer, metadataPacket);
+      return true;
+    } catch (Throwable ignored) {
+      // Packet backend is optional.
+      return false;
+    }
+  }
+
   private static Constructor<?> findSpawnConstructor(Class<?> spawnClass) {
     for (Constructor<?> ctor : spawnClass.getConstructors()) {
       Class<?>[] params = ctor.getParameterTypes();
@@ -101,6 +139,30 @@ public final class DisplayPacketWriter {
     Object itemData = createEntityData(DISPLAY_ITEM_METADATA_INDEX, itemType, peItem);
     if (itemData == null) return null;
     entries.add(itemData);
+
+    Object interpolationType = resolveEntityDataType(entityDataTypesClass, "INT", "VAR_INT");
+    Object interpolationData = createEntityData(
+      DISPLAY_INTERPOLATION_METADATA_INDEX,
+      interpolationType,
+      Math.max(0, interpolationTicks)
+    );
+    if (interpolationData != null) {
+      entries.add(interpolationData);
+    }
+
+    Class<?> metadataClass = Class.forName("com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata");
+    return metadataClass.getConstructor(int.class, List.class).newInstance(entityId, entries);
+  }
+
+  private static Object createTextMetadataPacket(int entityId, Component text, int interpolationTicks) throws Exception {
+    Class<?> entityDataTypesClass = Class.forName("com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes");
+    Object textType = resolveEntityDataType(entityDataTypesClass, "ADV_COMPONENT");
+    if (textType == null) return null;
+
+    List<Object> entries = new ArrayList<>(2);
+    Object textData = createEntityData(TEXT_DISPLAY_TEXT_METADATA_INDEX, textType, text);
+    if (textData == null) return null;
+    entries.add(textData);
 
     Object interpolationType = resolveEntityDataType(entityDataTypesClass, "INT", "VAR_INT");
     Object interpolationData = createEntityData(
