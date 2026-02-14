@@ -24,7 +24,7 @@ scenes:
         amount: 1
         item-name: "&aFriends"
         item-lore:
-          - "&7View friend list and requests."
+          - "&7Total: &f%friends%"
         click-events:
           message:
             message: "&aFriends panel will be wired."
@@ -44,7 +44,7 @@ scenes:
         amount: 1
         item-name: "&dAlliances"
         item-lore:
-          - "&7Allied groups and truce."
+          - "&7Allies: &f%allies%"
         click-events:
           message:
             message: "&dAlliances panel will be wired."
@@ -54,7 +54,7 @@ scenes:
         amount: 1
         item-name: "&cRivals"
         item-lore:
-          - "&7Rival status and conflicts."
+          - "&7Rivals: &f%rivals%"
         click-events:
           message:
             message: "&cRivals panel will be wired."

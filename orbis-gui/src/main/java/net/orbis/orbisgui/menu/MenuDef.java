@@ -10,8 +10,14 @@ public record MenuDef(
   String id,
   int rows,
   String title,
-  Map<Integer, MenuItemDef> items
+  String commandAlias,
+  Map<Integer, MenuSceneDef> scenes
 ) {
+
+  public record MenuSceneDef(
+    int delayTicks,
+    Map<Integer, MenuItemDef> items
+  ) {}
 
   public record MenuItemDef(
     int slot,
@@ -21,7 +27,14 @@ public record MenuDef(
     List<String> lore,
     List<ItemFlag> flags,
     String openGuiId,
+    Map<String, String> openContext,
     String message,
-    boolean closeInventory
+    boolean closeInventory,
+    CommandAction commandAction,
+    AceAction aceAction
   ) {}
+
+  public record CommandAction(String command, boolean asConsole) {}
+
+  public record AceAction(List<String> script, Map<String, String> metadata) {}
 }

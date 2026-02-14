@@ -26,8 +26,9 @@ scenes:
         item-lore:
           - "&7ACK + retry status."
         click-events:
-          message:
-            message: "&7Use &f/zakum cloud status&7 for details."
+          command:
+            as: player
+            command: "zakum cloud status"
       '2':
         slot: 13
         item: REDSTONE_TORCH
@@ -36,8 +37,9 @@ scenes:
         item-lore:
           - "&7Outbound density controls."
         click-events:
-          message:
-            message: "&7Use &f/zakum packetcull status&7."
+          command:
+            as: player
+            command: "zakum packetcull status"
       '3':
         slot: 15
         item: CLOCK
@@ -46,18 +48,20 @@ scenes:
         item-lore:
           - "&7Visual circuit breaker."
         click-events:
-          message:
-            message: "&7Use &f/zakum perf status&7."
+          command:
+            as: player
+            command: "zakum perf status"
       '4':
         slot: 22
         item: MAP
         amount: 1
         item-name: "&fServer Info"
         item-lore:
-          - "&7ID: &fconfigured"
+          - "&7Server: &f%server_id%"
+          - "&7TPS: &f%tps%"
         click-events:
           message:
-            message: "&7Server id is configured in config.yml."
+            message: "&7Network snapshot loaded."
       '5':
         slot: 31
         item: ARROW

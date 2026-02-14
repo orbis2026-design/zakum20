@@ -22,14 +22,37 @@ scenes:
         slot: 11
         item: COMPARATOR
         amount: 1
-        item-name: "&ePerformance Mode"
+        item-name: "&ePerf Mode: Auto"
         item-lore:
-          - "&7Switch visuals between auto/on/off."
+          - "&7Let the system decide."
         click-events:
-          message:
-            message: "&7Use &f/perfmode auto|on|off&7."
+          command:
+            as: player
+            command: "perfmode auto"
       '2':
         slot: 13
+        item: REDSTONE_TORCH
+        amount: 1
+        item-name: "&cPerf Mode: On"
+        item-lore:
+          - "&7Force low visuals."
+        click-events:
+          command:
+            as: player
+            command: "perfmode on"
+      '3':
+        slot: 15
+        item: GLOWSTONE_DUST
+        amount: 1
+        item-name: "&aPerf Mode: Off"
+        item-lore:
+          - "&7Force full visuals."
+        click-events:
+          command:
+            as: player
+            command: "perfmode off"
+      '4':
+        slot: 21
         item: PAPER
         amount: 1
         item-name: "&fChat Settings"
@@ -38,8 +61,8 @@ scenes:
         click-events:
           message:
             message: "&7Chat settings panel will be wired."
-      '3':
-        slot: 15
+      '5':
+        slot: 23
         item: ITEM_FRAME
         amount: 1
         item-name: "&bVisuals"
@@ -48,7 +71,7 @@ scenes:
         click-events:
           message:
             message: "&7Visual settings panel will be wired."
-      '4':
+      '6':
         slot: 22
         item: BELL
         amount: 1
@@ -58,7 +81,7 @@ scenes:
         click-events:
           message:
             message: "&7Notification settings will be wired."
-      '5':
+      '7':
         slot: 40
         item: ARROW
         amount: 1

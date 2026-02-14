@@ -37,12 +37,49 @@ scenes:
         item-lore:
           - "&7Open the main hub GUI."
         click-events:
-          open-gui:
+          open-context:
             id: system.root
+            context:
+              origin: "example"
       '3':
         slot: 14
+        item: COMMAND_BLOCK
+        amount: 1
+        item-name: "&eRun Command"
+        item-lore:
+          - "&7Executes a command as player."
+        click-events:
+          command:
+            as: player
+            command: "zakum status"
+      '4':
+        slot: 16
+        item: REDSTONE
+        amount: 1
+        item-name: "&cACE Trigger"
+        item-lore:
+          - "&7Fire a quick ACE script."
+        click-events:
+          ace-trigger:
+            script:
+              - "[MESSAGE] <green>ACE test from example GUI</green>"
+      '5':
+        slot: 31
         item: BARRIER
         amount: 1
         item-name: "&cClose"
         click-events:
           close-inventory: {}
+  '1':
+    delay: 40
+    items:
+      '1':
+        slot: 22
+        item: CLOCK
+        amount: 1
+        item-name: "&eScene 2"
+        item-lore:
+          - "&7This item appears after 2 seconds."
+        click-events:
+          message:
+            message: "&eScene 2 active."

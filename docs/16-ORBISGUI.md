@@ -47,13 +47,20 @@ Implemented now:
 
 - `/gui`, `/gui open <id>`, `/gui list`, `/gui reload`
 - YAML loading from `SystemMenus/` and `CustomGuis/`
+- `commandAlias` support for friendly menu ids
 - basic click events:
   - `open-gui`
+  - `open-context` (open GUI with extra context variables)
   - `message`
   - `close-inventory`
+- advanced click events:
+  - `command` (player/console execution)
+  - `ace-trigger` (fire ACE scripts)
 - layout helpers:
   - `empty-fill` (background fill)
   - `item-flags` (per-item ItemFlag support)
+- multi-scene menus:
+  - `scenes` with `delay` (tick-based transitions)
 - seeded system menus:
   - `system.root`
   - `battlepass.main`
@@ -75,6 +82,19 @@ Known planned gaps for full InfiniteGUI parity:
 - player/offline selectors
 - in-game editor surface
 - advanced item rendering (textures/enchants/custom fill modes)
+
+## Context placeholders (dynamic)
+
+OrbisGUI injects common placeholders automatically; these can be used in titles,
+item names, lore, and click-event context values:
+
+- `%player%`, `%player_name%`, `%player_uuid%`
+- `%server_id%`, `%online%`, `%tps%`
+- `%world%`, `%x%`, `%y%`, `%z%`, `%ping%`
+- `%rank%`, `%discord_linked%`, `%discord_id%`
+- `%balance%`
+- `%friends%`, `%allies%`, `%rivals%`
+- `%level%`, `%health%`, `%food%`
 
 ## Recommendation
 

@@ -24,8 +24,8 @@ scenes:
         amount: 1
         item-name: "&bOrbis Control Hub"
         item-lore:
-          - "&7Welcome, &f%player%&7."
-          - "&7Select a capability to open."
+          - "&7Server: &f%server_id%"
+          - "&7Online: &f%online% &7| TPS: &f%tps%"
         click-events:
           message:
             message: "&bOrbis &7hub loaded."
@@ -35,27 +35,33 @@ scenes:
         amount: 1
         item-name: "&aProfile"
         item-lore:
-          - "&7Stats, titles, and personal info."
+          - "&7Rank: &f%rank%"
+          - "&7Balance: &a$%balance%"
         click-events:
-          open-gui:
+          open-context:
             id: profile.main
+            context:
+              origin: "hub"
       '3':
         slot: 12
         item: HEART_OF_THE_SEA
         amount: 1
         item-name: "&dSocial"
         item-lore:
-          - "&7Friends, clans, alliances."
+          - "&7Friends: &f%friends%"
+          - "&7Allies: &f%allies% &7| Rivals: &f%rivals%"
         click-events:
-          open-gui:
+          open-context:
             id: social.main
+            context:
+              origin: "hub"
       '4':
         slot: 14
         item: EMERALD
         amount: 1
         item-name: "&6Economy"
         item-lore:
-          - "&7Balances, transfers, boosters."
+          - "&7Balance: &a$%balance%"
         click-events:
           open-gui:
             id: economy.main

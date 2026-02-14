@@ -3,6 +3,7 @@ package net.orbis.orbisgui;
 import net.orbis.orbisgui.menu.MenuRepository;
 import net.orbis.orbisgui.prompts.ChatPromptService;
 import net.orbis.orbisgui.runtime.OrbisGuiService;
+import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.gui.GuiIds;
 import net.orbis.zakum.api.gui.GuiService;
 import org.bukkit.Bukkit;
@@ -31,6 +32,7 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
   private MenuRepository menus;
   private ChatPromptService prompts;
   private OrbisGuiService gui;
+  private ZakumApi api;
 
   @Override
   public void onEnable() {
@@ -41,6 +43,15 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
     saveDefaultMenu("SystemMenus/SystemRoot.yml");
     saveDefaultMenu("SystemMenus/CratesMain.yml");
     saveDefaultMenu("SystemMenus/BattlePassMain.yml");
+    saveDefaultMenu("SystemMenus/BattlePassRewards.yml");
+    saveDefaultMenu("SystemMenus/CratesPreview.yml");
+    saveDefaultMenu("SystemMenus/ProfileMain.yml");
+    saveDefaultMenu("SystemMenus/SocialMain.yml");
+    saveDefaultMenu("SystemMenus/EconomyMain.yml");
+    saveDefaultMenu("SystemMenus/SettingsMain.yml");
+    saveDefaultMenu("SystemMenus/NetworkStatus.yml");
+    saveDefaultMenu("SystemMenus/AceLab.yml");
+    saveDefaultMenu("SystemMenus/CosmeticsMain.yml");
     saveDefaultMenu("CustomGuis/example.yml");
 
     this.menus = new MenuRepository(this);
@@ -48,7 +59,8 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
 
     this.prompts = new ChatPromptService(this);
 
-    this.gui = new OrbisGuiService(this, menus, prompts);
+    this.api = Bukkit.getServicesManager().load(ZakumApi.class);
+    this.gui = new OrbisGuiService(this, menus, prompts, api);
     Bukkit.getServicesManager().register(GuiService.class, gui, this, ServicePriority.Normal);
 
     if (getCommand("gui") != null) {

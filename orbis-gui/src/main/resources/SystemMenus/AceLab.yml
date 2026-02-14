@@ -42,12 +42,16 @@ scenes:
         slot: 15
         item: REDSTONE
         amount: 1
-        item-name: "&cDebug Triggers"
+        item-name: "&cDebug Trigger"
         item-lore:
           - "&7Fire a test trigger."
         click-events:
-          message:
-            message: "&7ACE debug triggers will be wired."
+          ace-trigger:
+            script:
+              - "[MESSAGE] <aqua>ACE Debug</aqua> triggered by <white>%player%</white>"
+              - "[SOUND] ENTITY_EXPERIENCE_ORB_PICKUP {volume=0.8 pitch=1.2}"
+            metadata:
+              source: "ace.lab"
       '4':
         slot: 22
         item: OBSERVER

@@ -24,10 +24,11 @@ scenes:
         amount: 1
         item-name: "&aBalance"
         item-lore:
-          - "&7Check your balance."
+          - "&7Current: &a$%balance%"
         click-events:
-          message:
-            message: "&7Use &f/zakum economy balance %player% &7to view."
+          command:
+            as: player
+            command: "zakum economy balance %player%"
       '2':
         slot: 20
         item: GOLD_INGOT
@@ -56,8 +57,9 @@ scenes:
         item-lore:
           - "&7Admin-only balance overrides."
         click-events:
-          message:
-            message: "&7Use &f/zakum economy set %player% <amount>&7."
+          command:
+            as: console
+            command: "zakum economy status"
       '5':
         slot: 31
         item: FIREWORK_ROCKET

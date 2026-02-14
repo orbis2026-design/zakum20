@@ -24,8 +24,9 @@ scenes:
         amount: 1
         item-name: "&f%player%"
         item-lore:
-          - "&7Rank: &fDEFAULT"
-          - "&7Status: &aOnline"
+          - "&7Rank: &f%rank%"
+          - "&7Ping: &f%ping%ms &7| Level: &f%level%"
+          - "&7Balance: &a$%balance%"
       '2':
         slot: 21
         item: PAPER
@@ -62,7 +63,8 @@ scenes:
         amount: 1
         item-name: "&dSocial"
         item-lore:
-          - "&7Friends and clans."
+          - "&7Friends: &f%friends%"
+          - "&7Allies: &f%allies% &7| Rivals: &f%rivals%"
         click-events:
           open-gui:
             id: social.main

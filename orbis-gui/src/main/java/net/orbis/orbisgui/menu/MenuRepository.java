@@ -21,18 +21,23 @@ public final class MenuRepository {
 
   private final Plugin plugin;
   private final Map<String, MenuDef> menus;
+  private final Map<String, String> aliases;
 
   public MenuRepository(Plugin plugin) {
     this.plugin = plugin;
     this.menus = new ConcurrentHashMap<>();
+    this.aliases = new ConcurrentHashMap<>();
   }
 
   public void reload() {
     Map<String, MenuDef> loaded = new LinkedHashMap<>();
-    loadFromFolder(folder("menus.system-path", "SystemMenus"), loaded);
-    loadFromFolder(folder("menus.custom-path", "CustomGuis"), loaded);
+    Map<String, String> aliasLoaded = new LinkedHashMap<>();
+    loadFromFolder(folder("menus.system-path", "SystemMenus"), loaded, aliasLoaded);
+    loadFromFolder(folder("menus.custom-path", "CustomGuis"), loaded, aliasLoaded);
     menus.clear();
     menus.putAll(loaded);
+    aliases.clear();
+    aliases.putAll(aliasLoaded);
   }
 
   public Set<String> ids() {
@@ -41,7 +46,9 @@ public final class MenuRepository {
 
   public MenuDef get(String id) {
     if (id == null || id.isBlank()) return null;
-    return menus.get(id.trim().toLowerCase(Locale.ROOT));
+    String key = id.trim().toLowerCase(Locale.ROOT);
+    String resolved = aliases.getOrDefault(key, key);
+    return menus.get(resolved);
   }
 
   private File folder(String pathKey, String fallback) {
@@ -49,7 +56,7 @@ public final class MenuRepository {
     return new File(plugin.getDataFolder(), configured == null ? fallback : configured);
   }
 
-  private void loadFromFolder(File folder, Map<String, MenuDef> out) {
+  private void loadFromFolder(File folder, Map<String, MenuDef> out, Map<String, String> aliasesOut) {
     if (folder == null || !folder.exists() || !folder.isDirectory()) return;
     File[] files = folder.listFiles((dir, name) -> name != null && name.toLowerCase(Locale.ROOT).endsWith(".yml"));
     if (files == null) return;
@@ -59,6 +66,9 @@ public final class MenuRepository {
       MenuDef def = parse(yaml);
       if (def == null) continue;
       out.put(def.id(), def);
+      if (def.commandAlias() != null && !def.commandAlias().isBlank()) {
+        aliasesOut.put(def.commandAlias().trim().toLowerCase(Locale.ROOT), def.id());
+      }
     }
   }
 
@@ -69,41 +79,123 @@ public final class MenuRepository {
 
     int rows = clampRows(yaml.getInt("rows", 3));
     String title = yaml.getString("title", codeId);
+    String commandAlias = yaml.getString("commandAlias", null);
+    if (commandAlias != null && commandAlias.isBlank()) commandAlias = null;
 
-    ConfigurationSection scene = yaml.getConfigurationSection("scenes.0.items");
-    Map<Integer, MenuDef.MenuItemDef> items = new LinkedHashMap<>();
-    if (scene != null) {
-      for (String key : scene.getKeys(false)) {
-        ConfigurationSection item = scene.getConfigurationSection(key);
-        if (item == null) continue;
-
-        int slot = item.getInt("slot", -1);
-        if (slot < 0 || slot >= rows * 9) continue;
-
-        Material material = parseMaterial(item.getString("item", "STONE"));
-        int amount = Math.max(1, Math.min(64, item.getInt("amount", 1)));
-        String name = item.getString("item-name", "");
-        List<String> lore = item.getStringList("item-lore");
-        List<ItemFlag> flags = parseFlags(item.getStringList("item-flags"));
-
-        ConfigurationSection clicks = item.getConfigurationSection("click-events");
-        String openGuiId = null;
-        String message = null;
-        boolean close = false;
-
-        if (clicks != null) {
-          openGuiId = clicks.getString("open-gui.id", null);
-          message = clicks.getString("message.message", null);
-          close = clicks.isConfigurationSection("close-inventory");
+    Map<Integer, MenuDef.MenuSceneDef> scenes = new LinkedHashMap<>();
+    ConfigurationSection scenesSection = yaml.getConfigurationSection("scenes");
+    if (scenesSection != null) {
+      for (String key : scenesSection.getKeys(false)) {
+        int sceneIndex;
+        try {
+          sceneIndex = Integer.parseInt(key);
+        } catch (NumberFormatException ex) {
+          continue;
         }
-
-        items.put(slot, new MenuDef.MenuItemDef(slot, material, amount, name, new ArrayList<>(lore), flags, openGuiId, message, close));
+        ConfigurationSection sceneSection = scenesSection.getConfigurationSection(key);
+        if (sceneSection == null) continue;
+        int delay = Math.max(0, sceneSection.getInt("delay", 0));
+        ConfigurationSection sceneItems = sceneSection.getConfigurationSection("items");
+        Map<Integer, MenuDef.MenuItemDef> items = parseItems(sceneItems, rows);
+        applyEmptyFill(yaml, rows, items);
+        scenes.put(sceneIndex, new MenuDef.MenuSceneDef(delay, Map.copyOf(items)));
       }
     }
 
-    applyEmptyFill(yaml, rows, items);
+    if (scenes.isEmpty()) {
+      scenes.put(0, new MenuDef.MenuSceneDef(0, Map.of()));
+    }
 
-    return new MenuDef(codeId, rows, title, Map.copyOf(items));
+    return new MenuDef(codeId, rows, title, commandAlias, Map.copyOf(scenes));
+  }
+
+  private static Map<Integer, MenuDef.MenuItemDef> parseItems(ConfigurationSection scene, int rows) {
+    Map<Integer, MenuDef.MenuItemDef> items = new LinkedHashMap<>();
+    if (scene == null) return items;
+    for (String key : scene.getKeys(false)) {
+      ConfigurationSection item = scene.getConfigurationSection(key);
+      if (item == null) continue;
+
+      int slot = item.getInt("slot", -1);
+      if (slot < 0 || slot >= rows * 9) continue;
+
+      Material material = parseMaterial(item.getString("item", "STONE"));
+      int amount = Math.max(1, Math.min(64, item.getInt("amount", 1)));
+      String name = item.getString("item-name", "");
+      List<String> lore = item.getStringList("item-lore");
+      List<ItemFlag> flags = parseFlags(item.getStringList("item-flags"));
+
+      ConfigurationSection clicks = item.getConfigurationSection("click-events");
+      String openGuiId = null;
+      Map<String, String> openContext = Map.of();
+      String message = null;
+      boolean close = false;
+      MenuDef.CommandAction commandAction = null;
+      MenuDef.AceAction aceAction = null;
+
+      if (clicks != null) {
+        ConfigurationSection openGui = clicks.getConfigurationSection("open-gui");
+        if (openGui != null) {
+          openGuiId = openGui.getString("id", null);
+          openContext = parseContext(openGui.getConfigurationSection("context"));
+        }
+
+        ConfigurationSection openCtx = clicks.getConfigurationSection("open-context");
+        if (openCtx != null) {
+          openGuiId = openCtx.getString("id", openGuiId);
+          Map<String, String> ctx = parseContext(openCtx.getConfigurationSection("context"));
+          if (!ctx.isEmpty()) {
+            openContext = ctx;
+          }
+        }
+
+        message = clicks.getString("message.message", null);
+        close = clicks.isConfigurationSection("close-inventory");
+
+        ConfigurationSection command = clicks.getConfigurationSection("command");
+        if (command != null) {
+          String cmd = command.getString("command", command.getString("cmd", ""));
+          if (cmd != null && !cmd.isBlank()) {
+            String as = command.getString("as", "player");
+            boolean asConsole = "console".equalsIgnoreCase(as);
+            commandAction = new MenuDef.CommandAction(cmd, asConsole);
+          }
+        }
+
+        ConfigurationSection ace = clicks.getConfigurationSection("ace-trigger");
+        if (ace != null) {
+          List<String> script = ace.getStringList("script");
+          if (script == null || script.isEmpty()) {
+            String single = ace.getString("script", ace.getString("line", null));
+            if (single != null && !single.isBlank()) {
+              script = List.of(single);
+            } else {
+              script = ace.getStringList("lines");
+            }
+          }
+          if (script != null && !script.isEmpty()) {
+            Map<String, String> meta = parseContext(ace.getConfigurationSection("metadata"));
+            aceAction = new MenuDef.AceAction(List.copyOf(script), meta);
+          }
+        }
+      }
+
+      items.put(slot, new MenuDef.MenuItemDef(
+        slot,
+        material,
+        amount,
+        name,
+        new ArrayList<>(lore),
+        flags,
+        openGuiId,
+        openContext,
+        message,
+        close,
+        commandAction,
+        aceAction
+      ));
+    }
+    return items;
   }
 
   private static int clampRows(int rows) {
@@ -141,7 +233,20 @@ public final class MenuRepository {
     for (int slot : slots) {
       if (slot < 0 || slot >= rows * 9) continue;
       if (items.containsKey(slot)) continue;
-      items.put(slot, new MenuDef.MenuItemDef(slot, material, amount, name, new ArrayList<>(lore), flags, null, null, false));
+      items.put(slot, new MenuDef.MenuItemDef(
+        slot,
+        material,
+        amount,
+        name,
+        new ArrayList<>(lore),
+        flags,
+        null,
+        Map.of(),
+        null,
+        false,
+        null,
+        null
+      ));
     }
   }
 
@@ -201,5 +306,17 @@ public final class MenuRepository {
       return List.of(ItemFlag.values());
     }
     return List.copyOf(flags);
+  }
+
+  private static Map<String, String> parseContext(ConfigurationSection section) {
+    if (section == null) return Map.of();
+    Map<String, String> out = new LinkedHashMap<>();
+    for (String key : section.getKeys(false)) {
+      if (key == null || key.isBlank()) continue;
+      Object value = section.get(key);
+      if (value == null) continue;
+      out.put(key, String.valueOf(value));
+    }
+    return Map.copyOf(out);
   }
 }
