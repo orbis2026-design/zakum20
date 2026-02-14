@@ -707,6 +707,7 @@ public final class ZakumPlugin extends JavaPlugin {
       sender.sendMessage("Usage: /zakum stress start [iterations] [virtualPlayers]");
       sender.sendMessage("Usage: /zakum stress stop");
       sender.sendMessage("Usage: /zakum stress status");
+      sender.sendMessage("Usage: /zakum stress report [label]");
       return true;
     }
 
@@ -734,9 +735,29 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (sub.equals("report")) {
+      String label = null;
+      if (args.length >= 3) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 2; i < args.length; i++) {
+          if (i > 2) sb.append(' ');
+          sb.append(args[i]);
+        }
+        label = sb.toString();
+      }
+      sender.sendMessage("Generating stress report...");
+      String finalLabel = label;
+      scheduler.runAsync(() -> {
+        StressHarnessV2.ReportResult result = stressHarness.writeReport(finalLabel);
+        scheduler.runGlobal(() -> sender.sendMessage(result.message()));
+      });
+      return true;
+    }
+
     sender.sendMessage("Usage: /zakum stress start [iterations] [virtualPlayers]");
     sender.sendMessage("Usage: /zakum stress stop");
     sender.sendMessage("Usage: /zakum stress status");
+    sender.sendMessage("Usage: /zakum stress report [label]");
     return true;
   }
 

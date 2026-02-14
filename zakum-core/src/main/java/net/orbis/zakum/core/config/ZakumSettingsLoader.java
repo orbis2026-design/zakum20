@@ -304,6 +304,8 @@ public final class ZakumSettingsLoader {
     boolean allowEconomy = bool(cfg, "operations.stress.allowEconomy", true);
     boolean allowChat = bool(cfg, "operations.stress.allowChat", true);
     boolean allowVisuals = bool(cfg, "operations.stress.allowVisuals", true);
+    java.util.List<ZakumSettings.Operations.StressScenario> scenarios = loadStressScenarios(cfg);
+    var report = loadStressReport(cfg);
 
     return new ZakumSettings.Operations(
       new ZakumSettings.Operations.CircuitBreaker(
@@ -328,9 +330,39 @@ public final class ZakumSettingsLoader {
         allowRtp,
         allowEconomy,
         allowChat,
-        allowVisuals
+        allowVisuals,
+        scenarios,
+        report
       )
     );
+  }
+
+  private static java.util.List<ZakumSettings.Operations.StressScenario> loadStressScenarios(FileConfiguration cfg) {
+    java.util.List<ZakumSettings.Operations.StressScenario> out = new java.util.ArrayList<>();
+    if (cfg == null) return out;
+    java.util.List<java.util.Map<?, ?>> raw = cfg.getMapList("operations.stress.scenarios");
+    if (raw == null || raw.isEmpty()) return out;
+
+    for (java.util.Map<?, ?> map : raw) {
+      if (map == null || map.isEmpty()) continue;
+      String name = stringValue(map.get("name"));
+      if (name == null || name.isBlank()) continue;
+      int weight = clampI(intValue(map.get("weight"), 1), 1, 10_000);
+      java.util.List<String> script = listOfStrings(map.get("script"));
+      if (script.isEmpty()) {
+        script = listOfStrings(map.get("lines"));
+      }
+      java.util.Set<String> tags = setOfStrings(map.get("tags"));
+      out.add(new ZakumSettings.Operations.StressScenario(name, weight, script, tags));
+    }
+    return java.util.List.copyOf(out);
+  }
+
+  private static ZakumSettings.Operations.StressReport loadStressReport(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "operations.stress.report.enabled", true);
+    String folder = str(cfg, "operations.stress.report.folder", "stress-reports").trim();
+    int keep = clampI(cfg.getInt("operations.stress.report.keep", 20), 0, 500);
+    return new ZakumSettings.Operations.StressReport(enabled, folder, keep);
   }
 
   private static ZakumSettings.Economy loadEconomy(FileConfiguration cfg) {
@@ -526,6 +558,67 @@ public final class ZakumSettingsLoader {
     );
   }
 
+
+  private static String stringValue(Object value) {
+    if (value == null) return null;
+    String text = String.valueOf(value).trim();
+    return text.isBlank() ? null : text;
+  }
+
+  private static int intValue(Object value, int fallback) {
+    if (value == null) return fallback;
+    if (value instanceof Number n) return n.intValue();
+    try {
+      return Integer.parseInt(String.valueOf(value).trim());
+    } catch (NumberFormatException ignored) {
+      return fallback;
+    }
+  }
+
+  private static java.util.List<String> listOfStrings(Object raw) {
+    java.util.ArrayList<String> out = new java.util.ArrayList<>();
+    if (raw == null) return out;
+    if (raw instanceof Iterable<?> iterable) {
+      for (Object item : iterable) {
+        String text = stringValue(item);
+        if (text != null) out.add(text);
+      }
+    } else {
+      String text = stringValue(raw);
+      if (text != null) {
+        if (text.contains("\n")) {
+          for (String line : text.split("\\R")) {
+            String cleaned = stringValue(line);
+            if (cleaned != null) out.add(cleaned);
+          }
+        } else {
+          out.add(text);
+        }
+      }
+    }
+    return java.util.List.copyOf(out);
+  }
+
+  private static java.util.Set<String> setOfStrings(Object raw) {
+    java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+    if (raw == null) return out;
+    if (raw instanceof Iterable<?> iterable) {
+      for (Object item : iterable) {
+        String text = stringValue(item);
+        if (text != null) out.add(text.toUpperCase(Locale.ROOT));
+      }
+    } else {
+      String text = stringValue(raw);
+      if (text != null) {
+        String[] parts = text.split("[,\\s]+");
+        for (String part : parts) {
+          String cleaned = stringValue(part);
+          if (cleaned != null) out.add(cleaned.toUpperCase(Locale.ROOT));
+        }
+      }
+    }
+    return java.util.Set.copyOf(out);
+  }
 
   private static boolean bool(FileConfiguration cfg, String path, boolean def) {
     return cfg.getBoolean(path, def);

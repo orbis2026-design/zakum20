@@ -8,9 +8,11 @@ import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -43,6 +45,7 @@ public final class StressHarnessV2 implements AutoCloseable {
   private final ZakumSettings.Operations.Stress cfg;
   private final MetricsMonitor metrics;
   private final Logger logger;
+  private final ZakumSettings.Operations.StressReport reportCfg;
 
   private final List<Scenario> baseScenarios;
   private final Map<String, LongAdder> scenarioCounts;
@@ -85,7 +88,8 @@ public final class StressHarnessV2 implements AutoCloseable {
     this.cfg = Objects.requireNonNull(cfg, "cfg");
     this.metrics = metrics;
     this.logger = logger;
-    this.baseScenarios = buildDefaultScenarios();
+    this.reportCfg = cfg.report();
+    this.baseScenarios = buildScenarios(cfg);
     this.scenarioCounts = new ConcurrentHashMap<>();
 
     this.actorCursor = new AtomicLong();
@@ -212,6 +216,71 @@ public final class StressHarnessV2 implements AutoCloseable {
       lastErrorAtMs,
       now
     );
+  }
+
+  public ReportResult writeReport(String label) {
+    if (reportCfg == null || !reportCfg.enabled()) {
+      return new ReportResult(false, null, "Stress reporting is disabled.");
+    }
+
+    File folder = resolveReportFolder();
+    if (!folder.exists() && !folder.mkdirs()) {
+      return new ReportResult(false, null, "Failed to create report folder: " + folder.getAbsolutePath());
+    }
+
+    String safeLabel = sanitizeLabel(label);
+    String ts = String.valueOf(System.currentTimeMillis());
+    String fileName = "stress-report-" + ts + (safeLabel.isBlank() ? "" : "-" + safeLabel) + ".yml";
+    File out = new File(folder, fileName);
+
+    Snapshot snap = snapshot();
+    YamlConfiguration yaml = new YamlConfiguration();
+    yaml.set("report.createdAtMs", System.currentTimeMillis());
+    yaml.set("report.label", safeLabel.isBlank() ? null : safeLabel);
+    yaml.set("report.serverId", api.server().serverId());
+    yaml.set("report.running", snap.running());
+
+    yaml.set("run.plannedIterations", snap.plannedIterations());
+    yaml.set("run.scheduledIterations", snap.scheduledIterations());
+    yaml.set("run.completedIterations", snap.completedIterations());
+    yaml.set("run.errors", snap.errorCount());
+    yaml.set("run.skippedNoPlayer", snap.skippedNoPlayer());
+    yaml.set("run.virtualPlayers", snap.virtualPlayers());
+    yaml.set("run.iterationsPerTick", snap.iterationsPerTick());
+    yaml.set("run.onlinePlayers", snap.onlinePlayers());
+    yaml.set("run.lastTps", snap.lastTps());
+    yaml.set("run.startedAtMs", snap.startedAtMs());
+    yaml.set("run.stopAtMs", snap.stopAtMs());
+    yaml.set("run.stopReason", snap.stopReason());
+    yaml.set("run.nextAllowedAtMs", snap.nextAllowedAtMs());
+    yaml.set("run.lastError", snap.lastError());
+    yaml.set("run.lastErrorAtMs", snap.lastErrorAtMs());
+    yaml.set("run.snapshotAtMs", snap.snapshotAtMs());
+    yaml.set("run.scenarioCounts", snap.scenarioCounts());
+
+    yaml.set("config.defaultIterations", cfg.defaultIterations());
+    yaml.set("config.maxIterations", cfg.maxIterations());
+    yaml.set("config.cooldownSeconds", cfg.cooldownSeconds());
+    yaml.set("config.virtualPlayers", cfg.virtualPlayers());
+    yaml.set("config.iterationsPerTick", cfg.iterationsPerTick());
+    yaml.set("config.maxDurationSeconds", cfg.maxDurationSeconds());
+    yaml.set("config.minOnlinePlayers", cfg.minOnlinePlayers());
+    yaml.set("config.minTps", cfg.minTps());
+    yaml.set("config.abortBelowTpsSeconds", cfg.abortBelowTpsSeconds());
+    yaml.set("config.maxErrors", cfg.maxErrors());
+    yaml.set("config.allowRtp", cfg.allowRtp());
+    yaml.set("config.allowEconomy", cfg.allowEconomy());
+    yaml.set("config.allowChat", cfg.allowChat());
+    yaml.set("config.allowVisuals", cfg.allowVisuals());
+
+    try {
+      yaml.save(out);
+      pruneReports(folder, reportCfg.keep());
+      if (metrics != null) metrics.recordAction("stress_v2_report");
+      return new ReportResult(true, out, "Stress report saved: " + out.getName());
+    } catch (Exception ex) {
+      return new ReportResult(false, out, "Failed to write report: " + ex.getMessage());
+    }
   }
 
   @Override
@@ -387,6 +456,28 @@ public final class StressHarnessV2 implements AutoCloseable {
     return List.copyOf(out);
   }
 
+  private static List<Scenario> buildScenarios(ZakumSettings.Operations.Stress cfg) {
+    if (cfg == null) return buildDefaultScenarios();
+    List<ZakumSettings.Operations.StressScenario> defs = cfg.scenarios();
+    if (defs == null || defs.isEmpty()) return buildDefaultScenarios();
+
+    List<Scenario> out = new ArrayList<>();
+    for (ZakumSettings.Operations.StressScenario def : defs) {
+      if (def == null) continue;
+      String name = def.name();
+      if (name == null || name.isBlank()) continue;
+      List<String> script = normalizeScript(def.script());
+      if (script.isEmpty()) continue;
+      int weight = Math.max(1, def.weight());
+      Set<Tag> tags = parseTags(def.tags());
+      out.add(new Scenario(name, weight, script, tags));
+    }
+    if (out.isEmpty()) {
+      return buildDefaultScenarios();
+    }
+    return List.copyOf(out);
+  }
+
   private static List<Scenario> buildDefaultScenarios() {
     List<Scenario> out = new ArrayList<>();
     out.add(new Scenario(
@@ -441,6 +532,36 @@ public final class StressHarnessV2 implements AutoCloseable {
     return List.copyOf(out);
   }
 
+  private static List<String> normalizeScript(List<String> script) {
+    if (script == null || script.isEmpty()) return List.of();
+    List<String> out = new ArrayList<>();
+    for (String line : script) {
+      if (line == null) continue;
+      String text = line.trim();
+      if (!text.isBlank()) out.add(text);
+    }
+    return out.isEmpty() ? List.of() : List.copyOf(out);
+  }
+
+  private static Set<Tag> parseTags(Set<String> raw) {
+    if (raw == null || raw.isEmpty()) return EnumSet.noneOf(Tag.class);
+    EnumSet<Tag> set = EnumSet.noneOf(Tag.class);
+    for (String token : raw) {
+      if (token == null || token.isBlank()) continue;
+      String value = token.trim().toUpperCase(java.util.Locale.ROOT);
+      switch (value) {
+        case "RTP" -> set.add(Tag.RTP);
+        case "ECONOMY" -> set.add(Tag.ECONOMY);
+        case "CHAT" -> set.add(Tag.CHAT);
+        case "VISUAL", "VISUALS" -> set.add(Tag.VISUAL);
+        default -> {
+          // ignore unknown tags
+        }
+      }
+    }
+    return Set.copyOf(set);
+  }
+
   private static Set<Tag> tags(Tag... values) {
     if (values == null || values.length == 0) return EnumSet.noneOf(Tag.class);
     EnumSet<Tag> set = EnumSet.noneOf(Tag.class);
@@ -473,9 +594,52 @@ public final class StressHarnessV2 implements AutoCloseable {
     return minutes + "m" + rem + "s";
   }
 
+  private File resolveReportFolder() {
+    String folderName = reportCfg == null ? "" : reportCfg.folder();
+    if (folderName == null || folderName.isBlank()) folderName = "stress-reports";
+    return new File(plugin.getDataFolder(), folderName);
+  }
+
+  private static void pruneReports(File folder, int keep) {
+    if (folder == null || keep <= 0) return;
+    File[] files = folder.listFiles((dir, name) -> name != null && name.startsWith("stress-report-") && name.endsWith(".yml"));
+    if (files == null || files.length <= keep) return;
+    java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+    for (int i = keep; i < files.length; i++) {
+      try {
+        files[i].delete();
+      } catch (Throwable ignored) {
+        // best effort
+      }
+    }
+  }
+
+  private static String sanitizeLabel(String label) {
+    if (label == null) return "";
+    String trimmed = label.trim();
+    if (trimmed.isBlank()) return "";
+    StringBuilder out = new StringBuilder();
+    for (int i = 0; i < trimmed.length(); i++) {
+      char c = trimmed.charAt(i);
+      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+        out.append(c);
+      } else if (c == ' ') {
+        out.append('_');
+      }
+    }
+    String result = out.toString();
+    if (result.length() > 32) {
+      result = result.substring(0, 32);
+    }
+    return result;
+  }
+
   public record StartResult(boolean started, String message) {}
 
   public record StopResult(boolean stopped, String message) {}
+
+  public record ReportResult(boolean ok, File file, String message) {}
 
   public record Snapshot(
     boolean running,

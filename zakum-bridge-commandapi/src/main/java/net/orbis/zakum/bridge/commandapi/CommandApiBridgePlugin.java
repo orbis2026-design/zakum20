@@ -258,6 +258,24 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       )
       .withSubcommand(new CommandAPICommand("status")
         .executes((CommandExecutor) (sender, args) -> cmdStressStatus(sender))
+      )
+      .withSubcommand(new CommandAPICommand("report")
+        .withOptionalArguments(new StringArgument("label"))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          StressHarnessV2 harness = corePlugin.getStressHarness();
+          if (harness == null) {
+            sender.sendMessage("Stress harness is not available.");
+            return;
+          }
+          String label = (String) args.getOptional("label").orElse(null);
+          sender.sendMessage("Generating stress report...");
+          api.getScheduler().runAsync(() -> {
+            StressHarnessV2.ReportResult result = harness.writeReport(label);
+            api.getScheduler().runGlobal(() -> sender.sendMessage(result.message()));
+          });
+        })
       );
   }
 

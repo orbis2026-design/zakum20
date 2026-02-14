@@ -27,11 +27,17 @@ operations:
     allowEconomy: true
     allowChat: true
     allowVisuals: true
+    report:
+      enabled: true
+      folder: "stress-reports"
+      keep: 20
+    scenarios: [] # optional override (see defaults below)
 
 Commands
 - /zakum stress start [iterations] [virtualPlayers]
 - /zakum stress stop
 - /zakum stress status
+- /zakum stress report [label]
 
 Status output
 - Shows planned/scheduled/completed iterations, errors, TPS, and scenario counts.
@@ -52,6 +58,10 @@ Built-in Matrix (defaults)
 - economy_tick: GIVE_MONEY
 - xp_tick: GIVE_XP
 - rtp_economy_combo: GIVE_MONEY + RTP + ACTION_BAR_KEY
+
+Report Output
+- Saved under `plugins/Zakum/<report.folder>/stress-report-<timestamp>[-label].yml`
+- Includes snapshot metrics, scenario counts, and config used for the run
 
 Notes
 - RTP/economy scenarios are skipped automatically if toggled off or economy is unavailable.

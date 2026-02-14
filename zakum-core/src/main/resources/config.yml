@@ -166,6 +166,52 @@ operations:
     allowChat: true
     allowVisuals: true
 
+    report:
+      enabled: true
+      folder: "stress-reports"
+      keep: 20
+
+    # Optional custom scenario matrix (empty = built-in defaults).
+    scenarios:
+      - name: "chat_key"
+        weight: 6
+        tags: ["CHAT"]
+        script:
+          - "[MESSAGE_KEY] key=battlepass_points_gain points=1"
+      - name: "actionbar_key"
+        weight: 6
+        tags: ["CHAT"]
+        script:
+          - "[ACTION_BAR_KEY] key=battlepass_points_gain points=1"
+      - name: "visual_pulse"
+        weight: 4
+        tags: ["VISUAL"]
+        script:
+          - "[PARTICLE] VILLAGER_HAPPY {count=6 dx=0.2 dy=0.4 dz=0.2 speed=0.01}"
+          - "[SOUND] ENTITY_EXPERIENCE_ORB_PICKUP {volume=0.5 pitch=1.2}"
+      - name: "aoe_particles"
+        weight: 3
+        tags: ["VISUAL"]
+        script:
+          - "[PARTICLE] FLAME @NEARBY {radius=5 count=8 dx=0.2 dy=0.3 dz=0.2 speed=0.01}"
+      - name: "economy_tick"
+        weight: 3
+        tags: ["ECONOMY"]
+        script:
+          - "[GIVE_MONEY] amount=1"
+      - name: "xp_tick"
+        weight: 3
+        tags: []
+        script:
+          - "[GIVE_XP] amount=2"
+      - name: "rtp_economy_combo"
+        weight: 1
+        tags: ["ECONOMY", "RTP", "CHAT"]
+        script:
+          - "[GIVE_MONEY] amount=1"
+          - "[RTP] @SELF {min=64 max=384}"
+          - "[ACTION_BAR_KEY] key=battlepass_points_gain points=1"
+
 http:
   # Default client used by Zakum (controlPlane, future bridges).
   connectTimeoutMs: 3000

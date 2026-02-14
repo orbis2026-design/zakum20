@@ -197,8 +197,39 @@ public record ZakumSettings(
       boolean allowRtp,
       boolean allowEconomy,
       boolean allowChat,
-      boolean allowVisuals
-    ) {}
+      boolean allowVisuals,
+      java.util.List<StressScenario> scenarios,
+      StressReport report
+    ) {
+      public Stress {
+        scenarios = scenarios == null ? java.util.List.of() : java.util.List.copyOf(scenarios);
+        report = report == null ? new StressReport(false, "stress-reports", 0) : report;
+      }
+    }
+
+    public record StressScenario(
+      String name,
+      int weight,
+      java.util.List<String> script,
+      java.util.Set<String> tags
+    ) {
+      public StressScenario {
+        name = name == null ? "" : name.trim();
+        weight = Math.max(1, weight);
+        script = script == null ? java.util.List.of() : java.util.List.copyOf(script);
+        tags = tags == null ? java.util.Set.of() : java.util.Set.copyOf(tags);
+      }
+    }
+
+    public record StressReport(
+      boolean enabled,
+      String folder,
+      int keep
+    ) {
+      public StressReport {
+        folder = folder == null ? "" : folder.trim();
+      }
+    }
   }
 
   public record Economy(
