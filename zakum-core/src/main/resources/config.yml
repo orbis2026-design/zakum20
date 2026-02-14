@@ -137,6 +137,17 @@ chat:
     enabled: true
     maximumSize: 100000
     expireAfterAccessSeconds: 300
+  localization:
+    enabled: true
+    defaultLocale: "en_us"
+    supportedLocales: ["en_us"]
+    preparedMaximumSize: 100000
+    warmupOnStart: true
+    templates:
+      battlepass_level_up:
+        en_us: "<gradient:<primary>:<secondary>>:logo: BattlePass</gradient> <gray>Tier <aqua>%tier%</aqua> unlocked <gray>(%points% pts)"
+      battlepass_points_gain:
+        en_us: "<gray>+<aqua>%points%</aqua> BattlePass points"
 
 visuals:
   lod:

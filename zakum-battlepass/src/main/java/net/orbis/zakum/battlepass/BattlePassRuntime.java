@@ -4,6 +4,8 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.actions.ActionEvent;
 import net.orbis.zakum.api.actions.ActionSubscription;
 import net.orbis.zakum.api.boosters.BoosterKind;
+import net.orbis.zakum.api.capability.ZakumCapabilities;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.db.DatabaseState;
 import net.orbis.zakum.api.entitlements.EntitlementScope;
 import net.orbis.zakum.battlepass.index.QuestIndex;
@@ -296,12 +298,31 @@ public final class BattlePassRuntime {
     long finalPoints = (long) Math.max(1, Math.floor(base * pointsMult));
 
     st.addPoints(finalPoints);
+    sendBuffered(playerId, "battlepass_points_gain", Map.of(
+      "points", String.valueOf(finalPoints),
+      "tier", String.valueOf(st.tier())
+    ));
 
     // Tier calculation (binary search).
     int newTier = rewards.tierForPoints(st.points());
     int oldTier = st.tier();
     if (newTier > oldTier) {
       st.setTier(newTier);
+      sendBuffered(playerId, "battlepass_level_up", Map.of(
+        "tier", String.valueOf(newTier),
+        "points", String.valueOf(st.points())
+      ));
+    }
+  }
+
+  private void sendBuffered(UUID playerId, String key, Map<String, String> placeholders) {
+    if (playerId == null || key == null || key.isBlank()) return;
+    Player player = Bukkit.getPlayer(playerId);
+    if (player == null || !player.isOnline()) return;
+
+    ChatPacketBuffer buffer = zakum.capability(ZakumCapabilities.CHAT_BUFFER).orElse(null);
+    if (buffer != null) {
+      buffer.send(player, key, placeholders == null ? Map.of() : placeholders);
     }
   }
 

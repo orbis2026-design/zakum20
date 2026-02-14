@@ -5,7 +5,9 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -246,7 +248,57 @@ public final class ZakumSettingsLoader {
     boolean enabled = bool(cfg, "chat.bufferCache.enabled", true);
     long max = clampL(cfg.getLong("chat.bufferCache.maximumSize", 100_000), 1_000, 5_000_000);
     long expireAfterAccess = clampL(cfg.getLong("chat.bufferCache.expireAfterAccessSeconds", 300), 5, 86_400);
-    return new ZakumSettings.Chat(new ZakumSettings.Chat.BufferCache(enabled, max, expireAfterAccess));
+
+    boolean localizationEnabled = bool(cfg, "chat.localization.enabled", true);
+    String defaultLocale = normalizeLocale(str(cfg, "chat.localization.defaultLocale", "en_us"));
+    long preparedMax = clampL(cfg.getLong("chat.localization.preparedMaximumSize", 100_000), 1_000, 5_000_000);
+    boolean warmupOnStart = bool(cfg, "chat.localization.warmupOnStart", true);
+
+    Set<String> supportedLocales = new HashSet<>();
+    for (String raw : cfg.getStringList("chat.localization.supportedLocales")) {
+      String locale = normalizeLocale(raw);
+      if (!locale.isBlank()) supportedLocales.add(locale);
+    }
+    if (supportedLocales.isEmpty()) supportedLocales.add(defaultLocale);
+
+    Map<String, Map<String, String>> templates = loadChatTemplates(cfg.getConfigurationSection("chat.localization.templates"));
+
+    return new ZakumSettings.Chat(
+      new ZakumSettings.Chat.BufferCache(enabled, max, expireAfterAccess),
+      new ZakumSettings.Chat.Localization(
+        localizationEnabled,
+        defaultLocale,
+        supportedLocales,
+        preparedMax,
+        warmupOnStart,
+        templates
+      )
+    );
+  }
+
+  private static Map<String, Map<String, String>> loadChatTemplates(ConfigurationSection section) {
+    if (section == null) return Map.of();
+    LinkedHashMap<String, Map<String, String>> out = new LinkedHashMap<>();
+
+    for (String key : section.getKeys(false)) {
+      if (key == null || key.isBlank()) continue;
+      ConfigurationSection localized = section.getConfigurationSection(key);
+      if (localized == null) continue;
+
+      LinkedHashMap<String, String> byLocale = new LinkedHashMap<>();
+      for (String localeKey : localized.getKeys(false)) {
+        String locale = normalizeLocale(localeKey);
+        if (locale.isBlank()) continue;
+        String message = localized.getString(localeKey, "");
+        if (message == null || message.isBlank()) continue;
+        byLocale.put(locale, message);
+      }
+      if (!byLocale.isEmpty()) {
+        out.put(key.trim(), Map.copyOf(byLocale));
+      }
+    }
+
+    return out.isEmpty() ? Map.of() : Map.copyOf(out);
   }
 
   private static ZakumSettings.Visuals loadVisuals(FileConfiguration cfg) {
@@ -305,5 +357,10 @@ public final class ZakumSettingsLoader {
       if (value != null && !value.isBlank()) return value;
     }
     return "";
+  }
+
+  private static String normalizeLocale(String raw) {
+    if (raw == null) return "";
+    return raw.trim().toLowerCase(Locale.ROOT).replace('-', '_');
   }
 }

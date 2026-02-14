@@ -1,5 +1,6 @@
 package net.orbis.zakum.api.config;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -146,13 +147,51 @@ public record ZakumSettings(
   }
 
   public record Chat(
-    BufferCache bufferCache
+    BufferCache bufferCache,
+    Localization localization
   ) {
     public record BufferCache(
       boolean enabled,
       long maximumSize,
       long expireAfterAccessSeconds
     ) {}
+
+    public record Localization(
+      boolean enabled,
+      String defaultLocale,
+      Set<String> supportedLocales,
+      long preparedMaximumSize,
+      boolean warmupOnStart,
+      Map<String, Map<String, String>> templates
+    ) {
+      public Localization {
+        supportedLocales = supportedLocales == null ? Set.of() : Set.copyOf(supportedLocales);
+        templates = copyTemplates(templates);
+      }
+
+      private static Map<String, Map<String, String>> copyTemplates(Map<String, Map<String, String>> input) {
+        if (input == null || input.isEmpty()) return Map.of();
+        java.util.LinkedHashMap<String, Map<String, String>> out = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, String>> entry : input.entrySet()) {
+          String key = entry.getKey();
+          if (key == null || key.isBlank()) continue;
+
+          Map<String, String> locales = entry.getValue();
+          java.util.LinkedHashMap<String, String> localized = new java.util.LinkedHashMap<>();
+          if (locales != null) {
+            for (Map.Entry<String, String> locEntry : locales.entrySet()) {
+              String locale = locEntry.getKey();
+              String text = locEntry.getValue();
+              if (locale == null || locale.isBlank()) continue;
+              if (text == null || text.isBlank()) continue;
+              localized.put(locale, text);
+            }
+          }
+          out.put(key, Map.copyOf(localized));
+        }
+        return Map.copyOf(out);
+      }
+    }
   }
 
   public record Visuals(

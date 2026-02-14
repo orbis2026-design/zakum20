@@ -3,6 +3,7 @@ package net.orbis.zakum.api.capability;
 import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.boosters.BoosterService;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.entitlements.EntitlementService;
 import net.orbis.zakum.api.luckperms.LuckPermsService;
 import net.orbis.zakum.api.net.ControlPlaneClient;
@@ -35,6 +36,8 @@ public final class ZakumCapabilities {
     Capability.of("zakum:data_store", DataStore.class);
   public static final Capability<SocialService> SOCIAL =
     Capability.of("zakum:social", SocialService.class);
+  public static final Capability<ChatPacketBuffer> CHAT_BUFFER =
+    Capability.of("zakum:chat_buffer", ChatPacketBuffer.class);
 
   public static final Capability<PacketService> PACKETS =
     Capability.of("zakum:packets", PacketService.class);

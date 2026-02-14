@@ -5,6 +5,7 @@ import com.mongodb.client.MongoClients;
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
@@ -36,6 +37,7 @@ import net.orbis.zakum.core.progression.ProgressionServiceImpl;
 import net.orbis.zakum.core.social.CaffeineSocialService;
 import net.orbis.zakum.core.social.ChatBufferCache;
 import net.orbis.zakum.core.social.CloudTabRenderer;
+import net.orbis.zakum.core.social.LocalizedChatPacketBuffer;
 import net.orbis.zakum.core.social.OrbisChatRenderer;
 import net.orbis.zakum.core.social.SocialSnapshotLifecycleListener;
 import net.orbis.zakum.core.storage.MongoDataStore;
@@ -83,6 +85,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private MetricsMonitor metricsMonitor;
   private CloudTabRenderer cloudTabRenderer;
   private OrbisChatRenderer chatRenderer;
+  private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
 
   private MovementSampler movementSampler;
@@ -139,6 +142,11 @@ public final class ZakumPlugin extends JavaPlugin {
       chatBufferCfg.maximumSize(),
       chatBufferCfg.expireAfterAccessSeconds()
     );
+    var localizationCfg = settings.chat().localization();
+    this.chatPacketBuffer = new LocalizedChatPacketBuffer(assets, chatBufferCache, localizationCfg, getLogger());
+    if (localizationCfg.enabled() && localizationCfg.warmupOnStart()) {
+      scheduler.runAsync(chatPacketBuffer::warmup);
+    }
     var gui = new ServiceBackedGuiBridge(new NoopGuiBridge());
 
     this.api = new ZakumApiImpl(
@@ -175,6 +183,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(net.orbis.zakum.api.boosters.BoosterService.class, boosters, this, ServicePriority.Highest);
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
+    sm.register(ChatPacketBuffer.class, chatPacketBuffer, this, ServicePriority.Highest);
 
     this.dataStore = createMongoDataStore();
     if (dataStore != null) {
@@ -215,6 +224,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
     if (dataStore != null) sm.unregister(DataStore.class, dataStore);
     if (socialService != null) sm.unregister(SocialService.class, socialService);
+    if (chatPacketBuffer != null) sm.unregister(ChatPacketBuffer.class, chatPacketBuffer);
     ZakumApiProvider.clear();
 
     if (movementSampler != null) {
@@ -237,6 +247,7 @@ public final class ZakumPlugin extends JavaPlugin {
     cloudClient = null;
     cloudTabRenderer = null;
     chatRenderer = null;
+    chatPacketBuffer = null;
     chatListener = null;
     metricsMonitor = null;
 
