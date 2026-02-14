@@ -33,6 +33,24 @@ final class PacketChatTransport {
   private volatile Method getPlayerManagerMethod;
   private volatile Method sendPacketMethod;
 
+  static final class PreparedPacket {
+    private final Object packet;
+    private final boolean overlay;
+
+    private PreparedPacket(Object packet, boolean overlay) {
+      this.packet = packet;
+      this.overlay = overlay;
+    }
+
+    Object packet() {
+      return packet;
+    }
+
+    boolean overlay() {
+      return overlay;
+    }
+  }
+
   PacketChatTransport(boolean enabled, Logger logger) {
     this.enabled = enabled;
     this.logger = logger;
@@ -67,6 +85,40 @@ final class PacketChatTransport {
       Object playerManager = getPlayerManagerMethod.invoke(api);
       if (playerManager == null) return false;
       sendPacketMethod.invoke(playerManager, viewer, packet);
+      packetSends.increment();
+      return true;
+    } catch (Throwable ex) {
+      sendFailures.increment();
+      warnUnavailable("Packet chat dispatch failed, falling back to Adventure: " + ex.getMessage());
+      return false;
+    }
+  }
+
+  PreparedPacket prepare(String json, boolean overlay) {
+    if (!enabled) return null;
+    if (json == null || json.isBlank()) return null;
+    if (!ensureInitialized()) return null;
+    if (overlay && jsonOverlayCtor == null) return null;
+    try {
+      Object packet = newPacket(json, overlay);
+      if (packet == null) return null;
+      return new PreparedPacket(packet, overlay);
+    } catch (Throwable ex) {
+      warnUnavailable("Packet chat prepare failed: " + ex.getMessage());
+      return null;
+    }
+  }
+
+  boolean sendPrepared(Player viewer, PreparedPacket prepared) {
+    if (!enabled || prepared == null || viewer == null || !viewer.isOnline()) return false;
+    if (!ensureInitialized()) return false;
+    if (prepared.overlay() && jsonOverlayCtor == null) return false;
+    try {
+      Object api = getApiMethod.invoke(null);
+      if (api == null) return false;
+      Object playerManager = getPlayerManagerMethod.invoke(api);
+      if (playerManager == null) return false;
+      sendPacketMethod.invoke(playerManager, viewer, prepared.packet());
       packetSends.increment();
       return true;
     } catch (Throwable ex) {

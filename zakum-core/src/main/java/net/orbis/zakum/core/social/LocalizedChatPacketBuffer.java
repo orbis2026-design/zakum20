@@ -36,6 +36,8 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   private final Set<String> supportedLocales;
   private final PacketChatTransport packetTransport;
   private final Cache<String, PreparedMessage> preparedCache;
+  private final Cache<String, String> preparedJsonCache;
+  private final Cache<String, PacketChatTransport.PreparedPacket> preparedPacketCache;
   private final Map<String, Map<String, String>> templates;
   private final LongAdder resolveRequests;
   private final LongAdder resolveHits;
@@ -72,6 +74,12 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     this.packetTransport = new PacketChatTransport(packetDispatchEnabled, logger);
     long preparedMax = localization == null ? 100_000L : localization.preparedMaximumSize();
     this.preparedCache = Caffeine.newBuilder()
+      .maximumSize(Math.max(1_000L, preparedMax))
+      .build();
+    this.preparedJsonCache = Caffeine.newBuilder()
+      .maximumSize(Math.max(1_000L, preparedMax))
+      .build();
+    this.preparedPacketCache = Caffeine.newBuilder()
       .maximumSize(Math.max(1_000L, preparedMax))
       .build();
     this.templates = new ConcurrentHashMap<>();
@@ -117,11 +125,11 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     boolean warmBedrock = bedrockRemapper != null;
     for (String key : templates.keySet()) {
       for (String locale : supportedLocales) {
-        PreparedMessage message = resolve(key, normalizeLocale(locale), Map.of(), false);
-        if (message != PreparedMessage.EMPTY) prepared++;
+        PreparedPayload message = resolvePayload(key, normalizeLocale(locale), Map.of(), false);
+        if (message.message() != PreparedMessage.EMPTY) prepared++;
         if (warmBedrock) {
-          PreparedMessage bedrock = resolve(key, normalizeLocale(locale), Map.of(), true);
-          if (bedrock != PreparedMessage.EMPTY) prepared++;
+          PreparedPayload bedrock = resolvePayload(key, normalizeLocale(locale), Map.of(), true);
+          if (bedrock.message() != PreparedMessage.EMPTY) prepared++;
         }
       }
     }
@@ -130,28 +138,32 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   @Override
   public PreparedMessage resolve(String key, String locale, Map<String, String> placeholders) {
-    return resolve(key, locale, placeholders, false);
+    return resolvePayload(key, locale, placeholders, false).message();
   }
 
-  private PreparedMessage resolve(String key, String locale, Map<String, String> placeholders, boolean bedrock) {
+  private PreparedPayload resolvePayload(String key, String locale, Map<String, String> placeholders, boolean bedrock) {
     resolveRequests.increment();
     String template = findTemplate(key, locale);
-    if (template == null || template.isBlank()) return PreparedMessage.EMPTY;
+    if (template == null || template.isBlank()) return PreparedPayload.EMPTY;
 
     String rendered = applyPlaceholders(template, placeholders);
     String resolved = themed(assets.resolve(rendered));
-    if (resolved == null || resolved.isBlank()) return PreparedMessage.EMPTY;
+    if (resolved == null || resolved.isBlank()) return PreparedPayload.EMPTY;
 
     String cacheKey = resolveCacheKey(locale, resolved, bedrock);
     PreparedMessage cached = preparedCache.getIfPresent(cacheKey);
     if (cached != null) {
       resolveHits.increment();
-      return cached;
+      String json = preparedJsonCache.getIfPresent(cacheKey);
+      return new PreparedPayload(cached, json, cacheKey);
     }
 
     resolveMisses.increment();
-    PreparedMessage prepared = prepare(resolved, bedrock);
-    preparedCache.put(cacheKey, prepared);
+    PreparedPayload prepared = preparePayload(resolved, bedrock, cacheKey);
+    preparedCache.put(cacheKey, prepared.message());
+    if (prepared.json() != null && !prepared.json().isBlank()) {
+      preparedJsonCache.put(cacheKey, prepared.json());
+    }
     return prepared;
   }
 
@@ -201,10 +213,12 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     if (player == null || !player.isOnline()) return;
     String resolvedLocale = (locale == null || locale.isBlank()) ? localeOf(player) : locale;
     boolean bedrock = isBedrock(player);
-    PreparedMessage message = resolve(key, resolvedLocale, placeholders, bedrock);
+    PreparedPayload payload = resolvePayload(key, resolvedLocale, placeholders, bedrock);
+    PreparedMessage message = payload.message();
     if (message == PreparedMessage.EMPTY) return;
 
     sendCount.increment();
+    if (trySendPrepared(player, payload, overlay)) return;
     if (overlay) {
       if (packetTransport.sendSystem(player, message.serializedJson(), true)) return;
     } else {
@@ -218,15 +232,18 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     }
   }
 
-  private PreparedMessage prepare(String line, boolean bedrock) {
-    if (line == null || line.isBlank()) return PreparedMessage.EMPTY;
+  private PreparedPayload preparePayload(String line, boolean bedrock, String cacheKey) {
+    if (line == null || line.isBlank()) return PreparedPayload.EMPTY;
     Component component = parseCache.parse(line);
     if (bedrock && bedrockRemapper != null) {
       component = bedrockRemapper.remap(component);
     }
     String json = GSON.serialize(component);
     byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-    return new PreparedMessage(component, bytes);
+    PreparedMessage message = new PreparedMessage(component, bytes);
+    cachePacket(cacheKey, json, false);
+    cachePacket(cacheKey, json, true);
+    return new PreparedPayload(message, json, cacheKey);
   }
 
   private String findTemplate(String key, String locale) {
@@ -283,6 +300,45 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     return prefix + '\u0000' + normalizedLocale + '\u0000' + content;
   }
 
+  private static String packetCacheKey(String cacheKey, boolean overlay) {
+    return (overlay ? "overlay" : "chat") + '\u0000' + cacheKey;
+  }
+
+  private void cachePacket(String cacheKey, String json, boolean overlay) {
+    if (json == null || json.isBlank()) return;
+    if (!packetTransport.enabled()) return;
+    String packetKey = packetCacheKey(cacheKey, overlay);
+    if (preparedPacketCache.getIfPresent(packetKey) != null) return;
+    PacketChatTransport.PreparedPacket packet = packetTransport.prepare(json, overlay);
+    if (packet != null) {
+      preparedPacketCache.put(packetKey, packet);
+    }
+  }
+
+  private boolean trySendPrepared(Player player, PreparedPayload payload, boolean overlay) {
+    if (!packetTransport.enabled()) return false;
+    String cacheKey = payload.cacheKey();
+    String packetKey = packetCacheKey(cacheKey, overlay);
+    PacketChatTransport.PreparedPacket packet = preparedPacketCache.getIfPresent(packetKey);
+    if (packet == null) {
+      String json = payload.json();
+      if (json == null || json.isBlank()) {
+        byte[] bytes = payload.message().serializedJson();
+        if (bytes != null && bytes.length > 0) {
+          json = new String(bytes, StandardCharsets.UTF_8);
+        }
+      }
+      if (json != null && !json.isBlank()) {
+        packet = packetTransport.prepare(json, overlay);
+        if (packet != null) {
+          preparedPacketCache.put(packetKey, packet);
+        }
+      }
+    }
+    if (packet == null) return false;
+    return packetTransport.sendPrepared(player, packet);
+  }
+
   private boolean isBedrock(Player player) {
     return bedrockDetector != null && bedrockDetector.isBedrock(player);
   }
@@ -311,4 +367,8 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     long fallbackSends,
     long packetFailures
   ) {}
+
+  private record PreparedPayload(PreparedMessage message, String json, String cacheKey) {
+    private static final PreparedPayload EMPTY = new PreparedPayload(PreparedMessage.EMPTY, null, "");
+  }
 }
