@@ -36,6 +36,10 @@ cloud:
     ttlSeconds: 300
     maximumSize: 50000
     inflightTtlSeconds: 120
+    persist:
+      enabled: false
+      file: "cloud-dedupe.yml"
+      flushSeconds: 60
   ack:
     enabled: true
     path: "/v1/agent/queue/ack"   # supports {serverId}
@@ -48,6 +52,8 @@ cloud:
 Admin Status
 - /zakum cloud status
   - shows ack counters, pending acks, last ack status, inflight/processed sizes
+- /zakum cloud flush
+  - triggers immediate ACK flush + dedupe persist write
 
 Failure Handling
 - If a player is offline: no ACK (entry can be replayed).
@@ -58,3 +64,4 @@ Failure Handling
 Notes
 - Dedupe is in-memory with TTL; replays beyond TTL will be re-processed.
 - For best results, keep dedupe TTL >= cloud queue retry window.
+- Optional dedupe persistence stores processed ids on disk for restart safety.

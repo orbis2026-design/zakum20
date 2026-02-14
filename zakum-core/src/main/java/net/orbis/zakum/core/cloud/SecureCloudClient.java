@@ -11,11 +11,13 @@ import org.bson.BsonArray;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.File;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -59,6 +61,7 @@ public final class SecureCloudClient implements AutoCloseable {
   private final int ackBatchSize;
   private final int ackFlushSeconds;
   private final int ackMaxAttempts;
+  private final long dedupeTtlSeconds;
   private final long inflightTtlSeconds;
   private final int maxFailureAttempts;
   private final HttpClient httpClient;
@@ -74,7 +77,7 @@ public final class SecureCloudClient implements AutoCloseable {
   private final AtomicLong invalidQueueSkips;
   private final AtomicLong queueFailures;
   private final AtomicReference<String> lastError;
-  private final Cache<String, Boolean> processedQueueIds;
+  private final Cache<String, Long> processedQueueIds;
   private final Cache<String, Boolean> inflightQueueIds;
   private final Cache<String, Integer> failureCounts;
   private final ConcurrentLinkedQueue<QueueAck> pendingAcks;
@@ -88,8 +91,16 @@ public final class SecureCloudClient implements AutoCloseable {
   private final AtomicLong lastAckSuccessMs;
   private final AtomicInteger lastAckStatus;
   private final AtomicReference<String> lastAckError;
+  private final boolean dedupePersistEnabled;
+  private final String dedupePersistFile;
+  private final int dedupePersistFlushSeconds;
+  private final AtomicLong lastDedupeLoadMs;
+  private final AtomicLong lastDedupePersistMs;
+  private final AtomicLong dedupePersistErrors;
+  private final AtomicReference<String> lastDedupePersistError;
   private volatile boolean ackDisabled;
   private volatile int ackTaskId;
+  private volatile int dedupePersistTaskId;
 
   public SecureCloudClient(ZakumApi api, ZakumSettings.Cloud cloud, Plugin plugin, Logger logger, MetricsMonitor metrics) {
     this.api = api;
@@ -105,8 +116,12 @@ public final class SecureCloudClient implements AutoCloseable {
     this.ackBatchSize = Math.max(1, cloud.ackBatchSize());
     this.ackFlushSeconds = Math.max(1, cloud.ackFlushSeconds());
     this.ackMaxAttempts = Math.max(1, cloud.ackMaxAttempts());
+    this.dedupeTtlSeconds = Math.max(10L, cloud.dedupeTtlSeconds());
     this.inflightTtlSeconds = Math.max(5L, cloud.inflightTtlSeconds());
     this.maxFailureAttempts = Math.max(0, cloud.maxFailureAttempts());
+    this.dedupePersistEnabled = cloud.dedupeEnabled() && cloud.dedupePersistEnabled();
+    this.dedupePersistFile = cloud.dedupePersistFile() == null ? "cloud-dedupe.yml" : cloud.dedupePersistFile().trim();
+    this.dedupePersistFlushSeconds = Math.max(5, cloud.dedupePersistFlushSeconds());
     this.metrics = metrics;
     this.lastPollAttemptMs = new AtomicLong(0L);
     this.lastPollSuccessMs = new AtomicLong(0L);
@@ -148,19 +163,33 @@ public final class SecureCloudClient implements AutoCloseable {
     this.lastAckSuccessMs = new AtomicLong(0L);
     this.lastAckStatus = new AtomicInteger(0);
     this.lastAckError = new AtomicReference<>("");
+    this.lastDedupeLoadMs = new AtomicLong(0L);
+    this.lastDedupePersistMs = new AtomicLong(0L);
+    this.dedupePersistErrors = new AtomicLong(0L);
+    this.lastDedupePersistError = new AtomicReference<>("");
     this.ackDisabled = false;
     this.ackTaskId = -1;
+    this.dedupePersistTaskId = -1;
     this.httpClient = HttpClient.newBuilder()
       .executor(api.getScheduler().asyncExecutor())
       .connectTimeout(this.requestTimeout)
       .build();
+
+    if (dedupePersistEnabled) {
+      loadPersistedDedupe();
+    }
   }
 
   public void start() {
-    if (!ackEnabled || plugin == null || scheduler == null) return;
-    if (ackTaskId > 0) return;
-    long ticks = Math.max(1L, ackFlushSeconds) * 20L;
-    ackTaskId = scheduler.runTaskTimer(plugin, this::flushAcks, ticks, ticks);
+    if (plugin == null || scheduler == null) return;
+    if (ackEnabled && ackTaskId <= 0) {
+      long ticks = Math.max(1L, ackFlushSeconds) * 20L;
+      ackTaskId = scheduler.runTaskTimer(plugin, this::flushAcks, ticks, ticks);
+    }
+    if (dedupePersistEnabled && processedQueueIds != null && dedupePersistTaskId <= 0) {
+      long ticks = Math.max(5L, dedupePersistFlushSeconds) * 20L;
+      dedupePersistTaskId = scheduler.runTaskTimerAsynchronously(plugin, this::flushPersistedDedupe, ticks, ticks);
+    }
   }
 
   @Override
@@ -169,6 +198,11 @@ public final class SecureCloudClient implements AutoCloseable {
       scheduler.cancelTask(ackTaskId);
     }
     ackTaskId = -1;
+    if (dedupePersistTaskId > 0 && scheduler != null) {
+      scheduler.cancelTask(dedupePersistTaskId);
+    }
+    dedupePersistTaskId = -1;
+    flushPersistedDedupe();
     pendingAcks.clear();
   }
 
@@ -205,6 +239,18 @@ public final class SecureCloudClient implements AutoCloseable {
         logger.warning("Cloud queue poll failed: " + ex.getMessage());
         return null;
       });
+  }
+
+  public boolean requestAckFlush() {
+    if (!ackEnabled || ackDisabled || scheduler == null) return false;
+    scheduler.runAsync(this::flushAcks);
+    return true;
+  }
+
+  public boolean requestDedupePersist() {
+    if (!dedupePersistEnabled || processedQueueIds == null || scheduler == null) return false;
+    scheduler.runAsync(this::flushPersistedDedupe);
+    return true;
   }
 
   private void flushAcks() {
@@ -272,6 +318,79 @@ public final class SecureCloudClient implements AutoCloseable {
         return null;
       })
       .whenComplete((response, error) -> ackFlushRunning.set(false));
+  }
+
+  private File resolveDedupeFile() {
+    String file = dedupePersistFile == null ? "" : dedupePersistFile.trim();
+    if (file.isBlank()) file = "cloud-dedupe.yml";
+    if (plugin == null) return new File(file);
+    return new File(plugin.getDataFolder(), file);
+  }
+
+  private void loadPersistedDedupe() {
+    if (!dedupePersistEnabled || processedQueueIds == null) return;
+    File file = resolveDedupeFile();
+    if (file == null || !file.exists()) return;
+    long now = System.currentTimeMillis();
+    long ttlMs = Math.max(1L, dedupeTtlSeconds) * 1000L;
+
+    try {
+      YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+      java.util.List<java.util.Map<?, ?>> entries = yaml.getMapList("processed");
+      if (entries != null) {
+        for (java.util.Map<?, ?> entry : entries) {
+          if (entry == null) continue;
+          String id = stringValue(entry.get("id"));
+          if (id == null || id.isBlank()) continue;
+          long ts = longValue(entry.get("ts"), 0L);
+          if (ts <= 0L) continue;
+          if ((now - ts) > ttlMs) continue;
+          processedQueueIds.put(id, ts);
+        }
+      }
+      lastDedupeLoadMs.set(now);
+      if (metrics != null) metrics.recordAction("cloud_dedupe_persist_load");
+    } catch (Throwable ex) {
+      dedupePersistErrors.incrementAndGet();
+      lastDedupePersistError.set(ex.getMessage() == null ? "dedupe_load_error" : ex.getMessage());
+      if (metrics != null) metrics.recordAction("cloud_dedupe_persist_error");
+    }
+  }
+
+  private void flushPersistedDedupe() {
+    if (!dedupePersistEnabled || processedQueueIds == null) return;
+    File file = resolveDedupeFile();
+    if (file == null) return;
+    File parent = file.getParentFile();
+    if (parent != null && !parent.exists()) {
+      parent.mkdirs();
+    }
+
+    YamlConfiguration yaml = new YamlConfiguration();
+    java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+    for (java.util.Map.Entry<String, Long> entry : processedQueueIds.asMap().entrySet()) {
+      if (entry == null) continue;
+      String id = entry.getKey();
+      Long ts = entry.getValue();
+      if (id == null || id.isBlank() || ts == null) continue;
+      java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+      row.put("id", id);
+      row.put("ts", ts);
+      rows.add(row);
+    }
+    yaml.set("savedAtMs", System.currentTimeMillis());
+    yaml.set("processed", rows);
+
+    try {
+      yaml.save(file);
+      lastDedupePersistMs.set(System.currentTimeMillis());
+      lastDedupePersistError.set("");
+      if (metrics != null) metrics.recordAction("cloud_dedupe_persist_save");
+    } catch (Exception ex) {
+      dedupePersistErrors.incrementAndGet();
+      lastDedupePersistError.set(ex.getMessage() == null ? "dedupe_save_error" : ex.getMessage());
+      if (metrics != null) metrics.recordAction("cloud_dedupe_persist_error");
+    }
   }
 
   public CompletableFuture<IdentitySnapshot> fetchIdentity(UUID uuid) {
@@ -377,7 +496,7 @@ public final class SecureCloudClient implements AutoCloseable {
 
   private void markProcessed(String queueId) {
     if (queueId == null || queueId.isBlank() || processedQueueIds == null) return;
-    processedQueueIds.put(queueId, Boolean.TRUE);
+    processedQueueIds.put(queueId, System.currentTimeMillis());
     if (failureCounts != null) {
       failureCounts.invalidate(queueId);
     }
@@ -695,6 +814,23 @@ public final class SecureCloudClient implements AutoCloseable {
     return String.valueOf(value);
   }
 
+  private static String stringValue(Object value) {
+    String text = asString(value);
+    if (text == null) return null;
+    String trimmed = text.trim();
+    return trimmed.isBlank() ? null : trimmed;
+  }
+
+  private static long longValue(Object value, long fallback) {
+    if (value == null) return fallback;
+    if (value instanceof Number n) return n.longValue();
+    try {
+      return Long.parseLong(String.valueOf(value).trim());
+    } catch (NumberFormatException ignored) {
+      return fallback;
+    }
+  }
+
   private static boolean parseBoolean(Object value, boolean fallback) {
     if (value == null) return fallback;
     if (value instanceof Boolean b) return b;
@@ -780,6 +916,13 @@ public final class SecureCloudClient implements AutoCloseable {
       queueFailures.get(),
       processedSize,
       inflightSize,
+      dedupePersistEnabled,
+      dedupePersistFile,
+      dedupePersistFlushSeconds,
+      lastDedupeLoadMs.get(),
+      lastDedupePersistMs.get(),
+      dedupePersistErrors.get(),
+      lastDedupePersistError.get(),
       ackEnabled,
       ackDisabled,
       pendingSize,
@@ -811,6 +954,13 @@ public final class SecureCloudClient implements AutoCloseable {
     long queueFailures,
     long processedIds,
     long inflightIds,
+    boolean dedupePersistEnabled,
+    String dedupePersistFile,
+    int dedupePersistFlushSeconds,
+    long lastDedupeLoadMs,
+    long lastDedupePersistMs,
+    long dedupePersistErrors,
+    String lastDedupePersistError,
     boolean ackEnabled,
     boolean ackDisabled,
     int pendingAcks,

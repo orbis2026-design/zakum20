@@ -23,6 +23,11 @@ This snapshot is:
 ### controlPlane
 - optional Orbis Cloud Bot integration endpoint + API key
 
+### cloud
+- `cloud.enabled`: toggles cloud queue polling
+- `cloud.dedupe.*`: replay safety and optional persistence
+- `cloud.ack.*`: ACK batching and retry policy
+
 ### entitlements
 - cache size and TTL
 

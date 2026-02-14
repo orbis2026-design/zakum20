@@ -142,6 +142,9 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     return new CommandAPICommand("cloud")
       .withSubcommand(new CommandAPICommand("status")
         .executes((CommandExecutor) (sender, args) -> cmdCloudStatus(sender))
+      )
+      .withSubcommand(new CommandAPICommand("flush")
+        .executes((CommandExecutor) (sender, args) -> cmdCloudFlush(sender))
       );
   }
 
@@ -177,6 +180,14 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     sender.sendMessage("queueFailures=" + snap.queueFailures());
     sender.sendMessage("processedIds=" + snap.processedIds());
     sender.sendMessage("inflightIds=" + snap.inflightIds());
+    sender.sendMessage("dedupe.persist.enabled=" + snap.dedupePersistEnabled());
+    sender.sendMessage("dedupe.persist.file=" + snap.dedupePersistFile());
+    sender.sendMessage("dedupe.persist.flushSeconds=" + snap.dedupePersistFlushSeconds());
+    sender.sendMessage("dedupe.persist.lastLoad=" + formatEpochMillis(snap.lastDedupeLoadMs()));
+    sender.sendMessage("dedupe.persist.lastSave=" + formatEpochMillis(snap.lastDedupePersistMs()));
+    sender.sendMessage("dedupe.persist.errors=" + snap.dedupePersistErrors());
+    String dedupeErr = snap.lastDedupePersistError();
+    sender.sendMessage("dedupe.persist.lastError=" + (dedupeErr == null || dedupeErr.isBlank() ? "none" : dedupeErr));
     sender.sendMessage("ack.enabled=" + snap.ackEnabled());
     sender.sendMessage("ack.disabled=" + snap.ackDisabled());
     sender.sendMessage("ack.pending=" + snap.pendingAcks());
@@ -192,6 +203,19 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     sender.sendMessage("ack.lastError=" + (ackErr == null || ackErr.isBlank() ? "none" : ackErr));
     String err = snap.lastError();
     sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+  }
+
+  private void cmdCloudFlush(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+    SecureCloudClient cloud = corePlugin.getCloudClient();
+    if (cloud == null) {
+      sender.sendMessage("Cloud client is offline.");
+      return;
+    }
+    boolean ack = cloud.requestAckFlush();
+    boolean dedupe = cloud.requestDedupePersist();
+    sender.sendMessage("Cloud flush queued (ack=" + ack + ", dedupe=" + dedupe + ").");
   }
 
   private CommandAPICommand perfCommand() {

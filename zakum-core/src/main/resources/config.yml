@@ -43,6 +43,10 @@ cloud:
     ttlSeconds: 300
     maximumSize: 50000
     inflightTtlSeconds: 120
+    persist:
+      enabled: false
+      file: "cloud-dedupe.yml"
+      flushSeconds: 60
   ack:
     enabled: true
     path: "/v1/agent/queue/ack"

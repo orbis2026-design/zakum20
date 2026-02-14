@@ -136,6 +136,9 @@ public final class ZakumSettingsLoader {
     long dedupeTtlSeconds = clampL(cfg.getLong("cloud.dedupe.ttlSeconds", 300), 10, 86_400);
     long dedupeMaximumSize = clampL(cfg.getLong("cloud.dedupe.maximumSize", 50_000), 100, 5_000_000);
     long inflightTtlSeconds = clampL(cfg.getLong("cloud.dedupe.inflightTtlSeconds", 120), 10, 86_400);
+    boolean dedupePersistEnabled = bool(cfg, "cloud.dedupe.persist.enabled", false);
+    String dedupePersistFile = str(cfg, "cloud.dedupe.persist.file", "cloud-dedupe.yml").trim();
+    int dedupePersistFlushSeconds = clampI(cfg.getInt("cloud.dedupe.persist.flushSeconds", 60), 5, 3600);
 
     boolean ackEnabled = bool(cfg, "cloud.ack.enabled", true);
     String ackPath = str(cfg, "cloud.ack.path", "/v1/agent/queue/ack").trim();
@@ -156,6 +159,9 @@ public final class ZakumSettingsLoader {
       dedupeEnabled,
       dedupeTtlSeconds,
       dedupeMaximumSize,
+      dedupePersistEnabled,
+      dedupePersistFile,
+      dedupePersistFlushSeconds,
       ackEnabled,
       ackPath,
       ackBatchSize,

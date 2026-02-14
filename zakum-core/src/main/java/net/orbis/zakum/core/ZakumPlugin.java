@@ -495,6 +495,20 @@ public final class ZakumPlugin extends JavaPlugin {
       sendCloudStatus(sender);
       return true;
     }
+    if (args.length >= 2 && args[0].equalsIgnoreCase("cloud") && args[1].equalsIgnoreCase("flush")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      if (cloudClient == null) {
+        sender.sendMessage("Cloud client is offline.");
+        return true;
+      }
+      boolean ack = cloudClient.requestAckFlush();
+      boolean dedupe = cloudClient.requestDedupePersist();
+      sender.sendMessage("Cloud flush queued (ack=" + ack + ", dedupe=" + dedupe + ").");
+      return true;
+    }
 
     if (args.length >= 2 && args[0].equalsIgnoreCase("perf") && args[1].equalsIgnoreCase("status")) {
       if (!sender.hasPermission("zakum.admin")) {
@@ -547,7 +561,7 @@ public final class ZakumPlugin extends JavaPlugin {
       return handlePacketCullCommand(sender, args);
     }
 
-    sender.sendMessage("Usage: /" + label + " cloud status");
+    sender.sendMessage("Usage: /" + label + " cloud status|flush");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress start [iterations] [virtualPlayers]");
     sender.sendMessage("Usage: /" + label + " stress stop");
@@ -663,6 +677,14 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("queueFailures=" + snap.queueFailures());
     sender.sendMessage("processedIds=" + snap.processedIds());
     sender.sendMessage("inflightIds=" + snap.inflightIds());
+    sender.sendMessage("dedupe.persist.enabled=" + snap.dedupePersistEnabled());
+    sender.sendMessage("dedupe.persist.file=" + snap.dedupePersistFile());
+    sender.sendMessage("dedupe.persist.flushSeconds=" + snap.dedupePersistFlushSeconds());
+    sender.sendMessage("dedupe.persist.lastLoad=" + formatEpochMillis(snap.lastDedupeLoadMs()));
+    sender.sendMessage("dedupe.persist.lastSave=" + formatEpochMillis(snap.lastDedupePersistMs()));
+    sender.sendMessage("dedupe.persist.errors=" + snap.dedupePersistErrors());
+    String dedupeErr = snap.lastDedupePersistError();
+    sender.sendMessage("dedupe.persist.lastError=" + (dedupeErr == null || dedupeErr.isBlank() ? "none" : dedupeErr));
     sender.sendMessage("ack.enabled=" + snap.ackEnabled());
     sender.sendMessage("ack.disabled=" + snap.ackDisabled());
     sender.sendMessage("ack.pending=" + snap.pendingAcks());
