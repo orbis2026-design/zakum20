@@ -11,9 +11,15 @@ commands:
     description: Zakum admin command
     usage: /zakum cloud status|perf status|stress run [iterations]
     permission: zakum.admin
+  perfmode:
+    description: Toggle Hugster-style animation performance mode
+    usage: /perfmode <auto|on|off> [player]
+    permission: zakum.perfmode
 
 permissions:
   zakum.admin:
     default: op
+  zakum.perfmode:
+    default: true
   zakum.moderation.alerts:
     default: op

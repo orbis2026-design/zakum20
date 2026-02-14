@@ -36,6 +36,8 @@ import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.packet.AnimationService;
+import net.orbis.zakum.core.perf.PlayerVisualModeListener;
+import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.VisualCircuitBreaker;
 import net.orbis.zakum.core.profile.PlayerJoinListener;
 import net.orbis.zakum.core.profile.ProfileProvider;
@@ -59,7 +61,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.OfflinePlayer;
 import redis.clients.jedis.JedisPool;
 
@@ -103,6 +104,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private ToxicityModerationService toxicityModerationService;
   private BedrockClientDetector bedrockDetector;
   private BedrockGlyphRemapper bedrockGlyphRemapper;
+  private PlayerVisualModeService visualModeService;
   private VisualCircuitBreaker visualCircuitBreaker;
   private volatile long nextStressAllowedAtMs;
 
@@ -150,9 +152,11 @@ public final class ZakumPlugin extends JavaPlugin {
     this.nextStressAllowedAtMs = 0L;
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
+    this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
+    getServer().getPluginManager().registerEvents(new PlayerVisualModeListener(visualModeService), this);
     var aceEngine = new ZakumAceEngine(metricsMonitor);
     var storageService = new StorageServiceImpl(sql);
-    var animations = new AnimationService(this, scheduler, settings.visuals(), metricsMonitor);
+    var animations = new AnimationService(this, scheduler, settings.visuals(), metricsMonitor, visualModeService);
     var bridgeManager = new SimpleBridgeManager();
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();
@@ -215,6 +219,7 @@ public final class ZakumPlugin extends JavaPlugin {
 
     this.dataStore = createMongoDataStore();
     if (dataStore != null) {
+      visualModeService.bindDataStore(dataStore);
       sm.register(DataStore.class, dataStore, this, ServicePriority.Highest);
       this.profileProvider = new ProfileProvider(dataStore);
       getServer().getPluginManager().registerEvents(profileProvider, this);
@@ -292,6 +297,7 @@ public final class ZakumPlugin extends JavaPlugin {
     toxicityModerationService = null;
     bedrockDetector = null;
     bedrockGlyphRemapper = null;
+    visualModeService = null;
     if (visualCircuitBreaker != null) {
       visualCircuitBreaker.stop(scheduler);
       visualCircuitBreaker = null;
@@ -414,6 +420,9 @@ public final class ZakumPlugin extends JavaPlugin {
 
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    if (command.getName().equalsIgnoreCase("perfmode")) {
+      return handlePerfModeCommand(sender, args);
+    }
     if (!command.getName().equalsIgnoreCase("zakum")) return false;
 
     if (args.length >= 2 && args[0].equalsIgnoreCase("cloud") && args[1].equalsIgnoreCase("status")) {
@@ -447,6 +456,48 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " cloud status");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress run [iterations]");
+    sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
+    return true;
+  }
+
+  private boolean handlePerfModeCommand(CommandSender sender, String[] args) {
+    if (visualModeService == null) {
+      sender.sendMessage("Performance mode service is not available.");
+      return true;
+    }
+    if (args.length < 1) {
+      sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
+      return true;
+    }
+
+    var mode = PlayerVisualModeService.Mode.fromInput(args[0]);
+    Player target;
+    if (args.length >= 2) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      target = Bukkit.getPlayerExact(args[1]);
+      if (target == null) {
+        sender.sendMessage("Player not found: " + args[1]);
+        return true;
+      }
+    } else if (sender instanceof Player player) {
+      if (!sender.hasPermission("zakum.perfmode")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      target = player;
+    } else {
+      sender.sendMessage("Console usage: /perfmode <auto|on|off> <player>");
+      return true;
+    }
+
+    visualModeService.setMode(target.getUniqueId(), mode);
+    sender.sendMessage("Performance mode for " + target.getName() + " set to " + mode.displayName() + ".");
+    if (!target.equals(sender)) {
+      target.sendMessage("Your performance mode is now " + mode.displayName() + ".");
+    }
     return true;
   }
 

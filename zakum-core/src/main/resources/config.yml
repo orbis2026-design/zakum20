@@ -203,6 +203,7 @@ visuals:
     enabled: true
     maxPingMs: 180
     minTps: 18.5
+    # Hugster directive: players can override at runtime with /perfmode auto|on|off.
   culling:
     enabled: true
     densityThreshold: 40

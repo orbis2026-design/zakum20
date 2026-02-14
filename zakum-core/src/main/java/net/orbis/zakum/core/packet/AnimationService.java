@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,20 +28,32 @@ public class AnimationService extends AnimationService1_21_11 {
   private final int densityThreshold;
   private final int densityRadius;
   private final MetricsMonitor metrics;
+  private final PlayerVisualModeService visualModes;
 
   public AnimationService(Plugin plugin, ZakumScheduler scheduler) {
-    this(plugin, scheduler, null, null);
+    this(plugin, scheduler, null, null, null);
   }
 
   public AnimationService(Plugin plugin, ZakumScheduler scheduler, ZakumSettings.Visuals visuals) {
-    this(plugin, scheduler, visuals, null);
+    this(plugin, scheduler, visuals, null, null);
   }
 
   public AnimationService(Plugin plugin, ZakumScheduler scheduler, ZakumSettings.Visuals visuals, MetricsMonitor metrics) {
+    this(plugin, scheduler, visuals, metrics, null);
+  }
+
+  public AnimationService(
+    Plugin plugin,
+    ZakumScheduler scheduler,
+    ZakumSettings.Visuals visuals,
+    MetricsMonitor metrics,
+    PlayerVisualModeService visualModes
+  ) {
     super(plugin, scheduler);
     this.plugin = plugin;
     this.scheduler = scheduler;
     this.metrics = metrics;
+    this.visualModes = visualModes;
     var lod = visuals == null ? null : visuals.lod();
     this.adaptiveLodEnabled = lod != null && lod.enabled();
     this.maxPingMs = lod == null ? 180 : lod.maxPingMs();
@@ -74,6 +87,17 @@ public class AnimationService extends AnimationService1_21_11 {
   }
 
   private boolean shouldDowngrade(Player viewer, Location loc) {
+    if (visualModes != null) {
+      PlayerVisualModeService.Mode mode = visualModes.mode(viewer);
+      if (mode == PlayerVisualModeService.Mode.PERFORMANCE) {
+        if (metrics != null) metrics.recordAction("animation_cull_profile");
+        return true;
+      }
+      if (mode == PlayerVisualModeService.Mode.QUALITY) {
+        return false;
+      }
+    }
+
     if (densityCullingEnabled && loc != null && loc.getWorld() != null) {
       int density = loc.getWorld().getNearbyEntities(loc, densityRadius, densityRadius, densityRadius).size();
       if (density >= densityThreshold) {
