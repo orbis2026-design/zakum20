@@ -1,18 +1,48 @@
 codeid: example
-rows: 3
+rows: 4
 type: chest
-title: "&aExample Menu"
+title: "&fExample Layout"
 commandAlias: example
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: GRAY_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
 
 scenes:
   '0':
     delay: 0
     items:
       '1':
-        slot: 13
+        slot: 10
         item: PAPER
         amount: 1
-        item-name: "&fSay hello"
+        item-name: "&aSay hello"
+        item-lore:
+          - "&7Basic message event."
         click-events:
           message:
             message: "&aHello %player%!"
+      '2':
+        slot: 12
+        item: BOOK
+        amount: 1
+        item-name: "&bOpen System"
+        item-lore:
+          - "&7Open the main hub GUI."
+        click-events:
+          open-gui:
+            id: system.root
+      '3':
+        slot: 14
+        item: BARRIER
+        amount: 1
+        item-name: "&cClose"
+        click-events:
+          close-inventory: {}

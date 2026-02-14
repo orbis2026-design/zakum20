@@ -1,7 +1,7 @@
-codeid: crates.main
+codeid: cosmetics.main
 rows: 5
 type: chest
-title: "&eCrates"
+title: "&dCosmetics"
 
 empty-fill:
   enabled: true
@@ -9,7 +9,7 @@ empty-fill:
     - all
   item:
     name: "&r"
-    type: GRAY_STAINED_GLASS_PANE
+    type: PINK_STAINED_GLASS_PANE
     amount: 1
     item-flags:
       - all
@@ -20,44 +20,44 @@ scenes:
     items:
       '1':
         slot: 11
-        item: CHEST
+        item: WOLF_SPAWN_EGG
         amount: 1
-        item-name: "&aStarter Crate"
+        item-name: "&bPets"
         item-lore:
-          - "&7Basic rewards for new players."
+          - "&7Mini pets and companions."
         click-events:
-          open-gui:
-            id: crates.preview
+          message:
+            message: "&7Pets menu will be wired."
       '2':
         slot: 13
-        item: TRAPPED_CHEST
+        item: NAME_TAG
         amount: 1
-        item-name: "&eEpic Crate"
+        item-name: "&aTags"
         item-lore:
-          - "&7Enhanced rewards and boosts."
+          - "&7Chat and nameplate tags."
         click-events:
-          open-gui:
-            id: crates.preview
+          message:
+            message: "&7Tags menu will be wired."
       '3':
         slot: 15
-        item: ENDER_CHEST
+        item: FIREWORK_STAR
         amount: 1
-        item-name: "&dMythic Crate"
+        item-name: "&eParticles"
         item-lore:
-          - "&7Legendary drops and cosmetics."
+          - "&7Cosmetic particle trails."
         click-events:
-          open-gui:
-            id: crates.preview
+          message:
+            message: "&7Particles menu will be wired."
       '4':
         slot: 22
-        item: CHEST_MINECART
+        item: CHEST
         amount: 1
-        item-name: "&bPreview Rewards"
+        item-name: "&eCrates"
         item-lore:
-          - "&7See example reward layouts."
+          - "&7Return to crates."
         click-events:
           open-gui:
-            id: crates.preview
+            id: crates.main
       '5':
         slot: 40
         item: ARROW

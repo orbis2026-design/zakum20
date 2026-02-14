@@ -1,0 +1,68 @@
+codeid: settings.main
+rows: 5
+type: chest
+title: "&eSettings"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: YELLOW_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: COMPARATOR
+        amount: 1
+        item-name: "&ePerformance Mode"
+        item-lore:
+          - "&7Switch visuals between auto/on/off."
+        click-events:
+          message:
+            message: "&7Use &f/perfmode auto|on|off&7."
+      '2':
+        slot: 13
+        item: PAPER
+        amount: 1
+        item-name: "&fChat Settings"
+        item-lore:
+          - "&7Toggle chat effects and filters."
+        click-events:
+          message:
+            message: "&7Chat settings panel will be wired."
+      '3':
+        slot: 15
+        item: ITEM_FRAME
+        amount: 1
+        item-name: "&bVisuals"
+        item-lore:
+          - "&7Tune animations and LOD."
+        click-events:
+          message:
+            message: "&7Visual settings panel will be wired."
+      '4':
+        slot: 22
+        item: BELL
+        amount: 1
+        item-name: "&aNotifications"
+        item-lore:
+          - "&7Toggle UI alerts."
+        click-events:
+          message:
+            message: "&7Notification settings will be wired."
+      '5':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

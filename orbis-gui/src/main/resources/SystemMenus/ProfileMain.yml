@@ -1,0 +1,76 @@
+codeid: profile.main
+rows: 5
+type: chest
+title: "&aProfile &8| &f%player%"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: BLUE_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 13
+        item: PLAYER_HEAD
+        amount: 1
+        item-name: "&f%player%"
+        item-lore:
+          - "&7Rank: &fDEFAULT"
+          - "&7Status: &aOnline"
+      '2':
+        slot: 21
+        item: PAPER
+        amount: 1
+        item-name: "&eStats"
+        item-lore:
+          - "&7Kills, playtime, progression."
+        click-events:
+          message:
+            message: "&eStats panel will be wired."
+      '3':
+        slot: 23
+        item: NAME_TAG
+        amount: 1
+        item-name: "&bTitles"
+        item-lore:
+          - "&7Manage your titles."
+        click-events:
+          message:
+            message: "&bTitles panel will be wired."
+      '4':
+        slot: 29
+        item: ARMOR_STAND
+        amount: 1
+        item-name: "&dCosmetics"
+        item-lore:
+          - "&7Pets, tags, and flair."
+        click-events:
+          open-gui:
+            id: cosmetics.main
+      '5':
+        slot: 31
+        item: HEART_OF_THE_SEA
+        amount: 1
+        item-name: "&dSocial"
+        item-lore:
+          - "&7Friends and clans."
+        click-events:
+          open-gui:
+            id: social.main
+      '6':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

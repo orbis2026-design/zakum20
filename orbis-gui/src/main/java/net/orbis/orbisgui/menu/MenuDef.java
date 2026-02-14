@@ -1,6 +1,7 @@
 package net.orbis.orbisgui.menu;
 
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemFlag;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ public record MenuDef(
     int amount,
     String name,
     List<String> lore,
+    List<ItemFlag> flags,
     String openGuiId,
     String message,
     boolean closeInventory

@@ -141,6 +141,9 @@ public final class OrbisGuiService implements GuiService, Listener {
       meta.setLore(def.lore().stream().map(line -> color(line, player, context)).toList());
     }
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+    if (def.flags() != null && !def.flags().isEmpty()) {
+      meta.addItemFlags(def.flags().toArray(new ItemFlag[0]));
+    }
     stack.setItemMeta(meta);
     return stack;
   }

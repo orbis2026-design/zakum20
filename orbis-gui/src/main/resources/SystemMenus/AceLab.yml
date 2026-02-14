@@ -1,0 +1,68 @@
+codeid: ace.lab
+rows: 5
+type: chest
+title: "&bACE Lab"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: CYAN_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: ENCHANTED_BOOK
+        amount: 1
+        item-name: "&bEffects Library"
+        item-lore:
+          - "&7Browse core ACE effects."
+        click-events:
+          message:
+            message: "&7ACE effects library will be wired."
+      '2':
+        slot: 13
+        item: BOOK
+        amount: 1
+        item-name: "&aScript Editor"
+        item-lore:
+          - "&7Edit ACE YAML scripts."
+        click-events:
+          message:
+            message: "&7Script editor will be wired."
+      '3':
+        slot: 15
+        item: REDSTONE
+        amount: 1
+        item-name: "&cDebug Triggers"
+        item-lore:
+          - "&7Fire a test trigger."
+        click-events:
+          message:
+            message: "&7ACE debug triggers will be wired."
+      '4':
+        slot: 22
+        item: OBSERVER
+        amount: 1
+        item-name: "&eTelemetry"
+        item-lore:
+          - "&7Effects execution metrics."
+        click-events:
+          message:
+            message: "&7ACE metrics will be wired."
+      '5':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

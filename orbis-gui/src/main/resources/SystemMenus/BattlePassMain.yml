@@ -1,5 +1,5 @@
 codeid: battlepass.main
-rows: 3
+rows: 5
 type: chest
 title: "&aBattlePass"
 
@@ -19,18 +19,67 @@ scenes:
     delay: 0
     items:
       '1':
-        slot: 13
+        slot: 4
         item: EXPERIENCE_BOTTLE
         amount: 1
-        item-name: "&fBattlePass"
+        item-name: "&aBattlePass Overview"
         item-lore:
-          - "&7Seeded menu."
-          - "&7Wire to OrbisBattlePass next."
+          - "&7Track tiers, quests, and rewards."
         click-events:
           message:
-            message: "&aBattlePass UI is seeded. Hook this to OrbisBattlePass next."
+            message: "&aBattlePass UI is wired. Rewards next."
       '2':
-        slot: 22
+        slot: 19
+        item: BOOK
+        amount: 1
+        item-name: "&fDaily Missions"
+        item-lore:
+          - "&7Complete daily objectives."
+        click-events:
+          message:
+            message: "&7Daily missions are loading soon."
+      '3':
+        slot: 21
+        item: WRITABLE_BOOK
+        amount: 1
+        item-name: "&bWeekly Missions"
+        item-lore:
+          - "&7Long-form progress goals."
+        click-events:
+          message:
+            message: "&7Weekly missions are loading soon."
+      '4':
+        slot: 23
+        item: CHEST
+        amount: 1
+        item-name: "&eRewards"
+        item-lore:
+          - "&7Preview tier rewards."
+        click-events:
+          open-gui:
+            id: battlepass.rewards
+      '5':
+        slot: 25
+        item: NETHER_STAR
+        amount: 1
+        item-name: "&6Premium Track"
+        item-lore:
+          - "&7Unlock exclusive rewards."
+        click-events:
+          message:
+            message: "&6Premium track store will be wired."
+      '6':
+        slot: 31
+        item: EMERALD
+        amount: 1
+        item-name: "&aClaim All"
+        item-lore:
+          - "&7Collect available rewards."
+        click-events:
+          message:
+            message: "&aClaiming rewards will be wired."
+      '7':
+        slot: 40
         item: ARROW
         amount: 1
         item-name: "&bBack"

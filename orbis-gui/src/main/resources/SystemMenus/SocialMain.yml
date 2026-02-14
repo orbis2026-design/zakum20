@@ -1,0 +1,68 @@
+codeid: social.main
+rows: 5
+type: chest
+title: "&dSocial"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: MAGENTA_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: PLAYER_HEAD
+        amount: 1
+        item-name: "&aFriends"
+        item-lore:
+          - "&7View friend list and requests."
+        click-events:
+          message:
+            message: "&aFriends panel will be wired."
+      '2':
+        slot: 13
+        item: SHIELD
+        amount: 1
+        item-name: "&bClans"
+        item-lore:
+          - "&7Manage clan members."
+        click-events:
+          message:
+            message: "&bClans panel will be wired."
+      '3':
+        slot: 15
+        item: NETHER_STAR
+        amount: 1
+        item-name: "&dAlliances"
+        item-lore:
+          - "&7Allied groups and truce."
+        click-events:
+          message:
+            message: "&dAlliances panel will be wired."
+      '4':
+        slot: 22
+        item: REDSTONE
+        amount: 1
+        item-name: "&cRivals"
+        item-lore:
+          - "&7Rival status and conflicts."
+        click-events:
+          message:
+            message: "&cRivals panel will be wired."
+      '5':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

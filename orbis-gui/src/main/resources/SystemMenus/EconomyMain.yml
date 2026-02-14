@@ -1,0 +1,78 @@
+codeid: economy.main
+rows: 5
+type: chest
+title: "&6Economy"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: ORANGE_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 13
+        item: EMERALD
+        amount: 1
+        item-name: "&aBalance"
+        item-lore:
+          - "&7Check your balance."
+        click-events:
+          message:
+            message: "&7Use &f/zakum economy balance %player% &7to view."
+      '2':
+        slot: 20
+        item: GOLD_INGOT
+        amount: 1
+        item-name: "&eDeposit"
+        item-lore:
+          - "&7Add funds to your account."
+        click-events:
+          message:
+            message: "&7Use &f/zakum economy add %player% <amount>&7."
+      '3':
+        slot: 22
+        item: REDSTONE
+        amount: 1
+        item-name: "&cWithdraw"
+        item-lore:
+          - "&7Remove funds from your account."
+        click-events:
+          message:
+            message: "&7Use &f/zakum economy take %player% <amount>&7."
+      '4':
+        slot: 24
+        item: DIAMOND
+        amount: 1
+        item-name: "&bSet Balance"
+        item-lore:
+          - "&7Admin-only balance overrides."
+        click-events:
+          message:
+            message: "&7Use &f/zakum economy set %player% <amount>&7."
+      '5':
+        slot: 31
+        item: FIREWORK_ROCKET
+        amount: 1
+        item-name: "&dBoosters"
+        item-lore:
+          - "&7Active multipliers + boosts."
+        click-events:
+          message:
+            message: "&7Use &f/zakum boosters list_player&7."
+      '6':
+        slot: 40
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

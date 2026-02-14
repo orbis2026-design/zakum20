@@ -1,7 +1,7 @@
 codeid: system.root
-rows: 3
+rows: 6
 type: chest
-title: "&bOrbis &8| &fSystem"
+title: "&bOrbis &8| &fControl Hub"
 
 empty-fill:
   enabled: true
@@ -19,27 +19,118 @@ scenes:
     delay: 0
     items:
       '1':
-        slot: 11
+        slot: 4
+        item: NETHER_STAR
+        amount: 1
+        item-name: "&bOrbis Control Hub"
+        item-lore:
+          - "&7Welcome, &f%player%&7."
+          - "&7Select a capability to open."
+        click-events:
+          message:
+            message: "&bOrbis &7hub loaded."
+      '2':
+        slot: 10
+        item: NAME_TAG
+        amount: 1
+        item-name: "&aProfile"
+        item-lore:
+          - "&7Stats, titles, and personal info."
+        click-events:
+          open-gui:
+            id: profile.main
+      '3':
+        slot: 12
+        item: HEART_OF_THE_SEA
+        amount: 1
+        item-name: "&dSocial"
+        item-lore:
+          - "&7Friends, clans, alliances."
+        click-events:
+          open-gui:
+            id: social.main
+      '4':
+        slot: 14
+        item: EMERALD
+        amount: 1
+        item-name: "&6Economy"
+        item-lore:
+          - "&7Balances, transfers, boosters."
+        click-events:
+          open-gui:
+            id: economy.main
+      '5':
+        slot: 16
+        item: COMPARATOR
+        amount: 1
+        item-name: "&eSettings"
+        item-lore:
+          - "&7Performance + UI preferences."
+        click-events:
+          open-gui:
+            id: settings.main
+      '6':
+        slot: 20
         item: BOOK
         amount: 1
         item-name: "&aBattlePass"
         item-lore:
-          - "&7Open BattlePass menu"
+          - "&7Tier progress, quests, rewards."
         click-events:
           open-gui:
             id: battlepass.main
-      '2':
-        slot: 13
+      '7':
+        slot: 22
         item: CHEST
         amount: 1
         item-name: "&eCrates"
         item-lore:
-          - "&7Open Crates menu"
+          - "&7Preview and open crates."
         click-events:
           open-gui:
             id: crates.main
-      '3':
-        slot: 15
+      '8':
+        slot: 24
+        item: ENCHANTED_BOOK
+        amount: 1
+        item-name: "&bACE Lab"
+        item-lore:
+          - "&7Effects library + scripting."
+        click-events:
+          open-gui:
+            id: ace.lab
+      '9':
+        slot: 29
+        item: LEATHER_CHESTPLATE
+        amount: 1
+        item-name: "&dCosmetics"
+        item-lore:
+          - "&7Pets, tags, and flair."
+        click-events:
+          open-gui:
+            id: cosmetics.main
+      '10':
+        slot: 31
+        item: MAP
+        amount: 1
+        item-name: "&9Network Status"
+        item-lore:
+          - "&7Cloud, packets, and metrics."
+        click-events:
+          open-gui:
+            id: network.status
+      '11':
+        slot: 33
+        item: PAPER
+        amount: 1
+        item-name: "&fGuide"
+        item-lore:
+          - "&7Quick tips and commands."
+        click-events:
+          message:
+            message: "&7Use &f/zakum status &7for ops info."
+      '12':
+        slot: 49
         item: BARRIER
         amount: 1
         item-name: "&cClose"

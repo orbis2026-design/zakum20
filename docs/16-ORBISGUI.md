@@ -51,10 +51,22 @@ Implemented now:
   - `open-gui`
   - `message`
   - `close-inventory`
+- layout helpers:
+  - `empty-fill` (background fill)
+  - `item-flags` (per-item ItemFlag support)
 - seeded system menus:
   - `system.root`
   - `battlepass.main`
+  - `battlepass.rewards`
   - `crates.main`
+  - `crates.preview`
+  - `profile.main`
+  - `social.main`
+  - `economy.main`
+  - `settings.main`
+  - `network.status`
+  - `ace.lab`
+  - `cosmetics.main`
 
 Known planned gaps for full InfiniteGUI parity:
 
