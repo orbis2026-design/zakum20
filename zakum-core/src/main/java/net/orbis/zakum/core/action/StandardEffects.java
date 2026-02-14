@@ -5,6 +5,7 @@ import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.core.bridge.DecentHologramsBridge;
+import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.VisualCircuitState;
 import net.orbis.zakum.core.util.PdcKeys;
 import net.orbis.zakum.core.world.ZakumRtpService;
@@ -77,6 +78,7 @@ public final class StandardEffects {
     registerSetModel(engine);
     registerBossBar(engine);
     registerGuiEffects(engine);
+    registerPerfMode(engine);
     registerRtp(engine);
     registerHologram(engine);
   }
@@ -591,6 +593,23 @@ public final class StandardEffects {
         }
       }
     });
+  }
+
+  private static void registerPerfMode(AceEngine engine) {
+    AceEngine.EffectAction setMode = (ctx, targets, params) -> {
+      String rawMode = firstNonBlank(params.get("mode"), raw(params));
+      if (rawMode == null || rawMode.isBlank()) return;
+      PlayerVisualModeService service = Bukkit.getServicesManager().load(PlayerVisualModeService.class);
+      if (service == null) return;
+      PlayerVisualModeService.Mode mode = PlayerVisualModeService.Mode.fromInput(rawMode);
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        service.setMode(player.getUniqueId(), mode);
+      }
+    };
+    engine.registerEffect("PERF_MODE", setMode);
+    engine.registerEffect("SET_PERF_MODE", setMode);
+    engine.registerEffect("STREAMER_MODE", setMode);
   }
 
   private static void registerRtp(AceEngine engine) {

@@ -214,6 +214,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
     sm.register(ChatPacketBuffer.class, chatPacketBuffer, this, ServicePriority.Highest);
+    sm.register(PlayerVisualModeService.class, visualModeService, this, ServicePriority.Highest);
     this.economyService = createGlobalEconomyService();
     if (economyService != null) {
       sm.register(EconomyService.class, economyService, this, ServicePriority.Highest);
@@ -262,6 +263,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (dataStore != null) sm.unregister(DataStore.class, dataStore);
     if (socialService != null) sm.unregister(SocialService.class, socialService);
     if (chatPacketBuffer != null) sm.unregister(ChatPacketBuffer.class, chatPacketBuffer);
+    if (visualModeService != null) sm.unregister(PlayerVisualModeService.class, visualModeService);
     if (economyService != null) sm.unregister(EconomyService.class, economyService);
     ZakumApiProvider.clear();
 
