@@ -66,6 +66,18 @@ datastore:
   mongoDatabase: "zakum"
   redisUri: "redis://127.0.0.1:6379"
 
+economy:
+  global:
+    # Native Redis-backed economy capability (network-wide, no Vault required).
+    enabled: false
+    # Falls back to datastore.redisUri when blank.
+    redisUri: ""
+    keyPrefix: "zakum:economy"
+    # Internal fixed-point scale (100 = cents).
+    scale: 100
+    # Optional pub/sub channel for balance updates across services.
+    updatesChannel: "zakum:economy:updates"
+
 actions:
   enabled: true
 

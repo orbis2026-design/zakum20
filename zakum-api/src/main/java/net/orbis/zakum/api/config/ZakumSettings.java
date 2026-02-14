@@ -24,6 +24,7 @@ public record ZakumSettings(
   Boosters boosters,
   Actions actions,
   Operations operations,
+  Economy economy,
   Moderation moderation,
   Chat chat,
   Visuals visuals,
@@ -165,6 +166,18 @@ public record ZakumSettings(
       int defaultIterations,
       int maxIterations,
       int cooldownSeconds
+    ) {}
+  }
+
+  public record Economy(
+    Global global
+  ) {
+    public record Global(
+      boolean enabled,
+      String redisUri,
+      String keyPrefix,
+      int scale,
+      String updatesChannel
     ) {}
   }
 

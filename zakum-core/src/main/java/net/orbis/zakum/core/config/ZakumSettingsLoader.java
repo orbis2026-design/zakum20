@@ -40,6 +40,7 @@ public final class ZakumSettingsLoader {
     var boosters = loadBoosters(cfg);
     var actions = loadActions(cfg);
     var operations = loadOperations(cfg);
+    var economy = loadEconomy(cfg);
     var moderation = loadModeration(cfg);
     var chat = loadChat(cfg);
     var visuals = loadVisuals(cfg);
@@ -57,6 +58,7 @@ public final class ZakumSettingsLoader {
       boosters,
       actions,
       operations,
+      economy,
       moderation,
       chat,
       visuals,
@@ -273,6 +275,28 @@ public final class ZakumSettingsLoader {
         defaultIterations,
         maxIterations,
         cooldownSeconds
+      )
+    );
+  }
+
+  private static ZakumSettings.Economy loadEconomy(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "economy.global.enabled", false);
+    String redisUri = firstNonBlank(
+      str(cfg, "economy.global.redisUri", "").trim(),
+      str(cfg, "datastore.redisUri", "").trim()
+    );
+    String keyPrefix = str(cfg, "economy.global.keyPrefix", "zakum:economy").trim();
+    if (keyPrefix.isBlank()) keyPrefix = "zakum:economy";
+    int scale = clampI(cfg.getInt("economy.global.scale", 100), 1, 1_000_000);
+    String updatesChannel = str(cfg, "economy.global.updatesChannel", "").trim();
+
+    return new ZakumSettings.Economy(
+      new ZakumSettings.Economy.Global(
+        enabled,
+        redisUri,
+        keyPrefix,
+        scale,
+        updatesChannel
       )
     );
   }

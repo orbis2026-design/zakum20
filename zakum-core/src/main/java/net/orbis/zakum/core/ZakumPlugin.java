@@ -12,6 +12,7 @@ import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
 import net.orbis.zakum.api.social.SocialService;
 import net.orbis.zakum.api.storage.DataStore;
+import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.action.ZakumAceEngine;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
 import net.orbis.zakum.core.config.ZakumSettingsLoader;
@@ -26,6 +27,7 @@ import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.concurrent.EarlySchedulerRuntime;
 import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.db.SqlManager;
+import net.orbis.zakum.core.economy.RedisGlobalEconomyService;
 import net.orbis.zakum.core.entitlements.SqlEntitlementService;
 import net.orbis.zakum.core.listeners.ChatListener;
 import net.orbis.zakum.core.listeners.CloudIdentityListener;
@@ -96,6 +98,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private OrbisChatRenderer chatRenderer;
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
+  private EconomyService economyService;
   private GrimFlagBridge grimFlagBridge;
   private ToxicityModerationService toxicityModerationService;
   private BedrockClientDetector bedrockDetector;
@@ -205,6 +208,10 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
     sm.register(ChatPacketBuffer.class, chatPacketBuffer, this, ServicePriority.Highest);
+    this.economyService = createGlobalEconomyService();
+    if (economyService != null) {
+      sm.register(EconomyService.class, economyService, this, ServicePriority.Highest);
+    }
 
     this.dataStore = createMongoDataStore();
     if (dataStore != null) {
@@ -247,6 +254,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (dataStore != null) sm.unregister(DataStore.class, dataStore);
     if (socialService != null) sm.unregister(SocialService.class, socialService);
     if (chatPacketBuffer != null) sm.unregister(ChatPacketBuffer.class, chatPacketBuffer);
+    if (economyService != null) sm.unregister(EconomyService.class, economyService);
     ZakumApiProvider.clear();
 
     if (movementSampler != null) {
@@ -272,6 +280,14 @@ public final class ZakumPlugin extends JavaPlugin {
     chatPacketBuffer = null;
     chatListener = null;
     metricsMonitor = null;
+    if (economyService instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception ignored) {
+        // ignore
+      }
+    }
+    economyService = null;
     grimFlagBridge = null;
     toxicityModerationService = null;
     bedrockDetector = null;
@@ -346,6 +362,30 @@ public final class ZakumPlugin extends JavaPlugin {
     List<String> script = GrimFlagBridge.normalizeScript(getConfig().getStringList("anticheat.grim.aceScript"));
     this.grimFlagBridge = new GrimFlagBridge(api, this, script, getLogger(), metricsMonitor);
     grimFlagBridge.register();
+  }
+
+  private EconomyService createGlobalEconomyService() {
+    var global = settings.economy().global();
+    if (!global.enabled()) return null;
+    if (global.redisUri() == null || global.redisUri().isBlank()) {
+      getLogger().warning("Global economy enabled but economy.global.redisUri is blank.");
+      return null;
+    }
+
+    try {
+      JedisPool jedisPool = new JedisPool(URI.create(global.redisUri()));
+      return new RedisGlobalEconomyService(
+        jedisPool,
+        global.keyPrefix(),
+        global.scale(),
+        global.updatesChannel(),
+        metricsMonitor,
+        getLogger()
+      );
+    } catch (Throwable ex) {
+      getLogger().warning("Failed to initialize global economy: " + ex.getMessage());
+      return null;
+    }
   }
 
   private MongoDataStore createMongoDataStore() {
