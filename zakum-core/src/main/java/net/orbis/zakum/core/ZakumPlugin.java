@@ -182,7 +182,14 @@ public final class ZakumPlugin extends JavaPlugin {
       chatBufferCfg.expireAfterAccessSeconds()
     );
     var localizationCfg = settings.chat().localization();
-    this.chatPacketBuffer = new LocalizedChatPacketBuffer(assets, this.chatBufferCache, localizationCfg, getLogger());
+    this.chatPacketBuffer = new LocalizedChatPacketBuffer(
+      assets,
+      this.chatBufferCache,
+      localizationCfg,
+      bedrockDetector,
+      bedrockGlyphRemapper,
+      getLogger()
+    );
     if (localizationCfg.enabled() && localizationCfg.warmupOnStart()) {
       scheduler.runAsync(chatPacketBuffer::warmup);
     }

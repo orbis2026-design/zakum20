@@ -54,6 +54,7 @@ final class PacketChatTransport {
     if (!enabled || viewer == null || !viewer.isOnline()) return false;
     if (serializedJson == null || serializedJson.length == 0) return false;
     if (!ensureInitialized()) return false;
+    if (overlay && jsonOverlayCtor == null) return false;
 
     String json = new String(serializedJson, StandardCharsets.UTF_8);
     if (json.isBlank()) return false;

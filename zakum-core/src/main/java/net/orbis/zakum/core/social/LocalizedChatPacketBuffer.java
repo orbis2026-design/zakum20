@@ -29,6 +29,8 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   private final AssetManager assets;
   private final ChatBufferCache parseCache;
+  private final BedrockClientDetector bedrockDetector;
+  private final BedrockGlyphRemapper bedrockRemapper;
   private final Logger logger;
   private final String defaultLocale;
   private final Set<String> supportedLocales;
@@ -44,10 +46,14 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     AssetManager assets,
     ChatBufferCache parseCache,
     ZakumSettings.Chat.Localization localization,
+    BedrockClientDetector bedrockDetector,
+    BedrockGlyphRemapper bedrockRemapper,
     Logger logger
   ) {
     this.assets = assets;
     this.parseCache = parseCache;
+    this.bedrockDetector = bedrockDetector;
+    this.bedrockRemapper = bedrockRemapper;
     this.logger = logger;
     this.defaultLocale = normalizeLocale(localization == null ? "en_us" : localization.defaultLocale());
     Set<String> configuredLocales = localization == null ? Set.of() : localization.supportedLocales();
@@ -108,10 +114,15 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   @Override
   public void warmup() {
     int prepared = 0;
+    boolean warmBedrock = bedrockRemapper != null;
     for (String key : templates.keySet()) {
       for (String locale : supportedLocales) {
-        PreparedMessage message = resolve(key, normalizeLocale(locale), Map.of());
+        PreparedMessage message = resolve(key, normalizeLocale(locale), Map.of(), false);
         if (message != PreparedMessage.EMPTY) prepared++;
+        if (warmBedrock) {
+          PreparedMessage bedrock = resolve(key, normalizeLocale(locale), Map.of(), true);
+          if (bedrock != PreparedMessage.EMPTY) prepared++;
+        }
       }
     }
     logger.fine("Localized chat buffer warmed entries=" + prepared);
@@ -119,6 +130,10 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   @Override
   public PreparedMessage resolve(String key, String locale, Map<String, String> placeholders) {
+    return resolve(key, locale, placeholders, false);
+  }
+
+  private PreparedMessage resolve(String key, String locale, Map<String, String> placeholders, boolean bedrock) {
     resolveRequests.increment();
     String template = findTemplate(key, locale);
     if (template == null || template.isBlank()) return PreparedMessage.EMPTY;
@@ -127,7 +142,7 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     String resolved = themed(assets.resolve(rendered));
     if (resolved == null || resolved.isBlank()) return PreparedMessage.EMPTY;
 
-    String cacheKey = resolveCacheKey(locale, resolved);
+    String cacheKey = resolveCacheKey(locale, resolved, bedrock);
     PreparedMessage cached = preparedCache.getIfPresent(cacheKey);
     if (cached != null) {
       resolveHits.increment();
@@ -135,23 +150,29 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     }
 
     resolveMisses.increment();
-    PreparedMessage prepared = prepare(resolved);
+    PreparedMessage prepared = prepare(resolved, bedrock);
     preparedCache.put(cacheKey, prepared);
     return prepared;
   }
 
   @Override
   public void send(Player player, String key, Map<String, String> placeholders) {
-    if (player == null || !player.isOnline()) return;
-    String locale = normalizeLocale(player.getLocale());
-    PreparedMessage message = resolve(key, locale, placeholders);
-    if (message == PreparedMessage.EMPTY) return;
-    sendCount.increment();
-    if (packetTransport.sendSystem(player, message.serializedJson())) {
-      return;
-    }
-    packetTransport.recordFallback();
-    player.sendMessage(message.component());
+    sendInternal(player, key, null, placeholders, false);
+  }
+
+  @Override
+  public void send(Player player, String key, String locale, Map<String, String> placeholders) {
+    sendInternal(player, key, locale, placeholders, false);
+  }
+
+  @Override
+  public void sendActionBar(Player player, String key, Map<String, String> placeholders) {
+    sendInternal(player, key, null, placeholders, true);
+  }
+
+  @Override
+  public void sendActionBar(Player player, String key, String locale, Map<String, String> placeholders) {
+    sendInternal(player, key, locale, placeholders, true);
   }
 
   public Stats stats() {
@@ -170,9 +191,39 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     );
   }
 
-  private PreparedMessage prepare(String line) {
+  private void sendInternal(
+    Player player,
+    String key,
+    String locale,
+    Map<String, String> placeholders,
+    boolean overlay
+  ) {
+    if (player == null || !player.isOnline()) return;
+    String resolvedLocale = (locale == null || locale.isBlank()) ? localeOf(player) : locale;
+    boolean bedrock = isBedrock(player);
+    PreparedMessage message = resolve(key, resolvedLocale, placeholders, bedrock);
+    if (message == PreparedMessage.EMPTY) return;
+
+    sendCount.increment();
+    if (overlay) {
+      if (packetTransport.sendSystem(player, message.serializedJson(), true)) return;
+    } else {
+      if (packetTransport.sendSystem(player, message.serializedJson())) return;
+    }
+    packetTransport.recordFallback();
+    if (overlay) {
+      player.sendActionBar(message.component());
+    } else {
+      player.sendMessage(message.component());
+    }
+  }
+
+  private PreparedMessage prepare(String line, boolean bedrock) {
     if (line == null || line.isBlank()) return PreparedMessage.EMPTY;
     Component component = parseCache.parse(line);
+    if (bedrock && bedrockRemapper != null) {
+      component = bedrockRemapper.remap(component);
+    }
     String json = GSON.serialize(component);
     byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
     return new PreparedMessage(component, bytes);
@@ -223,8 +274,28 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   }
 
   private static String resolveCacheKey(String locale, String content) {
+    return resolveCacheKey(locale, content, false);
+  }
+
+  private static String resolveCacheKey(String locale, String content, boolean bedrock) {
     String normalizedLocale = normalizeLocale(locale);
-    return normalizedLocale + '\u0000' + content;
+    String prefix = bedrock ? "bedrock" : "java";
+    return prefix + '\u0000' + normalizedLocale + '\u0000' + content;
+  }
+
+  private boolean isBedrock(Player player) {
+    return bedrockDetector != null && bedrockDetector.isBedrock(player);
+  }
+
+  private static String localeOf(Player player) {
+    if (player == null) return "en_us";
+    try {
+      java.util.Locale locale = player.locale();
+      if (locale != null) return locale.toString();
+    } catch (Throwable ignored) {
+      // Fall through to default.
+    }
+    return "en_us";
   }
 
   public record Stats(

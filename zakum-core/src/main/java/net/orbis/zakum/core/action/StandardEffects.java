@@ -141,12 +141,12 @@ public final class StandardEffects {
       for (Entity target : targets) {
         if (!(target instanceof Player player)) continue;
         Map<String, String> placeholders = templatePlaceholders(ctx, target, params);
-        String locale = forcedLocale == null || forcedLocale.isBlank()
-          ? player.getLocale()
-          : forcedLocale;
-        var message = buffer.resolve(key, locale, placeholders);
-        if (message == null || message == ChatPacketBuffer.PreparedMessage.EMPTY) continue;
-        runAtEntity(target, () -> player.sendMessage(message.component()));
+        if (forcedLocale == null || forcedLocale.isBlank()) {
+          runAtEntity(target, () -> buffer.send(player, key, placeholders));
+        } else {
+          String locale = forcedLocale;
+          runAtEntity(target, () -> buffer.send(player, key, locale, placeholders));
+        }
       }
     };
 
@@ -181,12 +181,12 @@ public final class StandardEffects {
       for (Entity target : targets) {
         if (!(target instanceof Player player)) continue;
         Map<String, String> placeholders = templatePlaceholders(ctx, target, params);
-        String locale = forcedLocale == null || forcedLocale.isBlank()
-          ? player.getLocale()
-          : forcedLocale;
-        var message = buffer.resolve(key, locale, placeholders);
-        if (message == null || message == ChatPacketBuffer.PreparedMessage.EMPTY) continue;
-        runAtEntity(target, () -> player.sendActionBar(message.component()));
+        if (forcedLocale == null || forcedLocale.isBlank()) {
+          runAtEntity(target, () -> buffer.sendActionBar(player, key, placeholders));
+        } else {
+          String locale = forcedLocale;
+          runAtEntity(target, () -> buffer.sendActionBar(player, key, locale, placeholders));
+        }
       }
     };
 
