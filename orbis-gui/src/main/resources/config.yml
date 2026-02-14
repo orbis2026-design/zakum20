@@ -1,0 +1,19 @@
+# OrbisGUI (InfiniteGUI-inspired) core settings.
+
+debug:
+  enabled: false
+
+# Seconds. Mirrors InfiniteGUI's idea of an "exit hint" cooldown to prevent spam.
+chat-fetcher-exit-message-cooldown: 10
+
+# Seconds until an active chat prompt expires.
+chat-fetcher-timeout-seconds: 60
+
+# If false, OrbisGUI will prevent user-provided chat input from being interpreted
+# as PlaceholderAPI placeholders when it is inserted into strings.
+chat-fetcher-allow-placeholder-in-input: false
+
+menus:
+  # Where YAML menus live.
+  custom-path: "CustomGuis"
+  system-path: "SystemMenus"

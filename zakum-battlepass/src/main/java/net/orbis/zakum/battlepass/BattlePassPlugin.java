@@ -95,23 +95,23 @@ private EditorSessionManager editorSessions;
     // Flush deltas (sync scheduler triggers async flush).
     int flushSeconds = Math.max(2, getConfig().getInt("battlepass.flush.intervalSeconds", 5));
     long flushTicks = flushSeconds * 20L;
-    this.flushTaskId = getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
+    this.flushTaskId = zakum.getScheduler().scheduleSyncRepeatingTask(this, () -> {
       if (runtime != null && !maintenanceMode.get()) runtime.flushAllAsync();
     }, flushTicks, flushTicks);
 
     // Premium refresh (sync scheduler triggers async checks).
     int premiumSeconds = Math.max(30, getConfig().getInt("battlepass.premiumRefresh.intervalSeconds", 300));
     long premiumTicks = premiumSeconds * 20L;
-    this.premiumTaskId = getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
+    this.premiumTaskId = zakum.getScheduler().scheduleSyncRepeatingTask(this, () -> {
       if (runtime != null && !maintenanceMode.get()) runtime.refreshPremiumAllAsync();
     }, premiumTicks, premiumTicks);
 
     // Leaderboard refresh (async).
     int lbSeconds = Math.max(10, getConfig().getInt("battlepass.leaderboard.refreshSeconds", 30));
     long lbTicks = lbSeconds * 20L;
-    this.leaderboardTaskId = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+    this.leaderboardTaskId = zakum.getScheduler().runTaskTimerAsynchronously(this, () -> {
       if (leaderboard != null && !maintenanceMode.get()) leaderboard.refreshNow();
-    }, 20L, lbTicks).getTaskId();
+    }, 20L, lbTicks);
 
     getLogger().info("OrbisBattlePass enabled.");
   }
@@ -119,19 +119,19 @@ private EditorSessionManager editorSessions;
   @Override
   public void onDisable() {
     if (schemaTaskId != -1) {
-      getServer().getScheduler().cancelTask(schemaTaskId);
+      zakum.getScheduler().cancelTask(schemaTaskId);
       schemaTaskId = -1;
     }
     if (flushTaskId != -1) {
-      getServer().getScheduler().cancelTask(flushTaskId);
+      zakum.getScheduler().cancelTask(flushTaskId);
       flushTaskId = -1;
     }
     if (premiumTaskId != -1) {
-      getServer().getScheduler().cancelTask(premiumTaskId);
+      zakum.getScheduler().cancelTask(premiumTaskId);
       premiumTaskId = -1;
     }
     if (leaderboardTaskId != -1) {
-      getServer().getScheduler().cancelTask(leaderboardTaskId);
+      zakum.getScheduler().cancelTask(leaderboardTaskId);
       leaderboardTaskId = -1;
     }
     stopRuntime();
@@ -176,10 +176,10 @@ getServer().getPluginManager().registerEvents(editorChatListener, this);
     if (schemaTaskId != -1) return;
 
     long everyTicks = 20L * 30; // 30s
-    this.schemaTaskId = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+    this.schemaTaskId = zakum.getScheduler().runTaskTimerAsynchronously(this, () -> {
       if (schemaEnsured) {
         if (schemaTaskId != -1) {
-          getServer().getScheduler().cancelTask(schemaTaskId);
+          zakum.getScheduler().cancelTask(schemaTaskId);
           schemaTaskId = -1;
         }
         return;
@@ -195,7 +195,7 @@ getServer().getPluginManager().registerEvents(editorChatListener, this);
       } catch (Throwable t) {
         getLogger().warning("Failed ensuring BattlePass schema: " + t.getMessage());
       }
-    }, 40L, everyTicks).getTaskId();
+    }, 40L, everyTicks);
   }
 
   private void stopRuntime() {

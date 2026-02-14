@@ -1,0 +1,18 @@
+codeid: example
+rows: 3
+type: chest
+title: "&aExample Menu"
+commandAlias: example
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 13
+        item: PAPER
+        amount: 1
+        item-name: "&fSay hello"
+        click-events:
+          message:
+            message: "&aHello %player%!"

@@ -1,0 +1,20 @@
+name: OrbisGUI
+main: net.orbis.orbisgui.OrbisGuiPlugin
+version: ${version}
+api-version: '1.21'
+
+depend: [Zakum]
+softdepend: [PlaceholderAPI, Vault]
+
+commands:
+  gui:
+    description: Opens OrbisGUI menus (InfiniteGUI-style)
+    usage: /gui open <id>
+    aliases: [orbisgui]
+    permission: orbis.gui.use
+
+permissions:
+  orbis.gui.use:
+    default: true
+  orbis.gui.admin:
+    default: op

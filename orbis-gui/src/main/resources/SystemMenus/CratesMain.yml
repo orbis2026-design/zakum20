@@ -1,0 +1,39 @@
+codeid: crates.main
+rows: 3
+type: chest
+title: "&eCrates"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: GRAY_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 13
+        item: CHEST
+        amount: 1
+        item-name: "&aOpen Crate"
+        item-lore:
+          - "&7Crate UX will be wired to"
+          - "&7the OrbisCrates engine."
+        click-events:
+          message:
+            message: "&eCrates UI is seeded. Hook this to OrbisCrates next."
+      '2':
+        slot: 22
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

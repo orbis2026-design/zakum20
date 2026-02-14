@@ -15,12 +15,13 @@ import net.orbis.zakum.core.actions.emitters.*;
 import net.orbis.zakum.core.asset.InMemoryAssetManager;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.bridge.SimpleBridgeManager;
+import net.orbis.zakum.core.concurrent.EarlySchedulerRuntime;
 import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.db.SqlManager;
 import net.orbis.zakum.core.entitlements.SqlEntitlementService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
-import net.orbis.zakum.core.packet.PacketAnimationService;
+import net.orbis.zakum.core.packet.AnimationService1_21_11;
 import net.orbis.zakum.core.progression.ProgressionServiceImpl;
 import net.orbis.zakum.core.storage.StorageServiceImpl;
 import net.orbis.zakum.core.ui.NoopGuiBridge;
@@ -92,10 +93,10 @@ public final class ZakumPlugin extends JavaPlugin {
     this.boosters = new SqlBoosterService(this, sql, async, settings.boosters());
     this.boosters.start();
 
-    this.scheduler = new ZakumSchedulerImpl(this);
+    this.scheduler = new ZakumSchedulerImpl(this, EarlySchedulerRuntime.claimOrCreateExecutor());
     var aceEngine = new ZakumAceEngine();
     var storageService = new StorageServiceImpl(sql);
-    var animations = new PacketAnimationService(this, scheduler);
+    var animations = new AnimationService1_21_11(this, scheduler);
     var bridgeManager = new SimpleBridgeManager();
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();

@@ -24,8 +24,12 @@ public final class ZakumSchedulerImpl implements ZakumScheduler {
   private final Map<Integer, ScheduledTask> scheduledTasks;
 
   public ZakumSchedulerImpl(Plugin plugin) {
+    this(plugin, Executors.newVirtualThreadPerTaskExecutor());
+  }
+
+  public ZakumSchedulerImpl(Plugin plugin, ExecutorService virtualExecutor) {
     this.plugin = Objects.requireNonNull(plugin, "plugin");
-    this.virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    this.virtualExecutor = Objects.requireNonNull(virtualExecutor, "virtualExecutor");
     this.taskIds = new AtomicInteger(1);
     this.scheduledTasks = new ConcurrentHashMap<>();
   }

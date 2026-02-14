@@ -28,6 +28,7 @@ dependencies {
   // Metrics (Prometheus)
   implementation(libs.micrometer.core)
   implementation(libs.micrometer.prometheus)
+  implementation(libs.adventure.minimessage)
 
   implementation(libs.slf4j.api)
   implementation(libs.slf4j.jdk14)
@@ -36,8 +37,11 @@ dependencies {
 }
 
 tasks.processResources {
-  filesMatching("plugin.yml") {
+  filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
     expand("version" to project.version)
+  }
+  filesMatching("db/migration/*.sql") {
+    filteringCharset = "UTF-8"
   }
 }
 
@@ -50,21 +54,21 @@ tasks.named<ShadowJar>("shadowJar") {
   archiveClassifier.set("")
 
   // Keep MySQL driver canonical (no relocation).
-  relocate("com.github.benmanes.caffeine", "net.orbis.zakum.libs.caffeine")
-  relocate("com.zaxxer.hikari", "net.orbis.zakum.libs.hikari")
-  relocate("org.flywaydb", "net.orbis.zakum.libs.flyway")
-  relocate("org.slf4j", "net.orbis.zakum.libs.slf4j")
-  relocate("org.spongepowered.configurate", "net.orbis.zakum.libs.configurate")
-  relocate("okhttp3", "net.orbis.zakum.libs.okhttp3")
-  relocate("okio", "net.orbis.zakum.libs.okio")
-  relocate("io.github.resilience4j", "net.orbis.zakum.libs.resilience4j")
-  relocate("io.micrometer", "net.orbis.zakum.libs.micrometer")
-  relocate("io.prometheus", "net.orbis.zakum.libs.prometheus")
-  relocate("kotlin", "net.orbis.zakum.libs.kotlin")
-  relocate("kotlinx", "net.orbis.zakum.libs.kotlinx")
-  relocate("io.vavr", "net.orbis.zakum.libs.vavr")
-  relocate("org.HdrHistogram", "net.orbis.zakum.libs.hdrhistogram")
-  relocate("org.LatencyUtils", "net.orbis.zakum.libs.latencyutils")
+  relocate("com.github.benmanes.caffeine", "net.orbis.zakum.shaded.caffeine")
+  relocate("com.zaxxer.hikari", "net.orbis.zakum.shaded.hikari")
+  relocate("org.flywaydb", "net.orbis.zakum.shaded.flyway")
+  relocate("org.slf4j", "net.orbis.zakum.shaded.slf4j")
+  relocate("org.spongepowered.configurate", "net.orbis.zakum.shaded.configurate")
+  relocate("okhttp3", "net.orbis.zakum.shaded.okhttp3")
+  relocate("okio", "net.orbis.zakum.shaded.okio")
+  relocate("io.github.resilience4j", "net.orbis.zakum.shaded.resilience4j")
+  relocate("io.micrometer", "net.orbis.zakum.shaded.micrometer")
+  relocate("io.prometheus", "net.orbis.zakum.shaded.prometheus")
+  relocate("kotlin", "net.orbis.zakum.shaded.kotlin")
+  relocate("kotlinx", "net.orbis.zakum.shaded.kotlinx")
+  relocate("io.vavr", "net.orbis.zakum.shaded.vavr")
+  relocate("org.HdrHistogram", "net.orbis.zakum.shaded.hdrhistogram")
+  relocate("org.LatencyUtils", "net.orbis.zakum.shaded.latencyutils")
 
   isReproducibleFileOrder = true
   isPreserveFileTimestamps = false

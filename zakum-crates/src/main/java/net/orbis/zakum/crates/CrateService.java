@@ -1,5 +1,6 @@
 package net.orbis.zakum.crates;
 
+import net.orbis.zakum.api.item.ZakumItem;
 import net.orbis.zakum.crates.anim.CrateAnimator;
 import net.orbis.zakum.crates.model.CrateDef;
 import net.orbis.zakum.crates.util.ItemBuilder;
@@ -21,7 +22,8 @@ public final class CrateService {
       return;
     }
 
-    if (!consumeKey(opener, crate.keyItem())) {
+    ItemStack consumed = consumeKey(opener, crate);
+    if (consumed == null) {
       opener.sendMessage(ItemBuilder.color("&cYou need a key to open this crate."));
       return;
     }
@@ -30,7 +32,7 @@ public final class CrateService {
 
     boolean ok = animator.begin(opener, crate);
     if (!ok) {
-      opener.getInventory().addItem(crate.keyItem().clone());
+      opener.getInventory().addItem(consumed);
       opener.sendMessage(ItemBuilder.color("&cCould not start crate animation."));
     }
   }
@@ -50,21 +52,34 @@ public final class CrateService {
     }
   }
 
-  private boolean consumeKey(Player p, ItemStack key) {
+  private ItemStack consumeKey(Player p, CrateDef crate) {
+    ItemStack key = crate.keyItem();
+    if (key == null || key.getType().isAir()) return null;
+
     ItemStack k = key.clone();
     k.setAmount(1);
+    String crateId = crate.id();
 
     var inv = p.getInventory();
     for (int i = 0; i < inv.getSize(); i++) {
       ItemStack slot = inv.getItem(i);
       if (slot == null) continue;
-      if (!slot.isSimilar(k)) continue;
+      if (!matchesKey(slot, k, crateId)) continue;
 
       int amt = slot.getAmount();
+      ItemStack consumed = slot.clone();
+      consumed.setAmount(1);
       if (amt <= 1) inv.setItem(i, null);
       else slot.setAmount(amt - 1);
-      return true;
+      return consumed;
     }
-    return false;
+    return null;
+  }
+
+  private boolean matchesKey(ItemStack candidate, ItemStack template, String crateId) {
+    // Canonical path: key tagged with zakum:id.
+    if (ZakumItem.hasId(candidate, crateId)) return true;
+    // Backward compatibility: untagged legacy template checks.
+    return candidate.isSimilar(template);
   }
 }

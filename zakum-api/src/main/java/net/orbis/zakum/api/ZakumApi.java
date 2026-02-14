@@ -69,6 +69,13 @@ public interface ZakumApi {
   CapabilityRegistry capabilities();
 
   /**
+   * Compatibility alias for integrations expecting explicit getter naming.
+   */
+  default CapabilityRegistry getCapabilityRegistry() {
+    return capabilities();
+  }
+
+  /**
    * Convenience lookup for optional capabilities.
    */
   default <T> Optional<T> capability(Capability<T> capability) {

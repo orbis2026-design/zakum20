@@ -1,0 +1,39 @@
+codeid: battlepass.main
+rows: 3
+type: chest
+title: "&aBattlePass"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: LIME_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 13
+        item: EXPERIENCE_BOTTLE
+        amount: 1
+        item-name: "&fBattlePass"
+        item-lore:
+          - "&7Seeded menu."
+          - "&7Wire to OrbisBattlePass next."
+        click-events:
+          message:
+            message: "&aBattlePass UI is seeded. Hook this to OrbisBattlePass next."
+      '2':
+        slot: 22
+        item: ARROW
+        amount: 1
+        item-name: "&bBack"
+        click-events:
+          open-gui:
+            id: system.root

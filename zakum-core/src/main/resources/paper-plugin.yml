@@ -1,0 +1,17 @@
+name: Zakum
+version: ${version}
+main: net.orbis.zakum.core.ZakumPlugin
+bootstrapper: net.orbis.zakum.core.bootstrap.ZakumBootstrap
+api-version: "1.21"
+author: Orbis Network
+description: Network core library (Zakum). Provides DB + shared services.
+
+commands:
+  zakum:
+    description: Zakum admin command
+    usage: /zakum status
+    permission: zakum.admin
+
+permissions:
+  zakum.admin:
+    default: op

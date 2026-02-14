@@ -1,8 +1,6 @@
 package net.orbis.zakum.core.action;
 
-import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -12,14 +10,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class ZakumAceEngine implements AceEngine {
 
-  private static final Pattern ACE_PATTERN = Pattern.compile("\\[(\\w+)]\\s*([^@]+)?(?:@(\\w+))?\\s*(.*)");
+  // Syntax: [EFFECT] value @TARGETER {param=value ...}
+  private static final Pattern ACE_PATTERN = Pattern.compile("\\[(\\w+)]\\s*([^@\\{]+)?(?:@(\\w+))?\\s*(?:\\{(.*)})?");
 
   private final Map<String, EffectAction> effects;
 
@@ -38,17 +36,17 @@ public final class ZakumAceEngine implements AceEngine {
       if (line.isEmpty() || line.startsWith("#")) continue;
 
       Matcher m = ACE_PATTERN.matcher(line);
-      if (!m.matches()) continue;
+      if (!m.find()) continue;
 
       String effectKey = normalize(m.group(1));
       String value = trim(m.group(2));
       String targetKey = trim(m.group(3));
-      String tail = trim(m.group(4));
+      String inlineParams = trim(m.group(4));
 
       EffectAction action = effects.get(effectKey);
       if (action == null) continue;
 
-      Map<String, String> params = parseParams(value, tail);
+      Map<String, String> params = parseParams(value, inlineParams);
       List<Entity> targets = resolveTargets(context, targetKey, params);
       if (targets.isEmpty()) {
         targets = List.of(context.actor());
@@ -69,33 +67,7 @@ public final class ZakumAceEngine implements AceEngine {
   }
 
   private void registerDefaults() {
-    registerEffect("COMMAND", this::applyCommand);
-  }
-
-  private void applyCommand(ActionContext context, List<Entity> targets, Map<String, String> params) {
-    String command = firstNonBlank(params.get("cmd"), params.get("command"), params.get("value"));
-    if (command == null || command.isBlank()) return;
-
-    Player actor = context.actor();
-    String actorName = actor.getName();
-    String actorUuid = actor.getUniqueId().toString();
-
-    for (Entity target : targets) {
-      String targetName = (target == null) ? actorName : target.getName();
-      String targetUuid = (target == null) ? actorUuid : target.getUniqueId().toString();
-      String prepared = command
-        .replace("%player%", actorName)
-        .replace("%uuid%", actorUuid)
-        .replace("%target%", targetName)
-        .replace("%target_uuid%", targetUuid);
-
-      if (prepared.startsWith("/")) prepared = prepared.substring(1);
-
-      String finalCommand = prepared;
-      ZakumApi.get().getScheduler().runGlobal(() ->
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)
-      );
-    }
+    StandardEffects.registerDefaults(this);
   }
 
   private static List<Entity> resolveTargets(ActionContext context, String targetKey, Map<String, String> params) {
@@ -115,7 +87,9 @@ public final class ZakumAceEngine implements AceEngine {
   }
 
   private static List<Entity> nearby(Player actor, Map<String, String> params) {
-    double radius = parseDouble(firstNonBlank(params.get("radius"), params.get("value")), 6.0);
+    String value = params.get("radius");
+    if (value == null || value.isBlank()) value = params.get("value");
+    double radius = parseDouble(value, 6.0);
     double r = Math.max(0.5, radius);
 
     List<Entity> out = new ArrayList<>();
@@ -147,11 +121,19 @@ public final class ZakumAceEngine implements AceEngine {
   private static Map<String, String> parseParams(String value, String tail) {
     Map<String, String> params = new LinkedHashMap<>();
     if (value != null && !value.isBlank()) {
-      params.put("value", value.trim());
+      String normalized = value.trim();
+      params.put("value", normalized);
+      params.put("raw_value", normalized);
+      parseKeyValues(normalized, params);
     }
-    if (tail == null || tail.isBlank()) return params;
+    if (tail != null && !tail.isBlank()) {
+      parseKeyValues(tail.trim(), params);
+    }
+    return params;
+  }
 
-    for (String token : tail.trim().split("\\s+")) {
+  private static void parseKeyValues(String text, Map<String, String> params) {
+    for (String token : text.split("\\s+")) {
       if (token.isBlank()) continue;
       int idx = token.indexOf('=');
       if (idx < 1 || idx == token.length() - 1) continue;
@@ -160,8 +142,6 @@ public final class ZakumAceEngine implements AceEngine {
       if (key.isEmpty() || val.isEmpty()) continue;
       params.put(key, val);
     }
-
-    return params;
   }
 
   private static String normalize(String value) {
@@ -180,13 +160,5 @@ public final class ZakumAceEngine implements AceEngine {
     } catch (NumberFormatException ignored) {
       return fallback;
     }
-  }
-
-  private static String firstNonBlank(String... values) {
-    if (values == null) return null;
-    for (String value : values) {
-      if (value != null && !value.isBlank()) return value;
-    }
-    return null;
   }
 }

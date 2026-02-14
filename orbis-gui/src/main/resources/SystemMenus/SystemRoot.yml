@@ -1,0 +1,47 @@
+codeid: system.root
+rows: 3
+type: chest
+title: "&bOrbis &8| &fSystem"
+
+empty-fill:
+  enabled: true
+  slots:
+    - all
+  item:
+    name: "&r"
+    type: BLACK_STAINED_GLASS_PANE
+    amount: 1
+    item-flags:
+      - all
+
+scenes:
+  '0':
+    delay: 0
+    items:
+      '1':
+        slot: 11
+        item: BOOK
+        amount: 1
+        item-name: "&aBattlePass"
+        item-lore:
+          - "&7Open BattlePass menu"
+        click-events:
+          open-gui:
+            id: battlepass.main
+      '2':
+        slot: 13
+        item: CHEST
+        amount: 1
+        item-name: "&eCrates"
+        item-lore:
+          - "&7Open Crates menu"
+        click-events:
+          open-gui:
+            id: crates.main
+      '3':
+        slot: 15
+        item: BARRIER
+        amount: 1
+        item-name: "&cClose"
+        click-events:
+          close-inventory: {}

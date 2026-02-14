@@ -1,5 +1,6 @@
 package net.orbis.zakum.crates.keys;
 
+import net.orbis.zakum.api.item.ZakumItem;
 import net.orbis.zakum.crates.model.CrateDef;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -13,12 +14,10 @@ import org.bukkit.plugin.Plugin;
  */
 public class PhysicalKeyFactory {
     
-    private final Plugin plugin;
-    private final NamespacedKey crateIdKey;
+    private final NamespacedKey legacyCrateIdKey;
     
     public PhysicalKeyFactory(Plugin plugin) {
-        this.plugin = plugin;
-        this.crateIdKey = new NamespacedKey(plugin, "crate_id");
+        this.legacyCrateIdKey = new NamespacedKey(plugin, "crate_id");
     }
     
     public ItemStack createKey(String crateId, CrateDef crate) {
@@ -32,8 +31,7 @@ public class PhysicalKeyFactory {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
-        // Attach canonical crate identifier via PDC.
-        meta.getPersistentDataContainer().set(crateIdKey, PersistentDataType.STRING, crateId);
+        setIds(meta, crateId);
         item.setItemMeta(meta);
         return item;
     }
@@ -43,7 +41,7 @@ public class PhysicalKeyFactory {
         ItemStack item = new ItemStack(Material.TRIPWIRE_HOOK, 1);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.getPersistentDataContainer().set(crateIdKey, PersistentDataType.STRING, crateId);
+            setIds(meta, crateId);
             item.setItemMeta(meta);
         }
         return item;
@@ -51,20 +49,29 @@ public class PhysicalKeyFactory {
     
     public boolean isKey(ItemStack item, String crateId) {
         if (item == null || !item.hasItemMeta()) return false;
-        
+        if (ZakumItem.hasId(item, crateId)) return true;
+
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
-        
-        String storedCrateId = meta.getPersistentDataContainer().get(crateIdKey, PersistentDataType.STRING);
+
+        String storedCrateId = meta.getPersistentDataContainer().get(legacyCrateIdKey, PersistentDataType.STRING);
         return crateId.equals(storedCrateId);
     }
     
     public String getCrateId(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return null;
-        
+        String id = ZakumItem.idOf(item);
+        if (id != null && !id.isBlank()) return id;
+
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return null;
-        
-        return meta.getPersistentDataContainer().get(crateIdKey, PersistentDataType.STRING);
+
+        return meta.getPersistentDataContainer().get(legacyCrateIdKey, PersistentDataType.STRING);
+    }
+
+    private void setIds(ItemMeta meta, String crateId) {
+        if (meta == null || crateId == null || crateId.isBlank()) return;
+        meta.getPersistentDataContainer().set(ZakumItem.KEY, PersistentDataType.STRING, crateId);
+        meta.getPersistentDataContainer().set(legacyCrateIdKey, PersistentDataType.STRING, crateId);
     }
 }
