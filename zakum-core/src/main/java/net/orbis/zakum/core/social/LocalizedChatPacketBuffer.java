@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.logging.Logger;
 
 /**
@@ -32,6 +33,10 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   private final String defaultLocale;
   private final Cache<String, PreparedMessage> preparedCache;
   private final Map<String, Map<String, String>> templates;
+  private final LongAdder resolveRequests;
+  private final LongAdder resolveHits;
+  private final LongAdder resolveMisses;
+  private final LongAdder sendCount;
 
   public LocalizedChatPacketBuffer(
     AssetManager assets,
@@ -48,6 +53,10 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
       .maximumSize(Math.max(1_000L, preparedMax))
       .build();
     this.templates = new ConcurrentHashMap<>();
+    this.resolveRequests = new LongAdder();
+    this.resolveHits = new LongAdder();
+    this.resolveMisses = new LongAdder();
+    this.sendCount = new LongAdder();
 
     if (localization != null && localization.templates() != null) {
       for (Map.Entry<String, Map<String, String>> entry : localization.templates().entrySet()) {
@@ -95,6 +104,7 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   @Override
   public PreparedMessage resolve(String key, String locale, Map<String, String> placeholders) {
+    resolveRequests.increment();
     String template = findTemplate(key, locale);
     if (template == null || template.isBlank()) return PreparedMessage.EMPTY;
 
@@ -103,7 +113,16 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     if (resolved == null || resolved.isBlank()) return PreparedMessage.EMPTY;
 
     String cacheKey = resolveCacheKey(locale, resolved);
-    return preparedCache.get(cacheKey, ignored -> prepare(resolved));
+    PreparedMessage cached = preparedCache.getIfPresent(cacheKey);
+    if (cached != null) {
+      resolveHits.increment();
+      return cached;
+    }
+
+    resolveMisses.increment();
+    PreparedMessage prepared = prepare(resolved);
+    preparedCache.put(cacheKey, prepared);
+    return prepared;
   }
 
   @Override
@@ -112,7 +131,19 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     String locale = normalizeLocale(player.getLocale());
     PreparedMessage message = resolve(key, locale, placeholders);
     if (message == PreparedMessage.EMPTY) return;
+    sendCount.increment();
     player.sendMessage(message.component());
+  }
+
+  public Stats stats() {
+    return new Stats(
+      templates.size(),
+      preparedCache.estimatedSize(),
+      resolveRequests.sum(),
+      resolveHits.sum(),
+      resolveMisses.sum(),
+      sendCount.sum()
+    );
   }
 
   private PreparedMessage prepare(String line) {
@@ -171,4 +202,13 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     String normalizedLocale = normalizeLocale(locale);
     return normalizedLocale + '\u0000' + content;
   }
+
+  public record Stats(
+    int templateKeys,
+    long preparedCacheSize,
+    long resolveRequests,
+    long resolveHits,
+    long resolveMisses,
+    long sends
+  ) {}
 }

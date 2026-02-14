@@ -97,6 +97,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private MetricsMonitor metricsMonitor;
   private CloudTabRenderer cloudTabRenderer;
   private OrbisChatRenderer chatRenderer;
+  private ChatBufferCache chatBufferCache;
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
   private EconomyService economyService;
@@ -164,13 +165,13 @@ public final class ZakumPlugin extends JavaPlugin {
     this.bedrockDetector = new BedrockClientDetector(settings.chat().bedrock(), getLogger());
     this.bedrockGlyphRemapper = new BedrockGlyphRemapper(assets, settings.chat().bedrock());
     var chatBufferCfg = settings.chat().bufferCache();
-    var chatBufferCache = new ChatBufferCache(
+    this.chatBufferCache = new ChatBufferCache(
       chatBufferCfg.enabled(),
       chatBufferCfg.maximumSize(),
       chatBufferCfg.expireAfterAccessSeconds()
     );
     var localizationCfg = settings.chat().localization();
-    this.chatPacketBuffer = new LocalizedChatPacketBuffer(assets, chatBufferCache, localizationCfg, getLogger());
+    this.chatPacketBuffer = new LocalizedChatPacketBuffer(assets, this.chatBufferCache, localizationCfg, getLogger());
     if (localizationCfg.enabled() && localizationCfg.warmupOnStart()) {
       scheduler.runAsync(chatPacketBuffer::warmup);
     }
@@ -198,7 +199,7 @@ public final class ZakumPlugin extends JavaPlugin {
       capabilityRegistry
     );
     this.cloudTabRenderer = new CloudTabRenderer(api, assets, bedrockDetector, bedrockGlyphRemapper);
-    this.chatRenderer = new OrbisChatRenderer(assets, chatBufferCache, bedrockDetector, bedrockGlyphRemapper);
+    this.chatRenderer = new OrbisChatRenderer(assets, this.chatBufferCache, bedrockDetector, bedrockGlyphRemapper);
     this.toxicityModerationService = new ToxicityModerationService(settings.moderation().toxicity(), getLogger(), metricsMonitor);
     this.chatListener = new ChatListener(api, chatRenderer, toxicityModerationService);
     getServer().getPluginManager().registerEvents(chatListener, this);
@@ -282,6 +283,7 @@ public final class ZakumPlugin extends JavaPlugin {
     cloudClient = null;
     cloudTabRenderer = null;
     chatRenderer = null;
+    chatBufferCache = null;
     chatPacketBuffer = null;
     chatListener = null;
     metricsMonitor = null;
@@ -453,9 +455,28 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("chatbuffer") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendChatBufferStatus(sender);
+      return true;
+    }
+
+    if (args.length >= 2 && args[0].equalsIgnoreCase("chatbuffer") && args[1].equalsIgnoreCase("warmup")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      warmupChatBuffer(sender);
+      return true;
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress run [iterations]");
+    sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
   }
@@ -581,6 +602,44 @@ public final class ZakumPlugin extends JavaPlugin {
     }
 
     sender.sendMessage("Stress started: iterations=" + iterations + ", players=" + players.size());
+  }
+
+  private void sendChatBufferStatus(CommandSender sender) {
+    sender.sendMessage("Zakum Chat Buffer Status");
+    if (chatBufferCache != null) {
+      var parse = chatBufferCache.stats();
+      sender.sendMessage("parse.enabled=" + parse.enabled());
+      sender.sendMessage("parse.requests=" + parse.requests());
+      sender.sendMessage("parse.hits=" + parse.hits());
+      sender.sendMessage("parse.misses=" + parse.misses());
+      sender.sendMessage("parse.estimatedSize=" + parse.estimatedSize());
+    } else {
+      sender.sendMessage("parse.cache=offline");
+    }
+
+    if (chatPacketBuffer instanceof LocalizedChatPacketBuffer localized) {
+      var prepared = localized.stats();
+      sender.sendMessage("prepared.templateKeys=" + prepared.templateKeys());
+      sender.sendMessage("prepared.cacheSize=" + prepared.preparedCacheSize());
+      sender.sendMessage("prepared.resolveRequests=" + prepared.resolveRequests());
+      sender.sendMessage("prepared.resolveHits=" + prepared.resolveHits());
+      sender.sendMessage("prepared.resolveMisses=" + prepared.resolveMisses());
+      sender.sendMessage("prepared.sends=" + prepared.sends());
+      return;
+    }
+    sender.sendMessage("prepared.buffer=not-localized");
+  }
+
+  private void warmupChatBuffer(CommandSender sender) {
+    if (chatPacketBuffer == null) {
+      sender.sendMessage("Chat buffer is not available.");
+      return;
+    }
+    scheduler.runAsync(() -> {
+      chatPacketBuffer.warmup();
+      scheduler.runGlobal(() -> sender.sendMessage("Chat buffer warmup finished."));
+    });
+    sender.sendMessage("Chat buffer warmup started.");
   }
 
   private static String formatEpochMillis(long epochMillis) {
