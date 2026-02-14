@@ -144,9 +144,9 @@ public static boolean isValidYaml(YamlConfiguration yaml) {
       List<QuestStep> steps = new ArrayList<>();
 
       for (Map<?, ?> stepObj : stepsList) {
-        String type = Objects.toString(stepObj.getOrDefault("type", ""), "").trim();
-        String key = Objects.toString(stepObj.getOrDefault("key", ""), "").trim();
-        String value = Objects.toString(stepObj.getOrDefault("value", ""), "").trim();
+        String type = Objects.toString(stepObj.get("type"), "").trim();
+        String key = Objects.toString(stepObj.get("key"), "").trim();
+        String value = Objects.toString(stepObj.get("value"), "").trim();
         long required = parseLong(stepObj.get("required"), 1);
 
         if (type.isBlank()) continue;

@@ -1,5 +1,7 @@
 package net.orbis.zakum.crates;
 
+import net.orbis.zakum.api.ZakumApi;
+import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.crates.model.RewardDef;
 import net.orbis.zakum.crates.util.ItemBuilder;
@@ -8,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class CrateRewardExecutor {
 
@@ -28,14 +31,22 @@ public final class CrateRewardExecutor {
       }
     }
 
-    for (String cmd : reward.commands()) {
-      String c = cmd
-        .replace("{player}", p.getName())
-        .replace("{amount}", String.valueOf(reward.economyAmount()));
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), c);
-    }
+    executeAceCommands(p, reward);
 
     giveItems(p, reward.items());
+  }
+
+  private void executeAceCommands(Player player, RewardDef reward) {
+    List<String> script = reward.commands().stream()
+      .filter(cmd -> cmd != null && !cmd.isBlank())
+      .map(cmd -> cmd
+        .replace("{player}", player.getName())
+        .replace("{amount}", String.valueOf(reward.economyAmount())))
+      .map(cmd -> cmd.startsWith("[") ? cmd : "[COMMAND] " + cmd)
+      .collect(Collectors.toList());
+
+    if (script.isEmpty()) return;
+    ZakumApi.get().getAceEngine().executeScript(script, AceEngine.ActionContext.of(player));
   }
 
   private void giveItems(Player p, List<ItemStack> items) {

@@ -2,10 +2,10 @@ package net.orbis.zakum.crates.keys;
 
 import net.orbis.zakum.crates.model.CrateDef;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.Plugin;
 
 /**
@@ -22,33 +22,18 @@ public class PhysicalKeyFactory {
     }
     
     public ItemStack createKey(String crateId, CrateDef crate) {
-        // Get material from crate config
-        Material material = Material.valueOf(crate.key().material());
-        ItemStack item = new ItemStack(material, 1);
-        
+        if (crate == null || crate.keyItem() == null) {
+            return createKey(crateId);
+        }
+
+        ItemStack item = crate.keyItem().clone();
+        item.setAmount(1);
+
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
-        
-        // Set display name
-        meta.setDisplayName(crate.key().name());
-        
-        // Set lore
-        if (crate.key().lore() != null && !crate.key().lore().isEmpty()) {
-            meta.setLore(crate.key().lore());
-        }
-        
-        // Set NBT data to identify this as a crate key
+
+        // Attach canonical crate identifier via PDC.
         meta.getPersistentDataContainer().set(crateIdKey, PersistentDataType.STRING, crateId);
-        
-        // Make it glow if configured
-        if (crate.key().glow()) {
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.DURABILITY, 1, true);
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
-        }
-        
-        // Hide all attributes
-        meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-        
         item.setItemMeta(meta);
         return item;
     }

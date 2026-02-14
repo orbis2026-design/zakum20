@@ -1,5 +1,6 @@
 package net.orbis.zakum.crates.keys;
 
+import net.orbis.zakum.crates.storage.VirtualKeyStore;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import java.util.UUID;

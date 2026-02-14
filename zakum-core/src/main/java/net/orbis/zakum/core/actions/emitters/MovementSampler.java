@@ -1,5 +1,7 @@
 package net.orbis.zakum.core.actions.emitters;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.actions.ActionEvent;
 import org.bukkit.Bukkit;
@@ -54,12 +56,12 @@ public final class MovementSampler implements Listener {
   public void start() {
     if (taskId != -1) return;
 
-    taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, this::tick, sampleTicks, sampleTicks);
+    taskId = ZakumApi.get().getScheduler().scheduleSyncRepeatingTask(plugin, this::tick, sampleTicks, sampleTicks);
   }
 
   public void stop() {
     if (taskId != -1) {
-      Bukkit.getScheduler().cancelTask(taskId);
+      ZakumApi.get().getScheduler().cancelTask(taskId);
       taskId = -1;
     }
     last.clear();
@@ -137,3 +139,4 @@ public final class MovementSampler implements Listener {
     }
   }
 }
+

@@ -1,12 +1,14 @@
 package net.orbis.zakum.battlepass.rewards;
 
+import net.orbis.zakum.api.ZakumApi;
+import net.orbis.zakum.api.action.AceEngine;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Executes rewards (sync world interaction).
@@ -37,16 +39,17 @@ public final class RewardExecutor {
     if (cmds == null || cmds.isEmpty()) return;
 
     String name = player.getName();
-    UUID uuid = player.getUniqueId().toString().toLowerCase(Locale.ROOT);
+    String uuid = player.getUniqueId().toString().toLowerCase(Locale.ROOT);
 
-    for (String raw : cmds) {
-      if (raw == null) continue;
-      String cmd = raw
+    List<String> script = cmds.stream()
+      .filter(raw -> raw != null && !raw.isBlank())
+      .map(raw -> raw
         .replace("%player%", name)
-        .replace("%uuid%", uuid);
+        .replace("%uuid%", uuid))
+      .map(cmd -> cmd.startsWith("[") ? cmd : "[COMMAND] " + cmd)
+      .collect(Collectors.toList());
 
-      // must run on main thread
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-    }
+    AceEngine.ActionContext ctx = AceEngine.ActionContext.of(player);
+    ZakumApi.get().getAceEngine().executeScript(script, ctx);
   }
 }

@@ -1,5 +1,7 @@
 package net.orbis.zakum.minipets.runtime;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.minipets.model.MiniPetDef;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -31,7 +33,7 @@ public final class MiniPetEntityManager {
 
   public void startFollowTask(long intervalTicks) {
     long t = Math.max(1L, intervalTicks);
-    Bukkit.getScheduler().runTaskTimer(plugin, this::tick, t, t);
+    ZakumApi.get().getScheduler().runTaskTimer(plugin, this::tick, t, t);
   }
 
   public void despawn(UUID owner) {
@@ -89,3 +91,4 @@ public final class MiniPetEntityManager {
     }
   }
 }
+

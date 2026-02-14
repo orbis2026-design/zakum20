@@ -1,5 +1,7 @@
 package net.orbis.zakum.core.boosters;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.api.boosters.BoosterKind;
 import net.orbis.zakum.api.boosters.BoosterService;
 import net.orbis.zakum.api.config.ZakumSettings;
@@ -51,13 +53,13 @@ public final class SqlBoosterService implements BoosterService {
     async.execute(this::refreshFromDb);
 
     long ticks = Math.max(10, settings.refreshSeconds()) * 20L;
-    int id = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::refreshFromDb, ticks, ticks).getTaskId();
+    int id = ZakumApi.get().getScheduler().runTaskTimerAsynchronously(plugin, this::refreshFromDb, ticks, ticks);
     taskId.set(id);
   }
 
   public void shutdown() {
     int id = taskId.getAndSet(-1);
-    if (id != -1) Bukkit.getScheduler().cancelTask(id);
+    if (id != -1) ZakumApi.get().getScheduler().cancelTask(id);
 
     allMult = Map.of();
     playerMult = Map.of();
@@ -346,3 +348,4 @@ public final class SqlBoosterService implements BoosterService {
 
   private record PlayerKey(UUID uuid, EntitlementScope scope, String serverId, String kind) {}
 }
+

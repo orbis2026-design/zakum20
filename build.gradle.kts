@@ -8,6 +8,8 @@ allprojects {
   repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    // PlaceholderAPI artifacts
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
     // Needed for PacketEvents and a few other ecosystem libs.
     maven("https://jitpack.io")
   }

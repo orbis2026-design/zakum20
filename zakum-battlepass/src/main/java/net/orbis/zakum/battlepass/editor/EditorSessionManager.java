@@ -1,5 +1,7 @@
 package net.orbis.zakum.battlepass.editor;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -46,7 +48,7 @@ public final class EditorSessionManager {
 
     long exp = System.currentTimeMillis() + timeoutMs;
 
-    int taskId = Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+    int taskId = ZakumApi.get().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
       EditSession cur = sessions.get(id);
       if (cur == null) return;
       if (System.currentTimeMillis() <= cur.expiresAtMs()) return;
@@ -62,14 +64,15 @@ public final class EditorSessionManager {
     if (playerId == null) return;
     EditSession s = sessions.remove(playerId);
     if (s != null && cancelTask) {
-      try { Bukkit.getScheduler().cancelTask(s.timeoutTaskId()); } catch (Throwable ignored) {}
+      try { ZakumApi.get().getScheduler().cancelTask(s.timeoutTaskId()); } catch (Throwable ignored) {}
     }
   }
 
   public void shutdown() {
     for (Map.Entry<UUID, EditSession> e : sessions.entrySet()) {
-      try { Bukkit.getScheduler().cancelTask(e.getValue().timeoutTaskId()); } catch (Throwable ignored) {}
+      try { ZakumApi.get().getScheduler().cancelTask(e.getValue().timeoutTaskId()); } catch (Throwable ignored) {}
     }
     sessions.clear();
   }
 }
+

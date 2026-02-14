@@ -100,6 +100,7 @@ public final class BattlePassYamlStore {
   public List<String> listBackups(String kind, int limit) {
     kind = normalizeKind(kind);
     int lim = Math.max(1, Math.min(50, limit));
+    final String prefix = kind + "-";
 
     if (!Files.isDirectory(backupsDir)) return List.of();
 
@@ -107,7 +108,7 @@ public final class BattlePassYamlStore {
     try (var s = Files.list(backupsDir)) {
       s.filter(p -> {
         String n = p.getFileName().toString();
-        return n.startsWith(kind + "-") && n.endsWith(".bak");
+        return n.startsWith(prefix) && n.endsWith(".bak");
       }).forEach(matches::add);
     } catch (IOException ignored) {
       return List.of();

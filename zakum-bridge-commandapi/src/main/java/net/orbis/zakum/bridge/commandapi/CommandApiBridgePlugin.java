@@ -2,9 +2,10 @@ package net.orbis.zakum.bridge.commandapi;
 
 import dev.jorel.commandapi.CommandAPIBukkit;
 import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.DoubleArgument;
+import dev.jorel.commandapi.arguments.EntitySelectorArgument;
 import dev.jorel.commandapi.arguments.LongArgument;
-import dev.jorel.commandapi.arguments.PlayerArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
 import dev.jorel.commandapi.executors.CommandExecutor;
 import net.orbis.zakum.api.ZakumApi;
@@ -51,12 +52,16 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       // Best-effort.
     }
 
+    api.getBridgeManager().registerBridge("commandapi");
     registerCommands();
     getLogger().info("ZakumBridgeCommandAPI enabled.");
   }
 
   @Override
   public void onDisable() {
+    if (api != null) {
+      api.getBridgeManager().unregisterBridge("commandapi");
+    }
     // Best-effort unregister to avoid command ghosts during /reload.
     try {
       CommandAPIBukkit.unregister("zakum", true, true);
@@ -68,7 +73,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       .withPermission("zakum.admin");
 
     root.withSubcommand(new CommandAPICommand("status")
-      .executes((sender, args) -> cmdStatus(sender)));
+      .executes((CommandExecutor) (sender, args) -> cmdStatus(sender)));
 
     root.withSubcommand(entitlementsCommand());
     root.withSubcommand(boostersCommand());
@@ -95,7 +100,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
   private CommandAPICommand packetsCommand() {
     return new CommandAPICommand("packets")
       .withSubcommand(new CommandAPICommand("status")
-        .executes((sender, args) -> {
+        .executes((CommandExecutor) (sender, args) -> {
           PacketService ps = Bukkit.getServicesManager().load(PacketService.class);
           if (ps == null) {
             sender.sendMessage(ChatColor.RED + "PacketService not available (install ZakumPackets + PacketEvents, and enable packets.*).");
@@ -111,11 +116,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     CommandAPICommand ent = new CommandAPICommand("entitlements");
 
     ent.withSubcommand(new CommandAPICommand("check")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(new StringArgument("key"))
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         String key = (String) args.get("key");
@@ -125,7 +130,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
         UUID uuid = p.getUniqueId();
 
         api.entitlements().has(uuid, scope, effectiveServer, key).whenComplete((ok, err) -> {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) {
               sender.sendMessage(ChatColor.RED + "Error: " + err.getMessage());
               return;
@@ -136,12 +141,12 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     ent.withSubcommand(new CommandAPICommand("grant")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(new StringArgument("key"))
       .withOptionalArguments(new StringArgument("serverId"))
       .withOptionalArguments(new LongArgument("expiresAtEpochSeconds", 0, Long.MAX_VALUE))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         String key = (String) args.get("key");
@@ -150,7 +155,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
 
         String effectiveServer = (scope == EntitlementScope.NETWORK) ? null : (serverId != null ? serverId : api.settings().server().id());
         api.entitlements().grant(p.getUniqueId(), scope, effectiveServer, key, expires).whenComplete((v, err) -> {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) sender.sendMessage(ChatColor.RED + "Error: " + err.getMessage());
             else sender.sendMessage(ChatColor.GREEN + "Granted " + key + " to " + p.getName());
           });
@@ -158,11 +163,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     ent.withSubcommand(new CommandAPICommand("revoke")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(new StringArgument("key"))
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         String key = (String) args.get("key");
@@ -170,7 +175,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
 
         String effectiveServer = (scope == EntitlementScope.NETWORK) ? null : (serverId != null ? serverId : api.settings().server().id());
         api.entitlements().revoke(p.getUniqueId(), scope, effectiveServer, key).whenComplete((v, err) -> {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) sender.sendMessage(ChatColor.RED + "Error: " + err.getMessage());
             else sender.sendMessage(ChatColor.GREEN + "Revoked " + key + " from " + p.getName());
           });
@@ -178,8 +183,8 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     ent.withSubcommand(new CommandAPICommand("invalidate")
-      .withArguments(new PlayerArgument("player"))
-      .executes((sender, args) -> {
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         api.entitlements().invalidate(p.getUniqueId());
         sender.sendMessage(ChatColor.GREEN + "Invalidated entitlement cache for " + p.getName());
@@ -192,11 +197,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     CommandAPICommand b = new CommandAPICommand("boosters");
 
     b.withSubcommand(new CommandAPICommand("multiplier")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
@@ -214,7 +219,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       .withArguments(new DoubleArgument("multiplier", 0.0, 1000.0))
       .withArguments(new LongArgument("durationSeconds", 1, 365L * 24 * 60 * 60))
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
         double mult = (double) args.get("multiplier");
@@ -224,7 +229,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
         String effectiveServer = (scope == EntitlementScope.NETWORK) ? null : (serverId != null ? serverId : api.settings().server().id());
 
         api.boosters().grantToAll(scope, effectiveServer, kind, mult, duration).whenComplete((v, err) -> {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) sender.sendMessage(ChatColor.RED + "Error: " + err.getMessage());
             else sender.sendMessage(ChatColor.GREEN + "Granted ALL booster " + kind + " x" + mult + " for " + duration + "s");
           });
@@ -232,13 +237,13 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     b.withSubcommand(new CommandAPICommand("grant_player")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withArguments(new DoubleArgument("multiplier", 0.0, 1000.0))
       .withArguments(new LongArgument("durationSeconds", 1, 365L * 24 * 60 * 60))
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
@@ -249,7 +254,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
         String effectiveServer = (scope == EntitlementScope.NETWORK) ? null : (serverId != null ? serverId : api.settings().server().id());
 
         api.boosters().grantToPlayer(p.getUniqueId(), scope, effectiveServer, kind, mult, duration).whenComplete((v, err) -> {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) sender.sendMessage(ChatColor.RED + "Error: " + err.getMessage());
             else sender.sendMessage(ChatColor.GREEN + "Granted booster " + kind + " to " + p.getName() + " x" + mult + " for " + duration + "s");
           });
@@ -261,7 +266,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
         String serverId = (String) args.getOptional("serverId").orElse(null);
@@ -271,11 +276,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     b.withSubcommand(new CommandAPICommand("list_player")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
@@ -289,7 +294,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
         String serverId = (String) args.getOptional("serverId").orElse(null);
@@ -299,11 +304,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     b.withSubcommand(new CommandAPICommand("clear_player")
-      .withArguments(new PlayerArgument("player"))
+      .withArguments(new EntitySelectorArgument.OnePlayer("player"))
       .withArguments(scopeArg())
       .withArguments(kindArg())
       .withOptionalArguments(new StringArgument("serverId"))
-      .executes((sender, args) -> {
+      .executes((CommandExecutor) (sender, args) -> {
         Player p = (Player) args.get("player");
         EntitlementScope scope = parseScope((String) args.get("scope"));
         BoosterKind kind = parseKind((String) args.get("kind"));
@@ -314,7 +319,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }));
 
     b.withSubcommand(new CommandAPICommand("purge")
-      .executes((sender, args) -> purgeExpiredBoosters(sender)));
+      .executes((CommandExecutor) (sender, args) -> purgeExpiredBoosters(sender)));
 
     return b;
   }
@@ -355,7 +360,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
 
       var rows = jdbc.query(sql.toString(), rs -> new BoosterRow(rs.getDouble(1), rs.getLong(2)), params.toArray());
 
-      Bukkit.getScheduler().runTask(this, () -> {
+      ZakumApi.get().getScheduler().runTask(this, () -> {
         if (rows.isEmpty()) {
           sender.sendMessage(ChatColor.GRAY + "No active boosters found.");
           return;
@@ -411,7 +416,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
         s.refreshNowAsync();
       }
 
-      Bukkit.getScheduler().runTask(this, () -> sender.sendMessage(ChatColor.GREEN + "Cleared " + deleted + " booster row(s)."));
+      ZakumApi.get().getScheduler().runTask(this, () -> sender.sendMessage(ChatColor.GREEN + "Cleared " + deleted + " booster row(s)."));
     });
   }
 
@@ -439,7 +444,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       }
 
       int done = total;
-      Bukkit.getScheduler().runTask(this, () -> sender.sendMessage(ChatColor.GREEN + "Purged " + done + " expired booster row(s)."));
+      ZakumApi.get().getScheduler().runTask(this, () -> sender.sendMessage(ChatColor.GREEN + "Purged " + done + " expired booster row(s)."));
     });
   }
 
@@ -449,7 +454,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     return ChatColor.YELLOW.toString();
   }
 
-  private static StringArgument scopeArg() {
+  private static Argument<String> scopeArg() {
     return new StringArgument("scope")
       .replaceSuggestions((info, builder) -> {
         builder.suggest("SERVER");
@@ -458,7 +463,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       });
   }
 
-  private static StringArgument kindArg() {
+  private static Argument<String> kindArg() {
     return new StringArgument("kind")
       .replaceSuggestions((info, builder) -> {
         for (BoosterKind k : BoosterKind.values()) builder.suggest(k.name());
@@ -478,3 +483,4 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     return BoosterKind.valueOf(s.trim().toUpperCase(Locale.ROOT));
   }
 }
+

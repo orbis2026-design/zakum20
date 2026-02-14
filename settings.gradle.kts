@@ -24,6 +24,7 @@ include("zakum-bridge-essentialsx")
 include("zakum-bridge-commandapi")
 
 include("orbis-essentials")
+include("orbis-gui")
 
 include("zakum-bridge-mythicmobs")
 include("zakum-bridge-jobs")

@@ -220,9 +220,9 @@ public final class BattlePassEditor {
     int slot = 0;
     for (int i = start; i < end; i++, slot++) {
       Map<?, ?> s = steps.get(i);
-      String type = Objects.toString(s.getOrDefault("type", ""), "");
-      String key = Objects.toString(s.getOrDefault("key", ""), "");
-      String value = Objects.toString(s.getOrDefault("value", ""), "");
+      String type = Objects.toString(s.get("type"), "");
+      String key = Objects.toString(s.get("key"), "");
+      String value = Objects.toString(s.get("value"), "");
       long required = parseLong(s.get("required"), 1);
 
       inv.setItem(slot, EditorItems.item(Material.MAP,
@@ -531,14 +531,14 @@ public final class BattlePassEditor {
         yaml.set(base, value);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved quest " + questId + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -567,14 +567,14 @@ public final class BattlePassEditor {
         yaml.set(base, val);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved quest " + questId + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -609,14 +609,14 @@ public final class BattlePassEditor {
         yaml.set("quests." + questId + ".availableWeeks", out);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved quest " + questId + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -655,14 +655,14 @@ public final class BattlePassEditor {
         yaml.set(path, out);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved step.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -698,14 +698,14 @@ public final class BattlePassEditor {
         yaml.set(path, out);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved step.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -750,14 +750,14 @@ public final class BattlePassEditor {
         yaml.set(path, out);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Added step.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -803,14 +803,14 @@ public final class BattlePassEditor {
 
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Added tier " + t + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -838,14 +838,14 @@ public final class BattlePassEditor {
         yaml.set("tiers." + t + ".pointsRequired", r);
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved tier " + t + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -880,14 +880,14 @@ public final class BattlePassEditor {
 
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Added reward " + id + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -927,14 +927,14 @@ public final class BattlePassEditor {
 
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Added command.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -962,14 +962,14 @@ public final class BattlePassEditor {
         yaml.set(path, !cur);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Quest " + questId + " enabled=" + (!cur));
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -993,14 +993,14 @@ public final class BattlePassEditor {
         yaml.set(path, !cur);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Saved.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -1029,14 +1029,14 @@ public final class BattlePassEditor {
         yaml.set(path, next);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Cadence set to " + next + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Save failed: " + ex.getMessage());
           reopen.run();
@@ -1067,14 +1067,14 @@ public final class BattlePassEditor {
         yaml.set(path, out);
         store.saveQuestsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Deleted step.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Delete failed: " + ex.getMessage());
           reopen.run();
@@ -1102,14 +1102,14 @@ public final class BattlePassEditor {
 
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Deleted reward " + rewardId + ".");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Delete failed: " + ex.getMessage());
           reopen.run();
@@ -1143,14 +1143,14 @@ public final class BattlePassEditor {
 
         store.saveRewardsAtomic(yaml);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           plugin.restartRuntimeForYamlChange(null);
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.GREEN + "Removed command.");
           reopen.run();
         });
       } catch (Exception ex) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        ZakumApi.get().getScheduler().runTask(plugin, () -> {
           adminJobRunning.set(false);
           p.sendMessage(ChatColor.RED + "Remove failed: " + ex.getMessage());
           reopen.run();
@@ -1219,3 +1219,4 @@ public final class BattlePassEditor {
     return new String[]{track, rid};
   }
 }
+

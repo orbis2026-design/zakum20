@@ -1,10 +1,11 @@
 package net.orbis.orbisessentials.teleport;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Map;
 import java.util.Objects;
@@ -42,7 +43,7 @@ public final class TeleportService {
     Location start = p.getLocation().clone();
     p.sendMessage(msg.pref(msg.tpWarmup().replace("{seconds}", String.valueOf(warmupSeconds))));
 
-    BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    int taskId = ZakumApi.get().getScheduler().runTaskLater(plugin, () -> {
       PendingTp pt = pending.remove(p.getUniqueId());
       if (pt == null) return;
 
@@ -64,13 +65,13 @@ public final class TeleportService {
       if (cooldownSeconds > 0) cooldownUntilMs.put(live.getUniqueId(), System.currentTimeMillis() + cooldownSeconds * 1000L);
     }, warmupSeconds * 20L);
 
-    pending.put(p.getUniqueId(), new PendingTp(start, dest.clone(), cancelOnMove, maxMoveBlocks, task));
+    pending.put(p.getUniqueId(), new PendingTp(start, dest.clone(), cancelOnMove, maxMoveBlocks, taskId));
     return true;
   }
 
   public void cancel(UUID uuid) {
     PendingTp pt = pending.remove(uuid);
-    if (pt != null) pt.task.cancel();
+    if (pt != null) ZakumApi.get().getScheduler().cancelTask(pt.taskId());
   }
 
   private void doTeleport(Player p, Location dest) {
@@ -81,5 +82,6 @@ public final class TeleportService {
     });
   }
 
-  public record PendingTp(Location start, Location dest, boolean cancelOnMove, double maxMoveBlocks, BukkitTask task) {}
+  public record PendingTp(Location start, Location dest, boolean cancelOnMove, double maxMoveBlocks, int taskId) {}
 }
+

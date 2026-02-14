@@ -1,5 +1,7 @@
 package net.orbis.zakum.core.actions;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.actions.DeferredActionService;
@@ -36,9 +38,10 @@ public final class DeferredActionReplayListener implements Listener {
     deferred.claim(server.serverId(), p.getName(), p.getUniqueId(), limit).whenComplete((events, err) -> {
       if (err != null || events == null || events.isEmpty()) return;
 
-      Bukkit.getScheduler().runTask(plugin, () -> {
+      ZakumApi.get().getScheduler().runTask(plugin, () -> {
         for (var ev : events) bus.publish(ev);
       });
     });
   }
 }
+

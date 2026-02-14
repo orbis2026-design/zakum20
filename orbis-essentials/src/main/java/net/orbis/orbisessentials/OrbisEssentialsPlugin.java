@@ -393,7 +393,7 @@ public final class OrbisEssentialsPlugin extends JavaPlugin {
   private static String sanitizeName(String s) {
     if (s == null) return "";
     String x = s.trim().toLowerCase(Locale.ROOT);
-    x = x.replaceAll("[^a-z0-9_\-]", "");
+    x = x.replaceAll("[^a-z0-9_-]", "");
     if (x.length() > 32) x = x.substring(0, 32);
     return x;
   }

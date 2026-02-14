@@ -1,7 +1,7 @@
 package net.orbis.zakum.packets;
 
 import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.packets.PacketService;
@@ -60,7 +60,7 @@ public final class ZakumPacketsPlugin extends JavaPlugin implements Listener {
 
   @Override
   public void onDisable() {
-    HandlerList.unregisterAll(this);
+    HandlerList.unregisterAll((org.bukkit.plugin.Plugin) this);
 
     if (service != null) {
       try { Bukkit.getServicesManager().unregister(PacketService.class, service); } catch (Throwable ignored) {}

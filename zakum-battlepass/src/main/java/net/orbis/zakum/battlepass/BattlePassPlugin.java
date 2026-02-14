@@ -587,7 +587,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
         if (!isEnabled()) { adminJobRunning.set(false); maintenanceMode.set(false); return; }
 
         if (flushErr != null) {
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             adminJobRunning.set(false);
             maintenanceMode.set(false);
             sender.sendMessage(ChatColor.RED + "Failed flushing deltas; rollover aborted.");
@@ -596,7 +596,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
           return;
         }
 
-        Bukkit.getScheduler().runTask(this, () -> {
+        ZakumApi.get().getScheduler().runTask(this, () -> {
           stopRuntime(false); // already flushed
           sender.sendMessage(ChatColor.GRAY + "Flush OK. Running rollover ops...");
         });
@@ -614,7 +614,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
 
           if (backupsEnabled && backupBeforeChange) {
             if (backupErr != null || backup == null || !backup.ok()) {
-              Bukkit.getScheduler().runTask(this, () -> {
+              ZakumApi.get().getScheduler().runTask(this, () -> {
                 adminJobRunning.set(false);
                 maintenanceMode.set(false);
                 String why = (backupErr != null) ? (backupErr.getClass().getSimpleName() + ": " + backupErr.getMessage()) : (backup == null ? "unknown" : backup.message());
@@ -644,7 +644,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
           purgeFuture.whenComplete((purge, purgeErr) -> {
             if (!isEnabled()) { adminJobRunning.set(false); maintenanceMode.set(false); return; }
 
-            Bukkit.getScheduler().runTask(this, () -> {
+            ZakumApi.get().getScheduler().runTask(this, () -> {
               try {
                 if (purgeOldSeason && (purgeErr != null || purge == null || !purge.ok())) {
                   String why = (purgeErr != null) ? (purgeErr.getClass().getSimpleName() + ": " + purgeErr.getMessage()) : (purge == null ? "unknown" : purge.message());
@@ -728,7 +728,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
             }
           }
 
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             adminJobRunning.set(false);
             if (err != null) {
               sender.sendMessage(ChatColor.RED + "Backup failed: " + err.getClass().getSimpleName());
@@ -754,7 +754,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
       BattlePassBackupService.listBatchesAsync(zakum, runtime.progressServerId(), 10)
         .whenComplete((batches, err) -> {
           if (!isEnabled()) return;
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             if (err != null) {
               sender.sendMessage(ChatColor.RED + "Failed listing backups.");
               return;
@@ -810,7 +810,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
           if (!isEnabled()) { adminJobRunning.set(false); maintenanceMode.set(false); return; }
 
           if (flushErr != null) {
-            Bukkit.getScheduler().runTask(this, () -> {
+            ZakumApi.get().getScheduler().runTask(this, () -> {
               adminJobRunning.set(false);
               maintenanceMode.set(false);
               sender.sendMessage(ChatColor.RED + "Failed flushing deltas; purge aborted.");
@@ -819,7 +819,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
             return;
           }
 
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             stopRuntime(false); // already flushed; avoid re-writing while rows are being deleted
             sender.sendMessage(ChatColor.GRAY + "Purging season " + season + " (deleteLimit=" + deleteLimit + ")...");
           });
@@ -827,7 +827,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
           BattlePassBackupService.purgeSeasonAsync(zakum, sid, season, deleteLimit)
             .whenComplete((res, err) -> {
               if (!isEnabled()) { adminJobRunning.set(false); maintenanceMode.set(false); return; }
-              Bukkit.getScheduler().runTask(this, () -> {
+              ZakumApi.get().getScheduler().runTask(this, () -> {
                 adminJobRunning.set(false);
                 maintenanceMode.set(false);
                 if (err != null) {
@@ -854,7 +854,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
       BattlePassBackupService.purgeSeasonAsync(zakum, sid, season, deleteLimit)
         .whenComplete((res, err) -> {
           if (!isEnabled()) { adminJobRunning.set(false); return; }
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             adminJobRunning.set(false);
             if (err != null) {
               sender.sendMessage(ChatColor.RED + "Purge failed: " + err.getClass().getSimpleName());
@@ -924,7 +924,7 @@ if (sub.equals("edit") || sub.equals("editor")) {
       filesFuture.thenCombine(dbFuture, (filesOk, dbRes) -> new Object[]{filesOk, dbRes})
         .whenComplete((pair, err) -> {
           if (!isEnabled()) { adminJobRunning.set(false); maintenanceMode.set(false); return; }
-          Bukkit.getScheduler().runTask(this, () -> {
+          ZakumApi.get().getScheduler().runTask(this, () -> {
             try {
               boolean filesOk = pair != null && (Boolean) pair[0];
               BattlePassBackupService.RestoreResult dbRes = pair == null ? null : (BattlePassBackupService.RestoreResult) pair[1];
@@ -1147,3 +1147,4 @@ if (sub.equals("edit") || sub.equals("editor")) {
     return true;
   }
 }
+

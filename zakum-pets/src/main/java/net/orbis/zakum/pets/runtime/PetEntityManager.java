@@ -1,5 +1,7 @@
 package net.orbis.zakum.pets.runtime;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.pets.model.FollowMode;
 import net.orbis.zakum.pets.model.PetDef;
 import org.bukkit.Bukkit;
@@ -38,7 +40,7 @@ public final class PetEntityManager {
   }
 
   public void startFollowerTask() {
-    Bukkit.getScheduler().runTaskTimer(plugin, this::tickTeleportFollowers, 10L, 10L);
+    ZakumApi.get().getScheduler().runTaskTimer(plugin, this::tickTeleportFollowers, 10L, 10L);
   }
 
   public void despawn(UUID owner) {
@@ -108,3 +110,4 @@ public final class PetEntityManager {
 
   private record Active(UUID entityId, FollowMode followMode) {}
 }
+

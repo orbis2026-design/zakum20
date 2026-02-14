@@ -1,7 +1,7 @@
 package net.orbis.zakum.crates.storage;
 
 import net.orbis.zakum.api.ZakumApi;
-import java.sql.*;
+import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -26,20 +26,13 @@ public class VirtualKeyStore {
         return CompletableFuture.supplyAsync(() -> {
             String sql = "SELECT quantity FROM orbis_crates_keys " +
                         "WHERE server_id = ? AND player_uuid = ? AND crate_id = ?";
-            
-            try (var conn = zakum.database().jdbc().getConnection();
-                 var stmt = conn.prepareStatement(sql)) {
-                
-                stmt.setString(1, serverId);
-                stmt.setString(2, playerId.toString());
-                stmt.setString(3, crateId);
-                
-                try (var rs = stmt.executeQuery()) {
-                    return rs.next() ? rs.getInt("quantity") : 0;
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to get key count", e);
-            }
+
+            var rows = zakum.database().jdbc().query(
+              sql,
+              rs -> rs.getInt("quantity"),
+              serverId, playerId.toString(), crateId
+            );
+            return rows.isEmpty() ? 0 : rows.get(0);
         }, async);
     }
     
@@ -48,25 +41,13 @@ public class VirtualKeyStore {
             String sql = "INSERT INTO orbis_crates_keys (server_id, player_uuid, crate_id, quantity) " +
                         "VALUES (?, ?, ?, ?) " +
                         "ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)";
-            
-            try (var conn = zakum.database().jdbc().getConnection();
-                 var stmt = conn.prepareStatement(sql)) {
-                
-                stmt.setString(1, serverId);
-                stmt.setString(2, playerId.toString());
-                stmt.setString(3, crateId);
-                stmt.setInt(4, amount);
-                stmt.executeUpdate();
-                
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to add keys", e);
-            }
+            zakum.database().jdbc().update(sql, serverId, playerId.toString(), crateId, amount);
         }, async);
     }
     
     public CompletableFuture<Integer> removeKeys(UUID playerId, String crateId, int amount) {
         return CompletableFuture.supplyAsync(() -> {
-            try (var conn = zakum.database().jdbc().getConnection()) {
+            try (var conn = zakum.database().dataSource().getConnection()) {
                 conn.setAutoCommit(false);
                 
                 try {

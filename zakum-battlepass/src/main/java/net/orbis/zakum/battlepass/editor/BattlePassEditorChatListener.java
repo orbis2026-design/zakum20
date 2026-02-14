@@ -1,5 +1,7 @@
 package net.orbis.zakum.battlepass.editor;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -34,7 +36,7 @@ public final class BattlePassEditorChatListener implements Listener {
     String msg = PlainTextComponentSerializer.plainText().serialize(e.message());
     e.setCancelled(true);
 
-    Bukkit.getScheduler().runTask(plugin, () -> editor.handleChatInput(p, msg));
+    ZakumApi.get().getScheduler().runTask(plugin, () -> editor.handleChatInput(p, msg));
   }
 
   @EventHandler(ignoreCancelled = true)
@@ -46,6 +48,7 @@ public final class BattlePassEditorChatListener implements Listener {
     String msg = e.getMessage();
     e.setCancelled(true);
 
-    Bukkit.getScheduler().runTask(plugin, () -> editor.handleChatInput(p, msg));
+    ZakumApi.get().getScheduler().runTask(plugin, () -> editor.handleChatInput(p, msg));
   }
 }
+

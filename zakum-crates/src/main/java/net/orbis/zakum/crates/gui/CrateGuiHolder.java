@@ -21,7 +21,7 @@ public final class CrateGuiHolder implements InventoryHolder {
     return owner;
   }
 
-  void bind(Inventory inv) {
+  public void bind(Inventory inv) {
     this.inv = inv;
   }
 

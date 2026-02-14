@@ -1,5 +1,7 @@
 package net.orbis.zakum.crates.anim;
 
+import net.orbis.zakum.api.ZakumApi;
+
 import net.orbis.zakum.api.util.WeightedTable;
 import net.orbis.zakum.crates.gui.CrateGuiHolder;
 import net.orbis.zakum.crates.model.CrateDef;
@@ -47,12 +49,12 @@ public final class CrateAnimator {
 
   public void start() {
     if (taskId != -1) return;
-    taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, this::tick, 1L, 1L);
+    taskId = ZakumApi.get().getScheduler().scheduleSyncRepeatingTask(plugin, this::tick, 1L, 1L);
   }
 
   public void shutdown() {
     if (taskId != -1) {
-      Bukkit.getScheduler().cancelTask(taskId);
+      ZakumApi.get().getScheduler().cancelTask(taskId);
       taskId = -1;
     }
 
@@ -172,3 +174,4 @@ public final class CrateAnimator {
     }
   }
 }
+

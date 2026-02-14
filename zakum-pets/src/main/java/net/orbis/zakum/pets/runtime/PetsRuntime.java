@@ -59,7 +59,7 @@ public final class PetsRuntime {
     for (Player p : Bukkit.getOnlinePlayers()) loadAsync(p.getUniqueId());
 
     int flushSeconds = Math.max(2, plugin.getConfig().getInt("flush.intervalSeconds", 5));
-    Bukkit.getScheduler().runTaskTimer(plugin, this::flushDirtyAsync, flushSeconds * 20L, flushSeconds * 20L);
+    ZakumApi.get().getScheduler().runTaskTimer(plugin, this::flushDirtyAsync, flushSeconds * 20L, flushSeconds * 20L);
   }
 
   public void stop() {
@@ -172,3 +172,4 @@ public final class PetsRuntime {
     for (UUID uuid : state.keySet()) flushOneAsync(uuid);
   }
 }
+

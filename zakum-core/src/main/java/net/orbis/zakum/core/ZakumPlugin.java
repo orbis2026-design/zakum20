@@ -2,19 +2,28 @@ package net.orbis.zakum.core;
 
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
+import net.orbis.zakum.api.ZakumApiProvider;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
+import net.orbis.zakum.core.action.ZakumAceEngine;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
 import net.orbis.zakum.core.config.ZakumSettingsLoader;
 import net.orbis.zakum.core.actions.SimpleActionBus;
 import net.orbis.zakum.core.actions.SqlDeferredActionService;
 import net.orbis.zakum.core.actions.emitters.*;
+import net.orbis.zakum.core.asset.InMemoryAssetManager;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
+import net.orbis.zakum.core.bridge.SimpleBridgeManager;
+import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.db.SqlManager;
 import net.orbis.zakum.core.entitlements.SqlEntitlementService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
+import net.orbis.zakum.core.packet.PacketAnimationService;
+import net.orbis.zakum.core.progression.ProgressionServiceImpl;
+import net.orbis.zakum.core.storage.StorageServiceImpl;
+import net.orbis.zakum.core.ui.NoopGuiBridge;
 import net.orbis.zakum.core.util.Async;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -26,11 +35,6 @@ import org.bukkit.OfflinePlayer;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -47,6 +51,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private SqlEntitlementService entitlements;
   private SqlBoosterService boosters;
   private CapabilityRegistry capabilityRegistry;
+  private ZakumSchedulerImpl scheduler;
 
   private MovementSampler movementSampler;
 
@@ -87,6 +92,15 @@ public final class ZakumPlugin extends JavaPlugin {
     this.boosters = new SqlBoosterService(this, sql, async, settings.boosters());
     this.boosters.start();
 
+    this.scheduler = new ZakumSchedulerImpl(this);
+    var aceEngine = new ZakumAceEngine();
+    var storageService = new StorageServiceImpl(sql);
+    var animations = new PacketAnimationService(this, scheduler);
+    var bridgeManager = new SimpleBridgeManager();
+    var progression = new ProgressionServiceImpl();
+    var assets = new InMemoryAssetManager();
+    var gui = new NoopGuiBridge();
+
     this.api = new ZakumApiImpl(
       this,
       new ServerIdentity(serverId),
@@ -97,6 +111,14 @@ public final class ZakumPlugin extends JavaPlugin {
       actionBus,
       entitlements,
       boosters,
+      aceEngine,
+      scheduler,
+      storageService,
+      animations,
+      bridgeManager,
+      progression,
+      assets,
+      gui,
       settings,
       capabilityRegistry
     );
@@ -109,6 +131,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(net.orbis.zakum.api.boosters.BoosterService.class, boosters, this, ServicePriority.Highest);
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
+    ZakumApiProvider.set(api);
 
     registerCoreActionEmitters(clock);
 
@@ -125,6 +148,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (boosters != null) sm.unregister(net.orbis.zakum.api.boosters.BoosterService.class, boosters);
     if (deferred != null) sm.unregister(DeferredActionService.class, deferred);
     if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
+    ZakumApiProvider.clear();
 
     if (movementSampler != null) {
       movementSampler.stop();
@@ -134,6 +158,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (metrics != null) metrics.stop();
 
     if (boosters != null) boosters.shutdown();
+    if (scheduler != null) scheduler.shutdown();
 
     if (sql != null) sql.shutdown();
     if (asyncPool != null) asyncPool.shutdownNow();
@@ -148,6 +173,7 @@ public final class ZakumPlugin extends JavaPlugin {
     boosters = null;
     deferred = null;
     capabilityRegistry = null;
+    scheduler = null;
   }
 
   // --- Command Handling & Helpers omitted for brevity (kept standard) ---

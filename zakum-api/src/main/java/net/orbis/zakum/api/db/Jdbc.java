@@ -13,6 +13,11 @@ public interface Jdbc {
 
   <T> List<T> query(String sql, RowMapper<T> mapper, Object... params);
 
+  default <T> T queryOne(String sql, RowMapper<T> mapper, Object... params) {
+    List<T> rows = query(sql, mapper, params);
+    return rows.isEmpty() ? null : rows.get(0);
+  }
+
   @FunctionalInterface
   interface RowMapper<T> {
     T map(ResultSet rs) throws SQLException;
