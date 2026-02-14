@@ -984,6 +984,8 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("hookRegistered=" + snap.hookRegistered());
     sender.sendMessage("backend=" + snap.backend());
     sender.sendMessage("hookCount=" + snap.hookCount());
+    sender.sendMessage("probeIntervalTicks=" + snap.probeIntervalTicks());
+    sender.sendMessage("hookLastChanged=" + formatEpochMillis(snap.hookLastChangedMs()));
     sender.sendMessage("radius=" + snap.radius());
     sender.sendMessage("densityThreshold=" + snap.densityThreshold());
     sender.sendMessage("maxSampleAgeMs=" + snap.maxSampleAgeMs());
@@ -996,6 +998,11 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("sampleRuns=" + snap.sampleRuns());
     sender.sendMessage("sampleUpdates=" + snap.sampleUpdates());
     sender.sendMessage("serviceProbeRuns=" + snap.serviceProbeRuns());
+    sender.sendMessage("disabledSkips=" + snap.disabledSkips());
+    sender.sendMessage("noPlayerSkips=" + snap.noPlayerSkips());
+    sender.sendMessage("noSampleSkips=" + snap.noSampleSkips());
+    sender.sendMessage("staleSkips=" + snap.staleSkips());
+    sender.sendMessage("belowThresholdSkips=" + snap.belowThresholdSkips());
     sender.sendMessage("bypassSkips=" + snap.bypassSkips());
     sender.sendMessage("qualitySkips=" + snap.qualitySkips());
     sender.sendMessage("packetsObserved=" + snap.packetsObserved());

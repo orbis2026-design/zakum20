@@ -39,6 +39,7 @@ public final class PacketCullingKernel implements AutoCloseable {
   private final PlayerVisualModeService visualModeService;
   private final String bypassPermission;
   private final boolean respectPerfMode;
+  private final int probeIntervalTicks;
   private final PacketHook outboundHook;
   private final ConcurrentHashMap<UUID, DensitySample> densitySamples;
   private final AtomicInteger sampleCursor;
@@ -49,6 +50,12 @@ public final class PacketCullingKernel implements AutoCloseable {
   private final LongAdder serviceProbeRuns;
   private final LongAdder bypassSkips;
   private final LongAdder qualitySkips;
+  private final LongAdder noPlayerSkips;
+  private final LongAdder noSampleSkips;
+  private final LongAdder staleSkips;
+  private final LongAdder belowThresholdSkips;
+  private final LongAdder disabledSkips;
+  private final java.util.concurrent.atomic.AtomicLong lastHookChangeMs;
 
   private volatile int lastSampleBatch;
   private volatile int lastOnlineCount;
@@ -75,6 +82,7 @@ public final class PacketCullingKernel implements AutoCloseable {
     this.visualModeService = visualModeService;
     this.bypassPermission = cfg.bypassPermission();
     this.respectPerfMode = cfg.respectPerfMode();
+    this.probeIntervalTicks = Math.max(1, cfg.probeIntervalTicks());
     this.outboundHook = new PacketHook(
       PacketDirection.OUTBOUND,
       PacketHookPriority.HIGH,
@@ -90,6 +98,12 @@ public final class PacketCullingKernel implements AutoCloseable {
     this.serviceProbeRuns = new LongAdder();
     this.bypassSkips = new LongAdder();
     this.qualitySkips = new LongAdder();
+    this.noPlayerSkips = new LongAdder();
+    this.noSampleSkips = new LongAdder();
+    this.staleSkips = new LongAdder();
+    this.belowThresholdSkips = new LongAdder();
+    this.disabledSkips = new LongAdder();
+    this.lastHookChangeMs = new java.util.concurrent.atomic.AtomicLong(0L);
     this.lastSampleBatch = 0;
     this.lastOnlineCount = 0;
     this.runtimeEnabled = cfg.enabled();
@@ -109,7 +123,7 @@ public final class PacketCullingKernel implements AutoCloseable {
       );
     }
     if (probeTaskId <= 0) {
-      probeTaskId = scheduler.runTaskTimer(plugin, this::probePacketService, 20L, 100L);
+      probeTaskId = scheduler.runTaskTimer(plugin, this::probePacketService, 20L, probeIntervalTicks);
     }
     scheduler.runGlobal(this::probePacketService);
   }
@@ -149,6 +163,8 @@ public final class PacketCullingKernel implements AutoCloseable {
       hookRegistered,
       service == null ? "none" : service.backend(),
       service == null ? 0 : service.hookCount(),
+      probeIntervalTicks,
+      lastHookChangeMs.get(),
       cfg.radius(),
       cfg.densityThreshold(),
       cfg.maxSampleAgeMs(),
@@ -160,6 +176,11 @@ public final class PacketCullingKernel implements AutoCloseable {
       sampleRuns.sum(),
       sampleUpdates.sum(),
       serviceProbeRuns.sum(),
+      disabledSkips.sum(),
+      noPlayerSkips.sum(),
+      noSampleSkips.sum(),
+      staleSkips.sum(),
+      belowThresholdSkips.sum(),
       bypassSkips.sum(),
       qualitySkips.sum(),
       observed,
@@ -184,15 +205,27 @@ public final class PacketCullingKernel implements AutoCloseable {
 
   private void handleOutbound(net.orbis.zakum.api.packets.PacketContext ctx) {
     packetsObserved.increment();
-    if (!runtimeEnabled) return;
+    if (!runtimeEnabled) {
+      disabledSkips.increment();
+      return;
+    }
 
     Player player = ctx.player();
-    if (player == null) return;
+    if (player == null) {
+      noPlayerSkips.increment();
+      return;
+    }
 
     DensitySample sample = densitySamples.get(player.getUniqueId());
-    if (sample == null) return;
+    if (sample == null) {
+      noSampleSkips.increment();
+      return;
+    }
     long ageMs = Math.max(0L, System.currentTimeMillis() - sample.sampledAtMs());
-    if (ageMs > cfg.maxSampleAgeMs()) return;
+    if (ageMs > cfg.maxSampleAgeMs()) {
+      staleSkips.increment();
+      return;
+    }
     if (sample.bypass()) {
       bypassSkips.increment();
       return;
@@ -204,7 +237,10 @@ public final class PacketCullingKernel implements AutoCloseable {
     }
 
     int threshold = cullThreshold(mode);
-    if (sample.density() < threshold) return;
+    if (sample.density() < threshold) {
+      belowThresholdSkips.increment();
+      return;
+    }
 
     ctx.cancel();
     packetsDropped.increment();
@@ -255,21 +291,35 @@ public final class PacketCullingKernel implements AutoCloseable {
 
   private void probePacketService() {
     serviceProbeRuns.increment();
-    if (hookRegistered) return;
-
     PacketService service = Bukkit.getServicesManager().load(PacketService.class);
+    if (hookRegistered) {
+      if (service == null) {
+        if (logger != null) {
+          logger.warning("Packet culling backend went offline; will reattach when available.");
+        }
+        unregisterHook();
+        if (metrics != null) metrics.recordAction("packet_cull_hook_offline");
+        return;
+      }
+      if (service != packetService) {
+        if (logger != null) {
+          logger.info("Packet culling backend changed; reattaching.");
+        }
+        unregisterHook();
+      } else {
+        return;
+      }
+    }
+
     if (service == null) return;
     try {
       service.registerHook(plugin, outboundHook);
       this.packetService = service;
       this.hookRegistered = true;
+      this.lastHookChangeMs.set(System.currentTimeMillis());
       if (metrics != null) metrics.recordAction("packet_cull_hook_online");
       if (logger != null) {
         logger.info("Packet culling kernel attached to backend=" + service.backend());
-      }
-      if (probeTaskId > 0) {
-        scheduler.cancelTask(probeTaskId);
-        probeTaskId = -1;
       }
     } catch (Throwable ex) {
       if (logger != null) {
@@ -292,6 +342,7 @@ public final class PacketCullingKernel implements AutoCloseable {
     }
     hookRegistered = false;
     packetService = null;
+    lastHookChangeMs.set(System.currentTimeMillis());
   }
 
   private int computeSampleBatch(int onlineCount) {
@@ -346,6 +397,8 @@ public final class PacketCullingKernel implements AutoCloseable {
     boolean hookRegistered,
     String backend,
     int hookCount,
+    int probeIntervalTicks,
+    long hookLastChangedMs,
     int radius,
     int densityThreshold,
     long maxSampleAgeMs,
@@ -357,6 +410,11 @@ public final class PacketCullingKernel implements AutoCloseable {
     long sampleRuns,
     long sampleUpdates,
     long serviceProbeRuns,
+    long disabledSkips,
+    long noPlayerSkips,
+    long noSampleSkips,
+    long staleSkips,
+    long belowThresholdSkips,
     long bypassSkips,
     long qualitySkips,
     long packetsObserved,

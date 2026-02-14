@@ -36,6 +36,10 @@ This snapshot is:
 - `packets.backend`: `NONE` | `PACKETEVENTS`
 - `packets.inbound` / `packets.outbound`: direction toggles
 - `packets.maxHooksPerPlugin`: guardrail to prevent hook spam
+- `packets.culling.*`: packet-level density culling
+  - `sampleTicks`, `radius`, `densityThreshold`, `maxSampleAgeMs`
+  - `packetNames` allowlist and `bypassPermission`
+  - `respectPerfMode` and `probeIntervalTicks` (reattach safety)
 
 ### http
 - shared defaults for any outbound HTTP client

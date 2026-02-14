@@ -494,6 +494,7 @@ public final class ZakumSettingsLoader {
     int maxHooksPerPlugin = clampI(cfg.getInt("packets.maxHooksPerPlugin", 64), 0, 10_000);
     boolean cullingEnabled = bool(cfg, "packets.culling.enabled", true);
     int sampleTicks = clampI(cfg.getInt("packets.culling.sampleTicks", 20), 1, 20 * 60);
+    int probeIntervalTicks = clampI(cfg.getInt("packets.culling.probeIntervalTicks", 100), 20, 20 * 60);
     int radius = clampI(cfg.getInt("packets.culling.radius", 16), 1, 64);
     int densityThreshold = clampI(cfg.getInt("packets.culling.densityThreshold", 40), 1, 5_000);
     long maxSampleAgeMs = clampL(cfg.getLong("packets.culling.maxSampleAgeMs", 5_000L), 50L, 120_000L);
@@ -514,6 +515,7 @@ public final class ZakumSettingsLoader {
       new ZakumSettings.Packets.Culling(
         cullingEnabled,
         sampleTicks,
+        probeIntervalTicks,
         radius,
         densityThreshold,
         maxSampleAgeMs,

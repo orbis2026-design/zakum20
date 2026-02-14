@@ -16,6 +16,7 @@ Config quick-check (zakum-core config.yml)
 - packets.culling.packetNames: includes WORLD_PARTICLES / ENTITY_METADATA / ENTITY_EFFECT / ENTITY_ANIMATION
 - packets.culling.respectPerfMode: true (default)
 - packets.culling.bypassPermission: zakum.packets.cull.bypass (default)
+- packets.culling.probeIntervalTicks: 100 (default)
 
 Validation steps
 1) Boot server with PacketEvents + ZakumPackets installed.
@@ -23,6 +24,7 @@ Validation steps
    - hookRegistered=true
    - backend=packetevents
    - hookCount>=1
+   - hookLastChanged shows a recent timestamp after attach
 3) Run /zakum packetcull sample [player]
    - If no sample yet, it queues one. Re-run after a second.
    - Confirm density, ageMs, mode, bypass, threshold values.
@@ -44,6 +46,7 @@ Validation steps
 
 Troubleshooting
 - hookRegistered=false: ensure PacketEvents + ZakumPackets are installed and packets.enabled=true.
+- hookLastChanged=never: PacketService hasn't attached yet; check packets.culling.probeIntervalTicks or wait a few seconds.
 - packetsDropped stays 0 under load: ensure packetNames contains emitted packet types and packets.outbound=true.
 - wouldDrop=false with high density: check maxSampleAgeMs and sample freshness.
 

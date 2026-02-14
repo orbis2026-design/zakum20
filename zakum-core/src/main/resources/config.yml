@@ -273,6 +273,8 @@ packets:
     # Packet-level visual culling kernel (high-density optimization).
     enabled: true
     sampleTicks: 20
+    # How often to re-probe the packet backend for hot-reload safety.
+    probeIntervalTicks: 100
     radius: 16
     densityThreshold: 40
     maxSampleAgeMs: 5000

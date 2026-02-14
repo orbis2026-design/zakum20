@@ -337,6 +337,7 @@ public record ZakumSettings(
     public record Culling(
       boolean enabled,
       int sampleTicks,
+      int probeIntervalTicks,
       int radius,
       int densityThreshold,
       long maxSampleAgeMs,
