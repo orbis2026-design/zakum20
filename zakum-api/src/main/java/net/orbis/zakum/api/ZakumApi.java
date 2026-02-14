@@ -2,6 +2,8 @@ package net.orbis.zakum.api;
 
 import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.boosters.BoosterService;
+import net.orbis.zakum.api.capability.Capability;
+import net.orbis.zakum.api.capability.CapabilityRegistry;
 import net.orbis.zakum.api.db.ZakumDatabase;
 import net.orbis.zakum.api.entitlements.EntitlementService;
 import net.orbis.zakum.api.net.ControlPlaneClient;
@@ -34,6 +36,18 @@ public interface ZakumApi {
   EntitlementService entitlements();
 
   BoosterService boosters();
+
+  /**
+   * Runtime lookup surface for optional integrations and pluggable systems.
+   */
+  CapabilityRegistry capabilities();
+
+  /**
+   * Convenience lookup for optional capabilities.
+   */
+  default <T> Optional<T> capability(Capability<T> capability) {
+    return capabilities().get(capability);
+  }
 
   /**
    * Optional: Orbis Cloud Bot / control-plane integration.

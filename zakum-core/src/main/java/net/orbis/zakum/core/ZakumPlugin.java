@@ -4,6 +4,7 @@ import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
+import net.orbis.zakum.api.capability.CapabilityRegistry;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
 import net.orbis.zakum.core.config.ZakumSettingsLoader;
 import net.orbis.zakum.core.actions.SimpleActionBus;
@@ -45,6 +46,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private DeferredActionService deferred;
   private SqlEntitlementService entitlements;
   private SqlBoosterService boosters;
+  private CapabilityRegistry capabilityRegistry;
 
   private MovementSampler movementSampler;
 
@@ -72,6 +74,7 @@ public final class ZakumPlugin extends JavaPlugin {
     this.sql.start();
 
     var controlPlane = HttpControlPlaneClient.fromSettings(settings, async);
+    this.capabilityRegistry = new ServicesManagerCapabilityRegistry(Bukkit.getServicesManager(), controlPlane);
 
     this.actionBus = new SimpleActionBus();
 
@@ -94,7 +97,8 @@ public final class ZakumPlugin extends JavaPlugin {
       actionBus,
       entitlements,
       boosters,
-      settings
+      settings,
+      capabilityRegistry
     );
 
     // Register Services
@@ -104,6 +108,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(net.orbis.zakum.api.entitlements.EntitlementService.class, entitlements, this, ServicePriority.Highest);
     sm.register(net.orbis.zakum.api.boosters.BoosterService.class, boosters, this, ServicePriority.Highest);
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
+    sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
 
     registerCoreActionEmitters(clock);
 
@@ -119,6 +124,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (entitlements != null) sm.unregister(net.orbis.zakum.api.entitlements.EntitlementService.class, entitlements);
     if (boosters != null) sm.unregister(net.orbis.zakum.api.boosters.BoosterService.class, boosters);
     if (deferred != null) sm.unregister(DeferredActionService.class, deferred);
+    if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
 
     if (movementSampler != null) {
       movementSampler.stop();
@@ -141,6 +147,7 @@ public final class ZakumPlugin extends JavaPlugin {
     entitlements = null;
     boosters = null;
     deferred = null;
+    capabilityRegistry = null;
   }
 
   // --- Command Handling & Helpers omitted for brevity (kept standard) ---

@@ -5,6 +5,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.boosters.BoosterService;
+import net.orbis.zakum.api.capability.CapabilityRegistry;
 import net.orbis.zakum.api.db.ZakumDatabase;
 import net.orbis.zakum.api.entitlements.EntitlementService;
 import net.orbis.zakum.api.net.ControlPlaneClient;
@@ -26,6 +27,7 @@ final class ZakumApiImpl implements ZakumApi {
   private final EntitlementService entitlements;
   private final BoosterService boosters;
   private final ZakumSettings settings;
+  private final CapabilityRegistry capabilities;
 
   ZakumApiImpl(
     Plugin plugin,
@@ -37,7 +39,8 @@ final class ZakumApiImpl implements ZakumApi {
     ActionBus actions,
     EntitlementService entitlements,
     BoosterService boosters,
-    ZakumSettings settings
+    ZakumSettings settings,
+    CapabilityRegistry capabilities
   ) {
     this.plugin = plugin;
     this.server = server;
@@ -49,6 +52,7 @@ final class ZakumApiImpl implements ZakumApi {
     this.entitlements = entitlements;
     this.boosters = boosters;
     this.settings = settings;
+    this.capabilities = capabilities;
   }
 
   @Override public Plugin plugin() { return plugin; }
@@ -66,6 +70,8 @@ final class ZakumApiImpl implements ZakumApi {
   @Override public EntitlementService entitlements() { return entitlements; }
 
   @Override public BoosterService boosters() { return boosters; }
+
+  @Override public CapabilityRegistry capabilities() { return capabilities; }
 
   @Override public Optional<ControlPlaneClient> controlPlane() { return controlPlane; }
 

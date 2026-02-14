@@ -14,6 +14,7 @@ import org.bukkit.plugin.Plugin;
 import org.flywaydb.core.Flyway;
 
 import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Objects;
@@ -170,7 +171,12 @@ public final class SqlManager implements ZakumDatabase {
 
     // Quick verification.
     try (var c = newDs.getConnection()) {
-      c.isValid(2);
+      if (!c.isValid(2)) {
+        throw new SQLException("Connection validation returned false");
+      }
+    } catch (SQLException e) {
+      newDs.close();
+      throw new IllegalStateException("Database connection validation failed", e);
     }
 
     var newFlyway = Flyway.configure()
