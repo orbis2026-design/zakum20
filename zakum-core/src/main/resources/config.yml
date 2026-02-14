@@ -191,6 +191,10 @@ visuals:
     enabled: true
     maxPingMs: 180
     minTps: 18.5
+  culling:
+    enabled: true
+    densityThreshold: 40
+    radius: 16
 
 observability:
   metrics:

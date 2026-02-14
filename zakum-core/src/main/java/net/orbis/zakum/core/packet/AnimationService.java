@@ -3,6 +3,7 @@ package net.orbis.zakum.core.packet;
 import net.kyori.adventure.text.Component;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
+import net.orbis.zakum.core.metrics.MetricsMonitor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -22,19 +23,32 @@ public class AnimationService extends AnimationService1_21_11 {
   private final boolean adaptiveLodEnabled;
   private final int maxPingMs;
   private final double minTps;
+  private final boolean densityCullingEnabled;
+  private final int densityThreshold;
+  private final int densityRadius;
+  private final MetricsMonitor metrics;
 
   public AnimationService(Plugin plugin, ZakumScheduler scheduler) {
-    this(plugin, scheduler, null);
+    this(plugin, scheduler, null, null);
   }
 
   public AnimationService(Plugin plugin, ZakumScheduler scheduler, ZakumSettings.Visuals visuals) {
+    this(plugin, scheduler, visuals, null);
+  }
+
+  public AnimationService(Plugin plugin, ZakumScheduler scheduler, ZakumSettings.Visuals visuals, MetricsMonitor metrics) {
     super(plugin, scheduler);
     this.plugin = plugin;
     this.scheduler = scheduler;
+    this.metrics = metrics;
     var lod = visuals == null ? null : visuals.lod();
     this.adaptiveLodEnabled = lod != null && lod.enabled();
     this.maxPingMs = lod == null ? 180 : lod.maxPingMs();
     this.minTps = lod == null ? 18.5d : lod.minTps();
+    var culling = visuals == null ? null : visuals.culling();
+    this.densityCullingEnabled = culling != null && culling.enabled();
+    this.densityThreshold = culling == null ? 40 : culling.densityThreshold();
+    this.densityRadius = culling == null ? 16 : culling.radius();
   }
 
   public void spawnGhostItem(Player viewer, Location loc, ItemStack item, int entityId) {
@@ -45,7 +59,7 @@ public class AnimationService extends AnimationService1_21_11 {
   @Override
   public void spawnCrateItem(Player viewer, Location loc, ItemStack item) {
     if (viewer == null || loc == null || item == null || loc.getWorld() == null) return;
-    if (shouldDowngrade(viewer)) {
+    if (shouldDowngrade(viewer, loc)) {
       sendStaticLabel(viewer, item);
       return;
     }
@@ -59,11 +73,23 @@ public class AnimationService extends AnimationService1_21_11 {
     spawnCrateItem(viewer, loc, new ItemStack(Material.CHEST));
   }
 
-  private boolean shouldDowngrade(Player viewer) {
+  private boolean shouldDowngrade(Player viewer, Location loc) {
+    if (densityCullingEnabled && loc != null && loc.getWorld() != null) {
+      int density = loc.getWorld().getNearbyEntities(loc, densityRadius, densityRadius, densityRadius).size();
+      if (density >= densityThreshold) {
+        if (metrics != null) metrics.recordAction("animation_cull_density");
+        return true;
+      }
+    }
+
     if (!adaptiveLodEnabled) return false;
     int ping = safePing(viewer);
     double tps = safeTps();
-    return ping >= maxPingMs || tps < minTps;
+    boolean downgrade = ping >= maxPingMs || tps < minTps;
+    if (downgrade && metrics != null) {
+      metrics.recordAction(ping >= maxPingMs ? "animation_cull_ping" : "animation_cull_tps");
+    }
+    return downgrade;
   }
 
   private static int safePing(Player viewer) {

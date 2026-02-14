@@ -147,9 +147,9 @@ public final class ZakumPlugin extends JavaPlugin {
     this.nextStressAllowedAtMs = 0L;
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
-    var aceEngine = new ZakumAceEngine();
+    var aceEngine = new ZakumAceEngine(metricsMonitor);
     var storageService = new StorageServiceImpl(sql);
-    var animations = new AnimationService(this, scheduler, settings.visuals());
+    var animations = new AnimationService(this, scheduler, settings.visuals(), metricsMonitor);
     var bridgeManager = new SimpleBridgeManager();
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();

@@ -389,7 +389,13 @@ public final class ZakumSettingsLoader {
     boolean enabled = bool(cfg, "visuals.lod.enabled", true);
     int maxPing = clampI(cfg.getInt("visuals.lod.maxPingMs", 180), 25, 2_000);
     double minTps = clampF((float) cfg.getDouble("visuals.lod.minTps", 18.5d), 5.0f, 20.0f);
-    return new ZakumSettings.Visuals(new ZakumSettings.Visuals.Lod(enabled, maxPing, minTps));
+    boolean cullingEnabled = bool(cfg, "visuals.culling.enabled", true);
+    int densityThreshold = clampI(cfg.getInt("visuals.culling.densityThreshold", 40), 1, 2_000);
+    int radius = clampI(cfg.getInt("visuals.culling.radius", 16), 1, 64);
+    return new ZakumSettings.Visuals(
+      new ZakumSettings.Visuals.Lod(enabled, maxPing, minTps),
+      new ZakumSettings.Visuals.Culling(cullingEnabled, densityThreshold, radius)
+    );
   }
 
   private static ZakumSettings.Packets loadPackets(FileConfiguration cfg) {

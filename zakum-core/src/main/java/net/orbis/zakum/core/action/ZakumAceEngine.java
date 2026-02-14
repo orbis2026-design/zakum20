@@ -4,6 +4,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.api.social.SocialService;
+import net.orbis.zakum.core.metrics.MetricsMonitor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -26,42 +27,57 @@ public final class ZakumAceEngine implements AceEngine {
   );
 
   private final Map<String, EffectAction> effects;
+  private final MetricsMonitor metrics;
 
   public ZakumAceEngine() {
+    this(null);
+  }
+
+  public ZakumAceEngine(MetricsMonitor metrics) {
     this.effects = new ConcurrentHashMap<>();
+    this.metrics = metrics;
     registerDefaults();
   }
 
   @Override
   public void executeScript(List<String> script, ActionContext context) {
     if (script == null || script.isEmpty() || context == null || context.actor() == null) return;
+    long startedAtNanos = System.nanoTime();
+    int resolvedEffects = 0;
 
-    for (String raw : script) {
-      if (raw == null) continue;
-      String line = raw.trim();
-      if (line.isEmpty() || line.startsWith("#")) continue;
+    try {
+      for (String raw : script) {
+        if (raw == null) continue;
+        String line = raw.trim();
+        if (line.isEmpty() || line.startsWith("#")) continue;
 
-      Matcher m = ACE_PATTERN.matcher(line);
-      if (!m.matches()) continue;
+        Matcher m = ACE_PATTERN.matcher(line);
+        if (!m.matches()) continue;
 
-      String effectKey = normalize(m.group("effect"));
-      String value = trim(m.group("value"));
-      String targetKey = trim(m.group("targeter"));
-      String inlineParams = trim(m.group("params"));
+        String effectKey = normalize(m.group("effect"));
+        String value = trim(m.group("value"));
+        String targetKey = trim(m.group("targeter"));
+        String inlineParams = trim(m.group("params"));
 
-      EffectAction action = effects.get(effectKey);
-      if (action == null) continue;
+        EffectAction action = effects.get(effectKey);
+        if (action == null) continue;
 
-      Map<String, String> params = parseParams(value, inlineParams);
-      List<Entity> targets = resolveTargets(context, targetKey, params);
-      if (targets.isEmpty()) {
-        targets = List.of(context.actor());
+        Map<String, String> params = parseParams(value, inlineParams);
+        List<Entity> targets = resolveTargets(context, targetKey, params);
+        if (targets.isEmpty()) {
+          targets = List.of(context.actor());
+        }
+
+        resolvedEffects++;
+        try {
+          action.apply(context, targets, params);
+        } catch (Throwable ignored) {
+          // Script execution should be fault-tolerant across individual effect lines.
+        }
       }
-
-      try {
-        action.apply(context, targets, params);
-      } catch (Throwable ignored) {
-        // Script execution should be fault-tolerant across individual effect lines.
+    } finally {
+      if (metrics != null) {
+        metrics.recordAceExecution(System.nanoTime() - startedAtNanos, resolvedEffects);
       }
     }
   }

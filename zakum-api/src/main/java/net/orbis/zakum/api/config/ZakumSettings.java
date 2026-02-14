@@ -258,12 +258,19 @@ public record ZakumSettings(
   }
 
   public record Visuals(
-    Lod lod
+    Lod lod,
+    Culling culling
   ) {
     public record Lod(
       boolean enabled,
       int maxPingMs,
       double minTps
+    ) {}
+
+    public record Culling(
+      boolean enabled,
+      int densityThreshold,
+      int radius
     ) {}
   }
 
