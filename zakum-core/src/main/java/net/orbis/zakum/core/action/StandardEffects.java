@@ -3,6 +3,7 @@ package net.orbis.zakum.core.action;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.core.bridge.DecentHologramsBridge;
 import net.orbis.zakum.core.perf.VisualCircuitState;
 import net.orbis.zakum.core.util.PdcKeys;
@@ -33,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -50,7 +52,9 @@ public final class StandardEffects {
     registerConsoleCommand(engine);
     registerPlayerCommand(engine);
     registerMessage(engine);
+    registerMessageKey(engine);
     registerActionBar(engine);
+    registerActionBarKey(engine);
     registerTitle(engine);
     registerSound(engine);
     registerParticle(engine);
@@ -122,6 +126,33 @@ public final class StandardEffects {
     });
   }
 
+  private static void registerMessageKey(AceEngine engine) {
+    AceEngine.EffectAction effect = (ctx, targets, params) -> {
+      String key = firstNonBlank(params.get("key"), raw(params));
+      if (key == null || key.isBlank()) return;
+
+      ZakumApi api = ZakumApi.get();
+      ChatPacketBuffer buffer = api.capability(ZakumCapabilities.CHAT_BUFFER).orElse(null);
+      if (buffer == null) return;
+
+      String forcedLocale = firstNonBlank(params.get("locale"), params.get("lang"));
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        Map<String, String> placeholders = templatePlaceholders(ctx, target, params);
+        String locale = forcedLocale == null || forcedLocale.isBlank()
+          ? player.getLocale()
+          : forcedLocale;
+        var message = buffer.resolve(key, locale, placeholders);
+        if (message == null || message == ChatPacketBuffer.PreparedMessage.EMPTY) continue;
+        runAtEntity(target, () -> player.sendMessage(message.component()));
+      }
+    };
+
+    // Hugster directive: execute pre-serialized localized templates by key.
+    engine.registerEffect("MESSAGE_KEY", effect);
+    engine.registerEffect("LOCALIZED_MESSAGE", effect);
+  }
+
   private static void registerActionBar(AceEngine engine) {
     engine.registerEffect("ACTION_BAR", (ctx, targets, params) -> {
       String message = raw(params);
@@ -133,6 +164,32 @@ public final class StandardEffects {
         runAtEntity(target, () -> player.sendActionBar(finalMessage));
       }
     });
+  }
+
+  private static void registerActionBarKey(AceEngine engine) {
+    AceEngine.EffectAction effect = (ctx, targets, params) -> {
+      String key = firstNonBlank(params.get("key"), raw(params));
+      if (key == null || key.isBlank()) return;
+
+      ZakumApi api = ZakumApi.get();
+      ChatPacketBuffer buffer = api.capability(ZakumCapabilities.CHAT_BUFFER).orElse(null);
+      if (buffer == null) return;
+
+      String forcedLocale = firstNonBlank(params.get("locale"), params.get("lang"));
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        Map<String, String> placeholders = templatePlaceholders(ctx, target, params);
+        String locale = forcedLocale == null || forcedLocale.isBlank()
+          ? player.getLocale()
+          : forcedLocale;
+        var message = buffer.resolve(key, locale, placeholders);
+        if (message == null || message == ChatPacketBuffer.PreparedMessage.EMPTY) continue;
+        runAtEntity(target, () -> player.sendActionBar(message.component()));
+      }
+    };
+
+    engine.registerEffect("ACTION_BAR_KEY", effect);
+    engine.registerEffect("LOCALIZED_ACTION_BAR", effect);
   }
 
   private static void registerTitle(AceEngine engine) {
@@ -721,6 +778,40 @@ public final class StandardEffects {
       out = out.replace("%" + entry.getKey() + "%", String.valueOf(entry.getValue()));
     }
     return out;
+  }
+
+  private static Map<String, String> templatePlaceholders(
+    AceEngine.ActionContext ctx,
+    Entity target,
+    Map<String, String> params
+  ) {
+    Map<String, String> placeholders = new HashMap<>();
+    if (ctx != null && ctx.actor() != null) {
+      placeholders.put("player", ctx.actor().getName());
+      placeholders.put("uuid", ctx.actor().getUniqueId().toString());
+    }
+    if (target != null) {
+      placeholders.put("target", target.getName());
+      placeholders.put("target_uuid", target.getUniqueId().toString());
+    }
+    if (ctx != null && ctx.metadata() != null) {
+      for (Map.Entry<String, Object> entry : ctx.metadata().entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) continue;
+        placeholders.put(entry.getKey(), String.valueOf(entry.getValue()));
+      }
+    }
+    if (params != null) {
+      for (Map.Entry<String, String> entry : params.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        if (key == null || value == null) continue;
+        String lower = key.toLowerCase(Locale.ROOT);
+        if (lower.equals("key") || lower.equals("locale") || lower.equals("lang")) continue;
+        if (lower.equals("value") || lower.equals("raw_value")) continue;
+        placeholders.put(lower, value);
+      }
+    }
+    return placeholders;
   }
 
   private static Location parseLocation(String raw, Map<String, String> params, Location base) {
