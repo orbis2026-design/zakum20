@@ -100,6 +100,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private ChatBufferCache chatBufferCache;
   private ChatPacketBuffer chatPacketBuffer;
   private SocialService socialService;
+  private int socialRefreshTaskId = -1;
   private EconomyService economyService;
   private GrimFlagBridge grimFlagBridge;
   private ToxicityModerationService toxicityModerationService;
@@ -237,6 +238,7 @@ public final class ZakumPlugin extends JavaPlugin {
     );
     sm.register(SocialService.class, socialService, this, ServicePriority.Highest);
     getServer().getPluginManager().registerEvents(new SocialSnapshotLifecycleListener(socialService), this);
+    startSocialRefresh();
 
     ZakumApiProvider.set(api);
     startCloudPolling();
@@ -279,6 +281,10 @@ public final class ZakumPlugin extends JavaPlugin {
       scheduler.cancelTask(cloudPollTaskId);
     }
     cloudPollTaskId = -1;
+    if (socialRefreshTaskId > 0 && scheduler != null) {
+      scheduler.cancelTask(socialRefreshTaskId);
+    }
+    socialRefreshTaskId = -1;
     cloudIdentityListener = null;
     cloudClient = null;
     cloudTabRenderer = null;
@@ -358,6 +364,29 @@ public final class ZakumPlugin extends JavaPlugin {
     int intervalTicks = Math.max(1, cloud.pollIntervalTicks());
     this.cloudPollTaskId = scheduler.runTaskTimerAsynchronously(this, cloudClient::poll, intervalTicks, intervalTicks);
     scheduler.runAsync(cloudClient::poll);
+  }
+
+  private void startSocialRefresh() {
+    if (socialService == null || scheduler == null) return;
+    var periodic = settings.social().periodicRefresh();
+    if (periodic == null || !periodic.enabled()) return;
+    int intervalTicks = Math.max(20, periodic.intervalSeconds() * 20);
+    this.socialRefreshTaskId = scheduler.runTaskTimerAsynchronously(
+      this,
+      this::refreshOnlineSocialSnapshots,
+      intervalTicks,
+      intervalTicks
+    );
+  }
+
+  private void refreshOnlineSocialSnapshots() {
+    if (socialService == null) return;
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      socialService.refreshAsync(player.getUniqueId());
+    }
+    if (metricsMonitor != null) {
+      metricsMonitor.recordAction("social_refresh_tick");
+    }
   }
 
   private void startGrimBridge() {

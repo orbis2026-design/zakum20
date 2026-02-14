@@ -19,6 +19,7 @@ public record ZakumSettings(
   Cloud cloud,
   Http http,
   Cache cache,
+  Social social,
   Observability observability,
   Entitlements entitlements,
   Boosters boosters,
@@ -114,6 +115,15 @@ public record ZakumSettings(
       long maximumSize,
       long expireAfterWriteSeconds,
       long expireAfterAccessSeconds
+    ) {}
+  }
+
+  public record Social(
+    PeriodicRefresh periodicRefresh
+  ) {
+    public record PeriodicRefresh(
+      boolean enabled,
+      int intervalSeconds
     ) {}
   }
 

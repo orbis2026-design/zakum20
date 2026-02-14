@@ -35,6 +35,7 @@ public final class ZakumSettingsLoader {
 
     var http = loadHttp(cfg);
     var cache = loadCache(cfg);
+    var social = loadSocial(cfg);
     var obs = loadObservability(cfg);
     var ent = loadEntitlements(cfg);
     var boosters = loadBoosters(cfg);
@@ -53,6 +54,7 @@ public final class ZakumSettingsLoader {
       cloud,
       http,
       cache,
+      social,
       obs,
       ent,
       boosters,
@@ -182,6 +184,14 @@ public final class ZakumSettingsLoader {
     long eaa = clampL(cfg.getLong("cache.defaults.expireAfterAccessSeconds", 0), 0, 86_400);
 
     return new ZakumSettings.Cache(new ZakumSettings.Cache.Defaults(max, eaw, eaa));
+  }
+
+  private static ZakumSettings.Social loadSocial(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "social.periodicRefresh.enabled", true);
+    int intervalSeconds = clampI(cfg.getInt("social.periodicRefresh.intervalSeconds", 90), 10, 3600);
+    return new ZakumSettings.Social(
+      new ZakumSettings.Social.PeriodicRefresh(enabled, intervalSeconds)
+    );
   }
 
   private static ZakumSettings.Observability loadObservability(FileConfiguration cfg) {

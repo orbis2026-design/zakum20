@@ -164,6 +164,11 @@ cache:
     expireAfterWriteSeconds: 60
     expireAfterAccessSeconds: 0
 
+social:
+  periodicRefresh:
+    enabled: true
+    intervalSeconds: 90
+
 chat:
   bufferCache:
     enabled: true
