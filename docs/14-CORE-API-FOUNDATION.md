@@ -84,3 +84,9 @@ Source directive: `Zakum Core Refactor Directive v1.0` (fork of older source).
 - Milestone 5 (10 pts): includes `ProgressionService`.
 - Milestone 6 (8 pts): includes `AnimationService` and `GuiBridge` contracts.
 - Cross-cutting: PDC migration standard applies to all item-identification systems.
+
+### GUI platform stance
+
+- `GuiService` is part of the API platform contract.
+- The concrete GUI engine (`orbis-gui`) remains a separate module/plugin.
+- `zakum-core` provides the adapter boundary so core callers can use `getGui()` safely whether OrbisGUI is installed or not.

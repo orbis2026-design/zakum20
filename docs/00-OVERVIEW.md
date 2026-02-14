@@ -71,7 +71,12 @@ On the proxy (Velocity) side:
 - `orbis-essentials`:
   - A functional Essentials-style backend plugin (homes/warps/spawn/tpa/back)
 
+- `orbis-gui`:
+  - Shared, YAML-driven GUI runtime (InfiniteGUI-shaped)
+  - Exposes `GuiService` via ServicesManager for all feature plugins
+
 See: `docs/01-MODULES.md` for deeper details.
+See: `docs/16-ORBISGUI.md` for architecture and integration boundaries.
 
 - `docs/13-CONFIG-FOLDERS.md` (per-plugin config folders)
 

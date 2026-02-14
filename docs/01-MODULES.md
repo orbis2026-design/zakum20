@@ -68,6 +68,22 @@ Feature plugins should:
 
 ---
 
+## orbis-gui (shared GUI runtime)
+
+Provides:
+- `GuiService` implementation via ServicesManager
+- YAML-backed menu runtime from:
+  - `SystemMenus/*.yml`
+  - `CustomGuis/*.yml`
+- shared UX entrypoints (`/gui`, `/gui open <id>`)
+
+Boundary rules:
+- Feature plugins depend on `zakum-api` only.
+- Feature plugins open menus by id (`GuiIds`/string ids), never by direct `orbis-gui` classes.
+- `zakum-core` bridges `ZakumApi#getGui()` to `GuiService` when available.
+
+---
+
 ## Bridges
 
 Each bridge:

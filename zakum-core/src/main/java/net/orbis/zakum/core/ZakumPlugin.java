@@ -25,6 +25,7 @@ import net.orbis.zakum.core.packet.AnimationService1_21_11;
 import net.orbis.zakum.core.progression.ProgressionServiceImpl;
 import net.orbis.zakum.core.storage.StorageServiceImpl;
 import net.orbis.zakum.core.ui.NoopGuiBridge;
+import net.orbis.zakum.core.ui.ServiceBackedGuiBridge;
 import net.orbis.zakum.core.util.Async;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -100,7 +101,7 @@ public final class ZakumPlugin extends JavaPlugin {
     var bridgeManager = new SimpleBridgeManager();
     var progression = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();
-    var gui = new NoopGuiBridge();
+    var gui = new ServiceBackedGuiBridge(new NoopGuiBridge());
 
     this.api = new ZakumApiImpl(
       this,
