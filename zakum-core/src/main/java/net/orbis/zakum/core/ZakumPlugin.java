@@ -504,10 +504,19 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("economy")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleEconomyCommand(sender, args);
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress run [iterations]");
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
+    sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
   }
@@ -674,6 +683,83 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Chat buffer warmup started.");
   }
 
+  private boolean handleEconomyCommand(CommandSender sender, String[] args) {
+    if (economyService == null) {
+      sender.sendMessage("Economy capability is not registered.");
+      return true;
+    }
+
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("status")) {
+      sender.sendMessage("Economy status");
+      sender.sendMessage("available=" + economyService.available());
+      return true;
+    }
+
+    if (sub.equals("balance")) {
+      if (args.length < 3) {
+        sender.sendMessage("Usage: /zakum economy balance <player|uuid>");
+        return true;
+      }
+      UUID playerId = resolveUuid(sender, args[2]);
+      if (playerId == null) return true;
+      double balance = economyService.balance(playerId);
+      sender.sendMessage("balance[" + playerId + "]=" + formatMoney(balance));
+      return true;
+    }
+
+    if (sub.equals("add") || sub.equals("take") || sub.equals("set")) {
+      if (args.length < 4) {
+        sender.sendMessage("Usage: /zakum economy " + sub + " <player|uuid> <amount>");
+        return true;
+      }
+      UUID playerId = resolveUuid(sender, args[2]);
+      if (playerId == null) return true;
+      double amount = parseDouble(args[3], -1.0d);
+      if (!Double.isFinite(amount) || amount < 0.0d) {
+        sender.sendMessage("Amount must be a non-negative number.");
+        return true;
+      }
+
+      if (sub.equals("set")) {
+        double current = economyService.balance(playerId);
+        double target = Math.max(0.0d, amount);
+        if (target > current) {
+          var result = economyService.deposit(playerId, target - current);
+          if (!result.success()) {
+            sender.sendMessage("Set failed: " + result.error());
+            return true;
+          }
+        } else if (target < current) {
+          var result = economyService.withdraw(playerId, current - target);
+          if (!result.success()) {
+            sender.sendMessage("Set failed: " + result.error());
+            return true;
+          }
+        }
+        sender.sendMessage("balance[" + playerId + "]=" + formatMoney(target));
+        return true;
+      }
+
+      var result = sub.equals("add")
+        ? economyService.deposit(playerId, amount)
+        : economyService.withdraw(playerId, amount);
+      if (!result.success()) {
+        sender.sendMessage("Operation failed: " + result.error());
+        return true;
+      }
+      sender.sendMessage("balance[" + playerId + "]=" + formatMoney(result.newBalance()));
+      return true;
+    }
+
+    sender.sendMessage("Usage: /zakum economy status");
+    sender.sendMessage("Usage: /zakum economy balance <player|uuid>");
+    sender.sendMessage("Usage: /zakum economy set <player|uuid> <amount>");
+    sender.sendMessage("Usage: /zakum economy add <player|uuid> <amount>");
+    sender.sendMessage("Usage: /zakum economy take <player|uuid> <amount>");
+    return true;
+  }
+
   private static String formatEpochMillis(long epochMillis) {
     if (epochMillis <= 0L) return "never";
     return Instant.ofEpochMilli(epochMillis).toString();
@@ -696,6 +782,20 @@ public final class ZakumPlugin extends JavaPlugin {
     } catch (NumberFormatException ignored) {
       return fallback;
     }
+  }
+
+  private static double parseDouble(String raw, double fallback) {
+    if (raw == null || raw.isBlank()) return fallback;
+    try {
+      return Double.parseDouble(raw.trim());
+    } catch (NumberFormatException ignored) {
+      return fallback;
+    }
+  }
+
+  private static String formatMoney(double value) {
+    if (!Double.isFinite(value)) return "0.00";
+    return String.format(java.util.Locale.ROOT, "%.2f", value);
   }
 
   private void registerCoreActionEmitters(Clock clock) {
