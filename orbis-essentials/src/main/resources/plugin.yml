@@ -1,0 +1,50 @@
+name: OrbisEssentials
+main: net.orbis.orbisessentials.OrbisEssentialsPlugin
+version: 1.0.0
+api-version: "1.21"
+depend: [Zakum]
+
+commands:
+  ospawn:
+    description: Teleport to spawn.
+    usage: /ospawn
+  osetspawn:
+    description: Set spawn to your current location.
+    usage: /osetspawn
+    permission: orbis.essentials.admin
+  ohome:
+    description: Teleport to a home.
+    usage: /ohome [name]
+  osethome:
+    description: Set a home.
+    usage: /osethome [name]
+  odelhome:
+    description: Delete a home.
+    usage: /odelhome [name]
+  owarp:
+    description: Teleport to a warp.
+    usage: /owarp <name>
+  osetwarp:
+    description: Set a warp.
+    usage: /osetwarp <name>
+    permission: orbis.essentials.admin
+  odelwarp:
+    description: Delete a warp.
+    usage: /odelwarp <name>
+    permission: orbis.essentials.admin
+  oback:
+    description: Teleport to your previous location.
+    usage: /oback
+  otpa:
+    description: Request to teleport to a player.
+    usage: /otpa <player>
+  otpaccept:
+    description: Accept a teleport request.
+    usage: /otpaccept
+  otpdeny:
+    description: Deny a teleport request.
+    usage: /otpdeny
+
+permissions:
+  orbis.essentials.admin:
+    default: op

@@ -1,0 +1,6 @@
+name: ZakumPackets
+main: net.orbis.zakum.packets.ZakumPacketsPlugin
+version: ${version}
+api-version: "1.21"
+depend: [Zakum, PacketEvents]
+description: "Zakum packet layer (PacketEvents-backed)."

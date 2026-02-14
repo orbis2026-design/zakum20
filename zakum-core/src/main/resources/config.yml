@@ -1,0 +1,139 @@
+server:
+  id: "survival"
+
+database:
+  enabled: true
+  host: "127.0.0.1"
+  port: 3306
+  database: "zakum"
+  user: "root"
+  password: "change-me"
+  params: "useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC"
+
+  pool:
+    maxPoolSize: 10
+    minIdle: 2
+    connectionTimeoutMs: 5000
+    validationTimeoutMs: 2500
+    idleTimeoutMs: 600000
+    maxLifetimeMs: 1800000
+    leakDetectionMs: 0
+
+  failover:
+    retrySeconds: 30
+
+controlPlane:
+  enabled: false
+  baseUrl: "http://127.0.0.1:8080"
+  apiKey: ""
+
+entitlements:
+  cache:
+    maximumSize: 50000
+    ttlSeconds: 30
+
+boosters:
+  # How often the in-memory booster cache is refreshed from MySQL.
+  refreshSeconds: 60
+  purge:
+    # Prevent long-uptime table bloat.
+    enabled: true
+    intervalSeconds: 600
+    deleteLimit: 5000
+
+
+actions:
+  enabled: true
+
+  # Core emitters are vanilla-only and safe.
+  emitters:
+    joinQuit: true
+    onlineTime: true
+
+    blockBreak: true
+    blockPlace: true
+
+    mobKill: true
+    playerDeath: true
+    playerKill: true
+
+    xpGain: true
+    levelChange: true
+
+    itemCraft: true
+    smeltExtract: true
+
+    fishCatch: true
+    itemEnchant: true
+    itemConsume: true
+
+    # Noisy / optional
+    advancement: false
+
+    commandUse:
+      enabled: false
+      # Empty = allow all commands (NOT recommended). Prefer allowlisting.
+      allowlist: ["spawn", "warp", "shop"]
+
+  movement:
+    enabled: true
+    # ticks between samples (20 = 1 second)
+    sampleTicks: 20
+    # ignore large jumps (teleports). 5000cm = 50 blocks.
+    maxCmPerSample: 5000
+
+  deferredReplay:
+    enabled: true
+    claimLimit: 200
+
+http:
+  # Default client used by Zakum (controlPlane, future bridges).
+  connectTimeoutMs: 3000
+  callTimeoutMs: 6000
+  readTimeoutMs: 6000
+  writeTimeoutMs: 6000
+  maxRequests: 256
+  maxRequestsPerHost: 64
+
+  resilience:
+    enabled: true
+    circuitBreaker:
+      failureRateThreshold: 50
+      slowCallRateThreshold: 50
+      slowCallDurationMs: 1500
+      slidingWindowSize: 50
+      minimumNumberOfCalls: 20
+      waitDurationInOpenStateMs: 10000
+    retry:
+      maxAttempts: 2
+      waitDurationMs: 150
+
+cache:
+  defaults:
+    # Used by Entitlements/Bridges/etc unless overridden.
+    maximumSize: 100000
+    expireAfterWriteSeconds: 60
+    expireAfterAccessSeconds: 0
+
+observability:
+  metrics:
+    enabled: false
+    # Embedded HTTP server (binds only this backend).
+    bindHost: "127.0.0.1"
+    port: 9100
+    path: "/metrics"
+    includeJvm: true
+
+
+# Packet layer.
+# This is a shared facility for higher-level features that need packet access
+# (advanced anti-exploit, cosmetics, better movement sampling, cross-version
+# entity interactions, etc).
+#
+# Requires ZakumPackets + PacketEvents installed.
+packets:
+  enabled: false
+  backend: "PACKETEVENTS" # NONE, PACKETEVENTS
+  inbound: true
+  outbound: true
+  maxHooksPerPlugin: 64

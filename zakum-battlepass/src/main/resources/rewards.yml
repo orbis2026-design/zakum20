@@ -1,0 +1,49 @@
+# OrbisBattlePass rewards table
+#
+# tiers.<N>.pointsRequired: points needed to reach tier N
+# tiers.<N>.free.<id> / tiers.<N>.premium.<id>: reward definitions
+#
+# Supported reward types (v1):
+# - COMMAND: console command list
+#
+# Placeholders:
+# - %player% (player name)
+# - %uuid% (player UUID)
+
+tiers:
+  "1":
+    pointsRequired: 100
+    free:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% bread 8"
+    premium:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% iron_ingot 8"
+  "2":
+    pointsRequired: 250
+    free:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% arrow 32"
+    premium:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% diamond 1"
+  "3":
+    pointsRequired: 500
+    free:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% golden_apple 1"
+    premium:
+      r1:
+        type: COMMAND
+        commands:
+          - "give %player% netherite_scrap 1"

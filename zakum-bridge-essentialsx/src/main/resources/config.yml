@@ -1,0 +1,42 @@
+emit:
+  enabled: true
+  # If true, only emits when Essentials is installed (recommended).
+  requireEssentials: true
+
+commands:
+  # These are mapped to action types. Values are emitted as the sub-argument if present.
+  warp:
+    enabled: true
+    actionType: warp_use
+    captureArgumentIndex: 1   # /warp <name>
+    key: warp
+  home:
+    enabled: true
+    actionType: home_use
+    captureArgumentIndex: 1   # /home <name>
+    key: home
+  sethome:
+    enabled: true
+    actionType: home_set
+    captureArgumentIndex: 1
+    key: home
+  kit:
+    enabled: true
+    actionType: kit_claim
+    captureArgumentIndex: 1   # /kit <name>
+    key: kit
+  spawn:
+    enabled: true
+    actionType: spawn_use
+    captureArgumentIndex: -1
+    key: spawn
+  tpa:
+    enabled: true
+    actionType: tpa_request
+    captureArgumentIndex: 1
+    key: target
+  tpaccept:
+    enabled: true
+    actionType: tpa_accept
+    captureArgumentIndex: -1
+    key: tpa

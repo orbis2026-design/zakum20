@@ -1,0 +1,40 @@
+teleport:
+  warmupSeconds: 0
+  cancelOnMove:
+    enabled: true
+    maxDistanceBlocks: 0.5
+  cooldownSeconds: 0
+
+tpa:
+  expireSeconds: 60
+  warmupSeconds: 0
+
+homes:
+  max: 3
+
+spawn:
+  world: ""
+  x: 0
+  y: 0
+  z: 0
+  yaw: 0
+  pitch: 0
+
+messages:
+  prefix: "&7[&bOrbis&7] "
+  noPermission: "&cNo permission."
+  playerOnly: "&cPlayers only."
+  tpWarmup: "&7Teleporting in &b{seconds}&7s. Don't move."
+  tpCancelledMove: "&cTeleport cancelled (you moved)."
+  tpSuccess: "&aTeleported."
+  notFound: "&cNot found."
+  homeSet: "&aHome set: &b{name}"
+  homeDeleted: "&aHome deleted: &b{name}"
+  warpSet: "&aWarp set: &b{name}"
+  warpDeleted: "&aWarp deleted: &b{name}"
+  tpaSent: "&7Sent teleport request to &b{player}&7."
+  tpaReceived: "&7Teleport request from &b{player}&7. Use &b/otpaccept&7 or &b/otpdeny&7."
+  tpaExpired: "&cTeleport request expired."
+  tpaDenied: "&cTeleport request denied."
+  tpaAccepted: "&aTeleport request accepted."
+  backMissing: "&cNo previous location."

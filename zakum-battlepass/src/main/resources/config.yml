@@ -1,0 +1,79 @@
+battlepass:
+  # SERVER: premium is evaluated per server_id.
+  # GLOBAL: premium is evaluated network-wide (Velocity-style entitlement).
+  premiumScope: "SERVER"
+  premiumEntitlementKey: "battlepass_premium"
+
+  # Optional override for progress scoping.
+  progressServerIdOverride: ""
+
+  timezone: "UTC"
+
+  weeks:
+    current: 1
+    # Weekly reset token:
+    # - BATTLEPASS_WEEK: weekly quests reset when battlepass.weeks.current changes (recommended).
+    # - ISO: weekly quests reset on ISO calendar week boundary (legacy / no admin week control).
+    resetMode: "BATTLEPASS_WEEK"
+
+  seasons:
+    current: 1
+    resetOnSeasonChange: true
+
+  flush:
+    # seconds
+    intervalSeconds: 5
+    # When many players are online, flushing every player in one run can monopolize an async thread.
+    # This limits work per flush tick; remaining players are flushed in follow-up batches.
+    maxPlayersPerBatch: 200
+
+  premiumRefresh:
+    # seconds (how often to refresh entitlement state for online players)
+    intervalSeconds: 300
+
+  leaderboard:
+    # Refresh leaderboard snapshot from DB (async)
+    refreshSeconds: 30
+    # Max entries kept in memory (top N)
+    maxEntries: 250
+
+  npcMenus:
+    enabled: true
+    # Citizens NPC ids or names (as emitted by OrbisBridgeCitizens as ActionEvent value).
+    # Example: [ "1", "2", "SHOP" ]
+    openMainNpcIds: []
+
+  admin:
+    # Creates rotating backups of config.yml before admin commands write to it.
+    configBackups:
+      enabled: true
+      keep: 10
+
+  # YAML safety for quests.yml and rewards.yml (used by in-game editors and recovery).
+  yamlSafety:
+    enabled: true
+    # Creates bounded "last known good" backups during normal loads.
+    autoBackupOnLoad: true
+    # How many backups to keep per file (0 = keep all, not recommended).
+    keep: 10
+
+  backups:
+    # DB backups are used by /battlepass backup and /battlepass rollover.
+    enabled: true
+    chunkSize: 200
+
+    # Optional: copy config.yml + quests.yml + rewards.yml into backups/batch-<id>/ for each DB backup batch.
+    # This is a cheap, high-ROI safety net for "oops, YAML edit" incidents.
+    files:
+      enabled: true
+      keep: 20
+
+  rollover:
+    # If enabled, /battlepass rollover will create a DB backup batch for the current season
+    # before switching to the next season.
+    backupBeforeChange: true
+
+    # Optional: delete old season data after successful backup (keeps DB small).
+    # Default is false to avoid accidental deletion.
+    purgeOldSeason: false
+    purgeDeleteLimit: 5000

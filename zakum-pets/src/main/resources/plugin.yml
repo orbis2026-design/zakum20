@@ -1,0 +1,17 @@
+name: OrbisPets
+main: net.orbis.zakum.pets.PetsPlugin
+version: ${version}
+api-version: "1.21"
+author: Orbis Network
+depend: [Zakum]
+commands:
+  opets:
+    description: Summon/manage RPG pets
+    usage: /opets
+    aliases: [pets]
+    permission: orbis.pets
+permissions:
+  orbis.pets:
+    default: true
+  orbis.pets.admin:
+    default: op

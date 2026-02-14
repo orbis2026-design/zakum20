@@ -1,0 +1,6 @@
+deferred:
+  enabled: true
+  # seconds to keep offline vote actions before expiring (default 7 days)
+  ttlSeconds: 604800
+  # true = stored for this server_id, false = network-wide (server_id NULL)
+  serverScope: true

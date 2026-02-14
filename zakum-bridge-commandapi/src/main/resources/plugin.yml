@@ -1,0 +1,7 @@
+name: OrbisBridgeCommandAPI
+version: ${version}
+main: net.orbis.zakum.bridge.commandapi.CommandApiBridgePlugin
+api-version: "1.21"
+author: Orbis Network
+description: CommandAPI-powered command tree for Zakum (/zakum ...).
+depend: [Zakum, CommandAPI]

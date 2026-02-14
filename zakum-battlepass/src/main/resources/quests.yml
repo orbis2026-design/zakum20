@@ -1,0 +1,62 @@
+# v1 sample quests (jar resource)
+quests:
+  break_stone_50:
+    name: "Stone Miner"
+    points: 25
+    premiumBonusPoints: 10
+    steps:
+      - type: "block_break"
+        key: "material"
+        value: "STONE"
+        required: 50
+
+  premium_kill_zombies_25:
+    name: "VIP Zombie Cleanup"
+    points: 50
+    premiumOnly: true
+    steps:
+      - type: "mob_kill"
+        key: "entity"
+        value: "ZOMBIE"
+        required: 25
+
+
+  daily_walk_500:
+    name: "Daily Stroll"
+    cadence: "DAILY"
+    points: 15
+    steps:
+      - type: "move"
+        key: "mode"
+        value: "WALK"
+        required: 500
+
+# Requires OrbisBridgeMythicMobs + MythicMobs
+kill_skeletal_knight_10:
+  name: "Skeletal Knight Hunter"
+  points: 40
+  steps:
+    - type: "custom_mob_kill"
+      key: "mythic"
+      value: "SkeletalKnight"
+      required: 10
+
+# Requires OrbisBridgeSuperiorSkyblock2 + SuperiorSkyblock2
+create_skyblock_island:
+  name: "New Island, New Beginnings"
+  points: 30
+  steps:
+    - type: "skyblock_island_create"
+      key: "schematic"
+      value: "*"
+      required: 1
+
+# Requires OrbisBridgeJobs + Jobs (Jobs Reborn)
+jobs_actions_25:
+  name: "Work Ethic"
+  points: 25
+  steps:
+    - type: "jobs_action"
+      key: "job_action"
+      value: "*"
+      required: 25

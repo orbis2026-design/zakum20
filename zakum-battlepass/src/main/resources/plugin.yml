@@ -1,0 +1,18 @@
+name: OrbisBattlePass
+version: ${version}
+main: net.orbis.zakum.battlepass.BattlePassPlugin
+api-version: "1.21"
+author: Orbis Network
+description: BattlePass (v1 scaffold) built on Zakum.
+depend: [Zakum]
+commands:
+  obattlepass:
+    description: Orbis BattlePass
+    usage: /obattlepass
+    aliases: [battlepass]
+    permission: orbis.battlepass
+permissions:
+  orbis.battlepass:
+    default: true
+  orbis.battlepass.admin:
+    default: op

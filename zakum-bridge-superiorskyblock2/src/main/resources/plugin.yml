@@ -1,0 +1,6 @@
+name: OrbisBridgeSuperiorSkyblock2
+main: net.orbis.zakum.bridge.superiorskyblock2.OrbisBridgeSuperiorSkyblock2Plugin
+version: 1.0.0
+api-version: "1.21"
+depend: [Zakum]
+softdepend: [SuperiorSkyblock2]

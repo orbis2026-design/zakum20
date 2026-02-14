@@ -1,0 +1,46 @@
+[versions]
+paper = "1.21.11-R0.1-SNAPSHOT"
+shadow = "9.3.1"
+
+hikaricp = "7.0.2"
+flyway = "12.0.1"
+mysql = "9.6.0"
+caffeine = "3.2.3"
+slf4j = "2.0.17"
+annotations = "26.0.2"
+configurate = "4.2.0"
+okhttp = "4.12.0"
+resilience4j = "2.2.0"
+micrometer = "1.14.4"
+
+packetevents = "2.11.1"
+commandapi = "11.1.0"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+mysql = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-jdk14 = { module = "org.slf4j:slf4j-jdk14", version.ref = "slf4j" }
+
+annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
+configurate-core = { module = "org.spongepowered:configurate-core", version.ref = "configurate" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
+resilience4j-retry = { module = "io.github.resilience4j:resilience4j-retry", version.ref = "resilience4j" }
+resilience4j-bulkhead = { module = "io.github.resilience4j:resilience4j-bulkhead", version.ref = "resilience4j" }
+resilience4j-ratelimiter = { module = "io.github.resilience4j:resilience4j-ratelimiter", version.ref = "resilience4j" }
+micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+
+packetevents-spigot = { module = "io.github.retrooper.packetevents:packetevents-spigot", version.ref = "packetevents" }
+commandapi-paper = { module = "dev.jorel:commandapi-paper-1.21.11", version.ref = "commandapi" }
+commandapi-bukkit = { module = "dev.jorel:commandapi-bukkit-1.21.11", version.ref = "commandapi" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
