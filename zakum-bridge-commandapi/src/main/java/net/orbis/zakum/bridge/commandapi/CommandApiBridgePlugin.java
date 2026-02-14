@@ -5,19 +5,31 @@ import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.DoubleArgument;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument;
+import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.LongArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
 import dev.jorel.commandapi.executors.CommandExecutor;
 import net.orbis.zakum.api.ZakumApi;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.boosters.BoosterKind;
 import net.orbis.zakum.api.db.DatabaseState;
 import net.orbis.zakum.api.entitlements.EntitlementScope;
 import net.orbis.zakum.api.packets.PacketService;
+import net.orbis.zakum.api.vault.EconomyService;
+import net.orbis.zakum.core.ZakumPlugin;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
+import net.orbis.zakum.core.cloud.SecureCloudClient;
+import net.orbis.zakum.core.ops.StressHarnessV2;
+import net.orbis.zakum.core.perf.PacketCullingKernel;
+import net.orbis.zakum.core.perf.PlayerVisualModeService;
+import net.orbis.zakum.core.perf.VisualCircuitBreaker;
+import net.orbis.zakum.core.social.ChatBufferCache;
+import net.orbis.zakum.core.social.LocalizedChatPacketBuffer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Locale;
@@ -35,6 +47,7 @@ import java.time.Instant;
 public final class CommandApiBridgePlugin extends JavaPlugin {
 
   private ZakumApi api;
+  private ZakumPlugin core;
 
   @Override
   public void onEnable() {
@@ -44,10 +57,15 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
+    this.core = api.plugin() instanceof ZakumPlugin plugin ? plugin : null;
+    if (core == null) {
+      getLogger().warning("ZakumPlugin instance not found. Core ops commands will be limited.");
+    }
 
     // Remove the fallback /zakum command (registered by zakum-core plugin.yml) so we can own the node cleanly.
     try {
       CommandAPIBukkit.unregister("zakum", true, true);
+      CommandAPIBukkit.unregister("perfmode", true, true);
     } catch (Throwable ignored) {
       // Best-effort.
     }
@@ -65,6 +83,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     // Best-effort unregister to avoid command ghosts during /reload.
     try {
       CommandAPIBukkit.unregister("zakum", true, true);
+      CommandAPIBukkit.unregister("perfmode", true, true);
     } catch (Throwable ignored) {}
   }
 
@@ -78,8 +97,15 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(entitlementsCommand());
     root.withSubcommand(boostersCommand());
     root.withSubcommand(packetsCommand());
+    root.withSubcommand(cloudCommand());
+    root.withSubcommand(perfCommand());
+    root.withSubcommand(stressCommand());
+    root.withSubcommand(chatBufferCommand());
+    root.withSubcommand(economyCommand());
+    root.withSubcommand(packetCullCommand());
 
     root.register();
+    registerPerfModeCommand();
   }
 
   private void cmdStatus(CommandSender sender) {
@@ -110,6 +136,517 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           sender.sendMessage(ChatColor.AQUA + "Registered hooks: " + ChatColor.GRAY + ps.hookCount());
         })
       );
+  }
+
+  private CommandAPICommand cloudCommand() {
+    return new CommandAPICommand("cloud")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> cmdCloudStatus(sender))
+      );
+  }
+
+  private void cmdCloudStatus(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+
+    var settings = api.settings();
+    sender.sendMessage("Zakum Cloud Status");
+    sender.sendMessage("enabled=" + settings.cloud().enabled());
+    sender.sendMessage("configuredServerId=" + settings.cloud().serverId());
+    sender.sendMessage("pollTaskId=" + corePlugin.getCloudPollTaskId());
+
+    SecureCloudClient cloud = corePlugin.getCloudClient();
+    if (cloud == null) {
+      sender.sendMessage("client=offline (cloud disabled or not configured)");
+      return;
+    }
+
+    var snap = cloud.statusSnapshot();
+    sender.sendMessage("client=online");
+    sender.sendMessage("baseUrl=" + snap.baseUrl());
+    sender.sendMessage("serverId=" + snap.serverId());
+    sender.sendMessage("lastPollAttempt=" + formatEpochMillis(snap.lastPollAttemptMs()));
+    sender.sendMessage("lastPollSuccess=" + formatEpochMillis(snap.lastPollSuccessMs()));
+    sender.sendMessage("lastHttpStatus=" + snap.lastHttpStatus());
+    sender.sendMessage("lastBatchSize=" + snap.lastBatchSize());
+    sender.sendMessage("totalQueueActions=" + snap.totalQueueActions());
+    sender.sendMessage("duplicateQueueSkips=" + snap.duplicateQueueSkips());
+    sender.sendMessage("inflightQueueSkips=" + snap.inflightQueueSkips());
+    sender.sendMessage("offlineQueueSkips=" + snap.offlineQueueSkips());
+    sender.sendMessage("invalidQueueSkips=" + snap.invalidQueueSkips());
+    sender.sendMessage("queueFailures=" + snap.queueFailures());
+    sender.sendMessage("processedIds=" + snap.processedIds());
+    sender.sendMessage("inflightIds=" + snap.inflightIds());
+    sender.sendMessage("ack.enabled=" + snap.ackEnabled());
+    sender.sendMessage("ack.disabled=" + snap.ackDisabled());
+    sender.sendMessage("ack.pending=" + snap.pendingAcks());
+    sender.sendMessage("ack.queued=" + snap.ackQueued());
+    sender.sendMessage("ack.sent=" + snap.ackSent());
+    sender.sendMessage("ack.failed=" + snap.ackFailed());
+    sender.sendMessage("ack.retried=" + snap.ackRetried());
+    sender.sendMessage("ack.dropped=" + snap.ackDropped());
+    sender.sendMessage("ack.lastAttempt=" + formatEpochMillis(snap.lastAckAttemptMs()));
+    sender.sendMessage("ack.lastSuccess=" + formatEpochMillis(snap.lastAckSuccessMs()));
+    sender.sendMessage("ack.lastStatus=" + snap.lastAckStatus());
+    String ackErr = snap.lastAckError();
+    sender.sendMessage("ack.lastError=" + (ackErr == null || ackErr.isBlank() ? "none" : ackErr));
+    String err = snap.lastError();
+    sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+  }
+
+  private CommandAPICommand perfCommand() {
+    return new CommandAPICommand("perf")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> cmdPerfStatus(sender))
+      );
+  }
+
+  private void cmdPerfStatus(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+
+    sender.sendMessage("Zakum Performance Status");
+    var breakerCfg = api.settings().operations().circuitBreaker();
+    sender.sendMessage("circuit.enabled=" + breakerCfg.enabled());
+
+    VisualCircuitBreaker breaker = corePlugin.getVisualCircuitBreaker();
+    if (breaker == null) {
+      sender.sendMessage("circuit=offline");
+      return;
+    }
+
+    var snap = breaker.snapshot();
+    sender.sendMessage("circuit.open=" + snap.open());
+    sender.sendMessage("circuit.lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+    sender.sendMessage("circuit.reason=" + (snap.reason() == null || snap.reason().isBlank() ? "none" : snap.reason()));
+    sender.sendMessage("circuit.changedAt=" + formatEpochMillis(snap.changedAtMs()));
+    sender.sendMessage("circuit.taskId=" + snap.taskId());
+  }
+
+  private CommandAPICommand stressCommand() {
+    int maxIterations = Math.max(1, api.settings().operations().stress().maxIterations());
+    return new CommandAPICommand("stress")
+      .withSubcommand(new CommandAPICommand("start")
+        .withOptionalArguments(new IntegerArgument("iterations", 1, maxIterations))
+        .withOptionalArguments(new IntegerArgument("virtualPlayers", 1, 50_000))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          StressHarnessV2 harness = corePlugin.getStressHarness();
+          if (harness == null) {
+            sender.sendMessage("Stress harness is not available.");
+            return;
+          }
+
+          Integer iterations = (Integer) args.getOptional("iterations").orElse(0);
+          Integer virtualPlayers = (Integer) args.getOptional("virtualPlayers").orElse(null);
+          var result = harness.start(iterations == null ? 0 : iterations, virtualPlayers);
+          sender.sendMessage(result.message());
+        })
+      )
+      .withSubcommand(new CommandAPICommand("stop")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          StressHarnessV2 harness = corePlugin.getStressHarness();
+          if (harness == null) {
+            sender.sendMessage("Stress harness is not available.");
+            return;
+          }
+          sender.sendMessage(harness.stop("command").message());
+        })
+      )
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> cmdStressStatus(sender))
+      );
+  }
+
+  private void cmdStressStatus(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+    StressHarnessV2 harness = corePlugin.getStressHarness();
+    if (harness == null) {
+      sender.sendMessage("Stress harness is not available.");
+      return;
+    }
+    var snap = harness.snapshot();
+    sender.sendMessage("Zakum Stress Harness v2");
+    sender.sendMessage("running=" + snap.running());
+    sender.sendMessage("plannedIterations=" + snap.plannedIterations());
+    sender.sendMessage("scheduledIterations=" + snap.scheduledIterations());
+    sender.sendMessage("completedIterations=" + snap.completedIterations());
+    sender.sendMessage("errors=" + snap.errorCount());
+    sender.sendMessage("skippedNoPlayer=" + snap.skippedNoPlayer());
+    sender.sendMessage("virtualPlayers=" + snap.virtualPlayers());
+    sender.sendMessage("onlinePlayers=" + snap.onlinePlayers());
+    sender.sendMessage("iterationsPerTick=" + snap.iterationsPerTick());
+    sender.sendMessage("lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+    sender.sendMessage("stopReason=" + snap.stopReason());
+    sender.sendMessage("startedAt=" + formatEpochMillis(snap.startedAtMs()));
+    sender.sendMessage("stopAt=" + formatEpochMillis(snap.stopAtMs()));
+    sender.sendMessage("nextAllowedAt=" + formatEpochMillis(snap.nextAllowedAtMs()));
+
+    String lastErr = snap.lastError();
+    sender.sendMessage("lastError=" + (lastErr == null || lastErr.isBlank() ? "none" : lastErr));
+    if (snap.lastErrorAtMs() > 0L) {
+      sender.sendMessage("lastErrorAt=" + formatEpochMillis(snap.lastErrorAtMs()));
+    }
+
+    if (snap.scenarioCounts() != null && !snap.scenarioCounts().isEmpty()) {
+      sender.sendMessage("scenarioCounts=" + snap.scenarioCounts());
+    }
+  }
+
+  private CommandAPICommand chatBufferCommand() {
+    return new CommandAPICommand("chatbuffer")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> cmdChatBufferStatus(sender))
+      )
+      .withSubcommand(new CommandAPICommand("warmup")
+        .executes((CommandExecutor) (sender, args) -> cmdChatBufferWarmup(sender))
+      );
+  }
+
+  private void cmdChatBufferStatus(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+
+    sender.sendMessage("Zakum Chat Buffer Status");
+    ChatBufferCache cache = corePlugin.getChatBufferCache();
+    if (cache != null) {
+      var parse = cache.stats();
+      sender.sendMessage("parse.enabled=" + parse.enabled());
+      sender.sendMessage("parse.requests=" + parse.requests());
+      sender.sendMessage("parse.hits=" + parse.hits());
+      sender.sendMessage("parse.misses=" + parse.misses());
+      sender.sendMessage("parse.estimatedSize=" + parse.estimatedSize());
+    } else {
+      sender.sendMessage("parse.cache=offline");
+    }
+
+    ChatPacketBuffer buffer = corePlugin.getChatPacketBuffer();
+    if (buffer instanceof LocalizedChatPacketBuffer localized) {
+      var prepared = localized.stats();
+      sender.sendMessage("prepared.templateKeys=" + prepared.templateKeys());
+      sender.sendMessage("prepared.cacheSize=" + prepared.preparedCacheSize());
+      sender.sendMessage("prepared.resolveRequests=" + prepared.resolveRequests());
+      sender.sendMessage("prepared.resolveHits=" + prepared.resolveHits());
+      sender.sendMessage("prepared.resolveMisses=" + prepared.resolveMisses());
+      sender.sendMessage("prepared.sends=" + prepared.sends());
+      sender.sendMessage("prepared.packetDispatchEnabled=" + prepared.packetDispatchEnabled());
+      sender.sendMessage("prepared.packetDispatchAvailable=" + prepared.packetDispatchAvailable());
+      sender.sendMessage("prepared.packetSends=" + prepared.packetSends());
+      sender.sendMessage("prepared.fallbackSends=" + prepared.fallbackSends());
+      sender.sendMessage("prepared.packetFailures=" + prepared.packetFailures());
+      return;
+    }
+    sender.sendMessage("prepared.buffer=not-localized");
+  }
+
+  private void cmdChatBufferWarmup(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+    ChatPacketBuffer buffer = corePlugin.getChatPacketBuffer();
+    if (buffer == null) {
+      sender.sendMessage("Chat buffer is not available.");
+      return;
+    }
+    api.getScheduler().runAsync(() -> {
+      buffer.warmup();
+      api.getScheduler().runGlobal(() -> sender.sendMessage("Chat buffer warmup finished."));
+    });
+    sender.sendMessage("Chat buffer warmup started.");
+  }
+
+  private CommandAPICommand economyCommand() {
+    CommandAPICommand economy = new CommandAPICommand("economy");
+
+    economy.withSubcommand(new CommandAPICommand("status")
+      .executes((CommandExecutor) (sender, args) -> {
+        EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+        if (eco == null) {
+          sender.sendMessage("Economy capability is not registered.");
+          return;
+        }
+        sender.sendMessage("Economy status");
+        sender.sendMessage("available=" + eco.available());
+      })
+    );
+
+    economy.withSubcommand(new CommandAPICommand("balance")
+      .withArguments(new StringArgument("player"))
+      .executes((CommandExecutor) (sender, args) -> {
+        EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+        if (eco == null) {
+          sender.sendMessage("Economy capability is not registered.");
+          return;
+        }
+        String token = (String) args.get("player");
+        UUID playerId = resolveUuid(sender, token);
+        if (playerId == null) return;
+        double balance = eco.balance(playerId);
+        sender.sendMessage("balance[" + playerId + "]=" + formatMoney(balance));
+      })
+    );
+
+    economy.withSubcommand(new CommandAPICommand("set")
+      .withArguments(new StringArgument("player"))
+      .withArguments(new DoubleArgument("amount", 0.0d, 1.0e12d))
+      .executes((CommandExecutor) (sender, args) -> {
+        EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+        if (eco == null) {
+          sender.sendMessage("Economy capability is not registered.");
+          return;
+        }
+        String token = (String) args.get("player");
+        UUID playerId = resolveUuid(sender, token);
+        if (playerId == null) return;
+        double amount = (double) args.get("amount");
+        if (!Double.isFinite(amount) || amount < 0.0d) {
+          sender.sendMessage("Amount must be a non-negative number.");
+          return;
+        }
+
+        double current = eco.balance(playerId);
+        double target = Math.max(0.0d, amount);
+        if (target > current) {
+          var result = eco.deposit(playerId, target - current);
+          if (!result.success()) {
+            sender.sendMessage("Set failed: " + result.error());
+            return;
+          }
+        } else if (target < current) {
+          var result = eco.withdraw(playerId, current - target);
+          if (!result.success()) {
+            sender.sendMessage("Set failed: " + result.error());
+            return;
+          }
+        }
+        sender.sendMessage("balance[" + playerId + "]=" + formatMoney(target));
+      })
+    );
+
+    economy.withSubcommand(new CommandAPICommand("add")
+      .withArguments(new StringArgument("player"))
+      .withArguments(new DoubleArgument("amount", 0.0d, 1.0e12d))
+      .executes((CommandExecutor) (sender, args) -> {
+        EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+        if (eco == null) {
+          sender.sendMessage("Economy capability is not registered.");
+          return;
+        }
+        String token = (String) args.get("player");
+        UUID playerId = resolveUuid(sender, token);
+        if (playerId == null) return;
+        double amount = (double) args.get("amount");
+        var result = eco.deposit(playerId, amount);
+        if (!result.success()) {
+          sender.sendMessage("Operation failed: " + result.error());
+          return;
+        }
+        sender.sendMessage("balance[" + playerId + "]=" + formatMoney(result.newBalance()));
+      })
+    );
+
+    economy.withSubcommand(new CommandAPICommand("take")
+      .withArguments(new StringArgument("player"))
+      .withArguments(new DoubleArgument("amount", 0.0d, 1.0e12d))
+      .executes((CommandExecutor) (sender, args) -> {
+        EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+        if (eco == null) {
+          sender.sendMessage("Economy capability is not registered.");
+          return;
+        }
+        String token = (String) args.get("player");
+        UUID playerId = resolveUuid(sender, token);
+        if (playerId == null) return;
+        double amount = (double) args.get("amount");
+        var result = eco.withdraw(playerId, amount);
+        if (!result.success()) {
+          sender.sendMessage("Operation failed: " + result.error());
+          return;
+        }
+        sender.sendMessage("balance[" + playerId + "]=" + formatMoney(result.newBalance()));
+      })
+    );
+
+    return economy;
+  }
+
+  private CommandAPICommand packetCullCommand() {
+    return new CommandAPICommand("packetcull")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> cmdPacketCullStatus(sender))
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          PacketCullingKernel kernel = corePlugin.getPacketCullingKernel();
+          if (kernel == null) {
+            sender.sendMessage("Packet culling kernel is offline.");
+            return;
+          }
+          kernel.setRuntimeEnabled(true);
+          sender.sendMessage("Packet culling runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          PacketCullingKernel kernel = corePlugin.getPacketCullingKernel();
+          if (kernel == null) {
+            sender.sendMessage("Packet culling kernel is offline.");
+            return;
+          }
+          kernel.setRuntimeEnabled(false);
+          sender.sendMessage("Packet culling runtime disabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("refresh")
+        .withOptionalArguments(new EntitySelectorArgument.OnePlayer("player"))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          PacketCullingKernel kernel = corePlugin.getPacketCullingKernel();
+          if (kernel == null) {
+            sender.sendMessage("Packet culling kernel is offline.");
+            return;
+          }
+          Player target = resolvePacketCullTarget(sender, args);
+          if (target == null) return;
+          kernel.requestSample(target);
+          sender.sendMessage("Packet culling sample queued for " + target.getName() + ".");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("sample")
+        .withOptionalArguments(new EntitySelectorArgument.OnePlayer("player"))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          PacketCullingKernel kernel = corePlugin.getPacketCullingKernel();
+          if (kernel == null) {
+            sender.sendMessage("Packet culling kernel is offline.");
+            return;
+          }
+          Player target = resolvePacketCullTarget(sender, args);
+          if (target == null) return;
+          var sample = kernel.sampleSnapshot(target.getUniqueId());
+          if (sample == null) {
+            kernel.requestSample(target);
+            sender.sendMessage("No sample yet for " + target.getName() + ". Sample queued; run again shortly.");
+            return;
+          }
+
+          long ageMs = Math.max(0L, System.currentTimeMillis() - sample.sampledAtMs());
+          int threshold = kernel.thresholdFor(sample.mode());
+          boolean runtimeEnabled = kernel.runtimeEnabled();
+          boolean configuredEnabled = api.settings().packets().culling().enabled();
+          boolean wouldDrop = runtimeEnabled
+            && configuredEnabled
+            && !sample.bypass()
+            && (!api.settings().packets().culling().respectPerfMode() || sample.mode() != PlayerVisualModeService.Mode.QUALITY)
+            && ageMs <= api.settings().packets().culling().maxSampleAgeMs()
+            && sample.density() >= threshold;
+
+          sender.sendMessage("Packet cull sample: " + target.getName());
+          sender.sendMessage("density=" + sample.density());
+          sender.sendMessage("ageMs=" + ageMs);
+          sender.sendMessage("mode=" + sample.mode().displayName());
+          sender.sendMessage("bypass=" + sample.bypass());
+          sender.sendMessage("threshold=" + threshold);
+          sender.sendMessage("configuredEnabled=" + configuredEnabled);
+          sender.sendMessage("runtimeEnabled=" + runtimeEnabled);
+          sender.sendMessage("wouldDrop=" + wouldDrop);
+        })
+      );
+  }
+
+  private void cmdPacketCullStatus(CommandSender sender) {
+    ZakumPlugin corePlugin = requireCore(sender);
+    if (corePlugin == null) return;
+    PacketCullingKernel kernel = corePlugin.getPacketCullingKernel();
+    if (kernel == null) {
+      sender.sendMessage("Packet culling kernel is offline.");
+      return;
+    }
+    var snap = kernel.snapshot();
+    sender.sendMessage("Zakum Packet Culling");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("hookRegistered=" + snap.hookRegistered());
+    sender.sendMessage("backend=" + snap.backend());
+    sender.sendMessage("hookCount=" + snap.hookCount());
+    sender.sendMessage("radius=" + snap.radius());
+    sender.sendMessage("densityThreshold=" + snap.densityThreshold());
+    sender.sendMessage("maxSampleAgeMs=" + snap.maxSampleAgeMs());
+    sender.sendMessage("lastOnlineCount=" + snap.lastOnlineCount());
+    sender.sendMessage("lastSampleBatch=" + snap.lastSampleBatch());
+    sender.sendMessage("respectPerfMode=" + snap.respectPerfMode());
+    String bypass = snap.bypassPermission();
+    sender.sendMessage("bypassPermission=" + (bypass == null || bypass.isBlank() ? "none" : bypass));
+    sender.sendMessage("sampledPlayers=" + snap.sampledPlayers());
+    sender.sendMessage("sampleRuns=" + snap.sampleRuns());
+    sender.sendMessage("sampleUpdates=" + snap.sampleUpdates());
+    sender.sendMessage("serviceProbeRuns=" + snap.serviceProbeRuns());
+    sender.sendMessage("bypassSkips=" + snap.bypassSkips());
+    sender.sendMessage("qualitySkips=" + snap.qualitySkips());
+    sender.sendMessage("packetsObserved=" + snap.packetsObserved());
+    sender.sendMessage("packetsDropped=" + snap.packetsDropped());
+    sender.sendMessage("dropRate=" + String.format(java.util.Locale.ROOT, "%.2f%%", snap.dropRate() * 100.0d));
+  }
+
+  private Player resolvePacketCullTarget(CommandSender sender, dev.jorel.commandapi.executors.CommandArguments args) {
+    Player target = (Player) args.getOptional("player").orElse(null);
+    if (target != null) return target;
+    if (sender instanceof Player player) return player;
+    sender.sendMessage("Console usage: /zakum packetcull <sample|refresh> <player>");
+    return null;
+  }
+
+  private void registerPerfModeCommand() {
+    new CommandAPICommand("perfmode")
+      .withPermission("zakum.perfmode")
+      .withArguments(new StringArgument("mode")
+        .replaceSuggestions((info, builder) -> {
+          builder.suggest("auto");
+          builder.suggest("on");
+          builder.suggest("off");
+          return builder.buildFuture();
+        }))
+      .withOptionalArguments(new EntitySelectorArgument.OnePlayer("player"))
+      .executes((CommandExecutor) (sender, args) -> {
+        ZakumPlugin corePlugin = requireCore(sender);
+        if (corePlugin == null) return;
+        PlayerVisualModeService visualModes = corePlugin.getVisualModeService();
+        if (visualModes == null) {
+          sender.sendMessage("Performance mode service is not available.");
+          return;
+        }
+
+        String rawMode = (String) args.get("mode");
+        PlayerVisualModeService.Mode mode = PlayerVisualModeService.Mode.fromInput(rawMode);
+        Player target = (Player) args.getOptional("player").orElse(null);
+        if (target != null) {
+          if (!sender.hasPermission("zakum.admin")) {
+            sender.sendMessage("No permission.");
+            return;
+          }
+        } else if (sender instanceof Player player) {
+          target = player;
+        } else {
+          sender.sendMessage("Console usage: /perfmode <auto|on|off> <player>");
+          return;
+        }
+
+        visualModes.setMode(target.getUniqueId(), mode);
+        sender.sendMessage("Performance mode for " + target.getName() + " set to " + mode.displayName() + ".");
+        if (!target.equals(sender)) {
+          target.sendMessage("Your performance mode is now " + mode.displayName() + ".");
+        }
+      })
+      .register();
   }
 
   private CommandAPICommand entitlementsCommand() {
@@ -446,6 +983,34 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       int done = total;
       ZakumApi.get().getScheduler().runTask(this, () -> sender.sendMessage(ChatColor.GREEN + "Purged " + done + " expired booster row(s)."));
     });
+  }
+
+  private ZakumPlugin requireCore(CommandSender sender) {
+    if (core == null) {
+      sender.sendMessage(ChatColor.RED + "Core ops unavailable (ZakumPlugin missing).");
+    }
+    return core;
+  }
+
+  private static String formatEpochMillis(long epochMillis) {
+    if (epochMillis <= 0L) return "never";
+    return Instant.ofEpochMilli(epochMillis).toString();
+  }
+
+  private static UUID resolveUuid(CommandSender sender, String token) {
+    if (token == null || token.isBlank()) return null;
+    if (token.contains("-")) {
+      try { return UUID.fromString(token); } catch (Exception ignored) {}
+    }
+    OfflinePlayer op = Bukkit.getOfflinePlayer(token);
+    UUID id = op.getUniqueId();
+    if (id == null) sender.sendMessage("Unknown player: " + token);
+    return id;
+  }
+
+  private static String formatMoney(double value) {
+    if (!Double.isFinite(value)) return "0.00";
+    return String.format(java.util.Locale.ROOT, "%.2f", value);
   }
 
   private static String colorDb(DatabaseState state) {

@@ -559,6 +559,42 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  public SecureCloudClient getCloudClient() {
+    return cloudClient;
+  }
+
+  public int getCloudPollTaskId() {
+    return cloudPollTaskId;
+  }
+
+  public VisualCircuitBreaker getVisualCircuitBreaker() {
+    return visualCircuitBreaker;
+  }
+
+  public StressHarnessV2 getStressHarness() {
+    return stressHarness;
+  }
+
+  public ChatBufferCache getChatBufferCache() {
+    return chatBufferCache;
+  }
+
+  public ChatPacketBuffer getChatPacketBuffer() {
+    return chatPacketBuffer;
+  }
+
+  public PacketCullingKernel getPacketCullingKernel() {
+    return packetCullingKernel;
+  }
+
+  public PlayerVisualModeService getVisualModeService() {
+    return visualModeService;
+  }
+
+  public EconomyService getEconomyService() {
+    return economyService;
+  }
+
   private boolean handlePerfModeCommand(CommandSender sender, String[] args) {
     if (visualModeService == null) {
       sender.sendMessage("Performance mode service is not available.");

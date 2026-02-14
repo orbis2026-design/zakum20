@@ -20,9 +20,16 @@ Plugin: `ZakumBridgeCommandAPI`
 ## Current command tree (bridge)
 
 - `/zakum status`
+- `/zakum cloud status`
+- `/zakum perf status`
+- `/zakum stress start|stop|status`
+- `/zakum chatbuffer status|warmup`
+- `/zakum economy status|balance|set|add|take ...`
+- `/zakum packetcull status|enable|disable|sample|refresh`
 - `/zakum packets status`
 - `/zakum entitlements check|grant|revoke|invalidate ...`
 - `/zakum boosters multiplier|grant_all|grant_player ...`
+- `/perfmode auto|on|off [player]`
 
 All DB operations run async and reply sync to the sender.
 
