@@ -114,14 +114,11 @@ jobs:
       - name: Generate test report
         if: always()
         run: |
-          echo "📊 Generating test report..."
-          
-          mkdir -p build/reports/tests
-          
-          # Collect test results from all modules
-          find . -name "TEST-*.xml" -type f | while read test_file; do
-            echo "Found test results: $test_file"
-          done
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Unit Tests:** ${{ steps.unit_tests.outputs.status || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Integration Tests:** ${{ steps.integration_tests.outputs.status || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Smoke Tests:** ${{ steps.smoke_tests.outputs.status || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Publish test results
         if: always()

@@ -117,56 +117,20 @@ jobs:
         run: |
           MODULE_ID="${{ github.event.inputs.module_id }}"
           PLUGIN_NAME="${{ github.event.inputs.plugin_name }}"
-          KIND="${{ github.event.inputs.kind }}"
+          BRANCH_NAME="automation/codegen-$MODULE_ID"
           
-          # Create branch
-          BRANCH_NAME="codegen/$MODULE_ID"
-          git checkout -b "$BRANCH_NAME"
-          
-          # Commit changes
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
           git add .
-          git commit -m "feat: generate $MODULE_ID module scaffolding"
+          git commit -m "feat: generate $MODULE_ID module ($PLUGIN_NAME)" || echo "No changes to commit"
           git push -u origin "$BRANCH_NAME"
           
-          # Create PR
-          PR_TITLE="[Codegen] Add $PLUGIN_NAME module"
-          PR_BODY=$(cat << 'EOF'
-          ## Module Generation
-          
-          **Module ID:** $MODULE_ID
-          **Plugin Name:** $PLUGIN_NAME
-          **Kind:** $KIND
-          
-          ### Generated Files
-          - ✅ build.gradle.kts
-          - ✅ plugin.yml
-          - ✅ config.yml
-          - ✅ Main plugin class
-          - ✅ README.md
-          
-          ### Verification
-          - ✅ Platform infrastructure checks passed
-          - ✅ Module compiles successfully
-          
-          ### Next Steps
-          - [ ] Review generated code
-          - [ ] Add custom functionality
-          - [ ] Add tests
-          - [ ] Update documentation
-          
-          ---
-          *This PR was created by the Zakum Codegen Worker*
-          EOF
-          )
-          
           gh pr create \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY" \
+            --title "feat: Generate $MODULE_ID module" \
+            --body "Auto-generated module scaffolding for $PLUGIN_NAME (${{ github.event.inputs.kind }})" \
             --base main \
-            --head "$BRANCH_NAME" \
-            --label "codegen,new-module"
+            --head "$BRANCH_NAME" || echo "PR already exists"
 
       - name: Summary
         run: |

@@ -108,21 +108,31 @@ jobs:
           # List all feature modules
           for dir in zakum-* orbis-*; do
             if [ -d "$dir" ] && [ -f "$dir/build.gradle.kts" ]; then
-              if [ "$dir" != "zakum-api" ] && [ "$dir" != "zakum-core" ] && [ "$dir" != "zakum-packets" ]; then
-                echo "### $dir" >> docs/generated/modules/README.md
-                
-                # Try to extract description from README if it exists
-                if [ -f "$dir/README.md" ]; then
-                  head -n 5 "$dir/README.md" | tail -n +2 >> docs/generated/modules/README.md
-                fi
-                
-                echo "" >> docs/generated/modules/README.md
+              echo "### $dir" >> docs/generated/modules/README.md
+              echo "" >> docs/generated/modules/README.md
+              
+              # Extract description from build file if available
+              if grep -q "description" "$dir/build.gradle.kts"; then
+                DESC=$(grep "description" "$dir/build.gradle.kts" | head -1)
+                DESC=${DESC:-"No description"}
+                echo "- **Description:** $DESC" >> docs/generated/modules/README.md
               fi
+              
+              echo "- **Location:** \`$dir/\`" >> docs/generated/modules/README.md
+              echo "" >> docs/generated/modules/README.md
             fi
           done
           
           echo "✅ Module documentation generated"
           echo "status=generated" >> $GITHUB_OUTPUT
+
+      - name: Commit documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "docs: update auto-generated documentation [skip ci]" || echo "No changes to commit"
+          git push || echo "No changes to push"
 
       - name: Generate usage guides
         id: guides
