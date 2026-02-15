@@ -86,7 +86,7 @@ jobs:
             reduce .[] as $task (
               {tasks: [], total: 0};
               if (.tasks | length) < 3 then
-                ($task.estimatedMinutes * 0.008 / 60) as $cost |
+                (($task.estimatedMinutes // 0) * 0.008 / 60) as $cost |
                 if (.total + $cost) <= $remaining then
                   {tasks: (.tasks + [$task]), total: (.total + $cost)}
                 else
@@ -99,7 +99,7 @@ jobs:
           ')
           
           # Calculate final cost for display
-          TOTAL_ESTIMATED=$(echo "$SELECTED_TASKS" | jq '[.[] | .estimatedMinutes * 0.008 / 60] | add // 0')
+          TOTAL_ESTIMATED=$(echo "$SELECTED_TASKS" | jq '[.[] | ((.estimatedMinutes // 0) * 0.008 / 60)] | add // 0')
           
           # Output selected tasks
           echo "tasks<<EOF" >> $GITHUB_OUTPUT

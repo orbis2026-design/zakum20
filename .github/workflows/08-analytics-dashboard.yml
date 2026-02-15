@@ -195,7 +195,7 @@ jobs:
           
           - **Total Spent:** \$${{ steps.budget.outputs.total_spent }}
           - **Days Tracked:** ${{ steps.budget.outputs.days_tracked }}
-          - **Average Daily Spend:** \$${{ steps.budget.outputs.avg_daily }}
+          - **Average Daily Spend:** \$${{ steps.budget.outputs.avg_daily_spend }}
           - **Daily Limit:** \$25.00
           - **Remaining Today:** See current budget file
           
@@ -290,7 +290,7 @@ jobs:
             "budget": {
               "total_spent": ${{ steps.budget.outputs.total_spent }},
               "days_tracked": ${{ steps.budget.outputs.days_tracked }},
-              "average_daily": ${{ steps.budget.outputs.avg_daily }},
+              "average_daily": ${{ steps.budget.outputs.avg_daily_spend }},
               "daily_limit": 25.0
             },
             "repository": {
@@ -324,7 +324,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Budget" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Spent:** \$${{ steps.budget.outputs.total_spent }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Average Daily:** \$${{ steps.budget.outputs.avg_daily }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Average Daily:** \$${{ steps.budget.outputs.avg_daily_spend }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Repository" >> $GITHUB_STEP_SUMMARY
           echo "- **Modules:** ${{ steps.repo.outputs.module_count }}" >> $GITHUB_STEP_SUMMARY
