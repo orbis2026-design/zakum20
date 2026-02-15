@@ -111,12 +111,13 @@
       "priority": 60,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement SQL failure/recovery and bounded connection lifecycle with Hikari",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:06:28Z"
     },
     {
       "id": "data-002",
@@ -126,12 +127,13 @@
       "priority": 60,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement Redis failure/recovery and bounded cache lifecycle with TTL",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:06:28Z"
     },
     {
       "id": "protocol-001",
@@ -360,11 +362,12 @@
       "priority": 80,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Expand API smoke test coverage for bootstrap SDK contract",
       "verificationGates": [
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:06:28Z"
     },
     {
       "id": "test-002",
