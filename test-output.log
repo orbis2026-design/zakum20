@@ -1,0 +1,25 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :zakum-api:compileJava FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':zakum-api:compileJava'.
+> Could not resolve all files for configuration ':zakum-api:compileClasspath'.
+   > Could not resolve io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT.
+     Required by:
+         project ':zakum-api'
+      > Could not resolve io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT.
+         > Unable to load Maven meta-data from https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/1.21.11-R0.1-SNAPSHOT/maven-metadata.xml.
+            > Could not GET 'https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/1.21.11-R0.1-SNAPSHOT/maven-metadata.xml'.
+               > repo.papermc.io: No address associated with hostname
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 47s
+1 actionable task: 1 executed
