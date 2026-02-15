@@ -1,0 +1,24 @@
+hud:
+  enabled: true
+  updateIntervalTicks: 20
+  defaultProfile: default
+  hideWhenInSpectator: true
+
+profiles:
+  default:
+    title: "&b&lORBIS"
+    lines:
+      - "&7Player: &f%player%"
+      - "&7World: &b%world%"
+      - "&7Online: &a%online%"
+      - "&7Ping: &e%ping%ms"
+      - "&7Coords: &f%x% &7/&f %y% &7/&f %z%"
+      - "&7Health: &c%health%&7/&c%max_health%"
+      - "&7Server: &b%server_id%"
+      - "&7UTC: &f%time%"
+  compact:
+    title: "&3&lORBIS"
+    lines:
+      - "&f%player% &7| &b%world%"
+      - "&a%online% online &7| &e%ping%ms"
+      - "&7%time% UTC"

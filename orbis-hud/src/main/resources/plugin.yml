@@ -1,0 +1,19 @@
+name: OrbisHud
+version: ${version}
+main: net.orbis.orbishud.OrbisHudPlugin
+api-version: "1.21"
+author: Orbis Network
+description: Lightweight Zakum-backed HUD and scoreboard profiles.
+depend: [Zakum]
+commands:
+  orbishud:
+    description: Orbis HUD command surface
+    usage: /orbishud <status|reload|profile>
+    aliases: [ohud]
+permissions:
+  orbishud.admin:
+    default: op
+  orbishud.reload:
+    default: op
+  orbishud.profile.set:
+    default: op
