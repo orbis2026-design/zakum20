@@ -153,13 +153,14 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Complete remaining 6 points of bridge baseline work with graceful degradation",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:50:58Z"
     },
     {
       "id": "ace-001",
@@ -169,12 +170,13 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Complete ACE effect coverage, parser hardening, diagnostics bounds",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:50:58Z"
     },
     {
       "id": "feature-001",
@@ -368,11 +370,12 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Create integration test suite for cross-module interactions",
       "verificationGates": [
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:50:58Z"
     },
     {
       "id": "doc-001",
