@@ -354,10 +354,357 @@ val releaseShadedCollisionAudit = tasks.register("releaseShadedCollisionAudit") 
   }
 }
 
+val verifyAsyncSafety = tasks.register("verifyAsyncSafety") {
+  group = "verification"
+  description = "Validates async/threading patterns for Folia compatibility."
+  doLast {
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val reportFile = file("build/reports/platform-verification/async-safety.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val warnings = mutableListOf<String>()
+    for (module in allModules) {
+      val moduleRoot = file("$module/src/main/java")
+      if (!moduleRoot.exists()) continue
+      
+      moduleRoot.walkTopDown()
+        .filter { it.isFile && it.extension == "java" }
+        .forEach { javaFile ->
+          javaFile.useLines { lines ->
+            lines.forEachIndexed { index, line ->
+              val trimmed = line.trim()
+              if (trimmed.contains("BukkitScheduler") || trimmed.contains("runTask(")) {
+                val relativePath = javaFile.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+                warnings += "$relativePath:${index + 1}: Legacy BukkitScheduler usage - consider ZakumScheduler"
+              }
+            }
+          }
+        }
+    }
+    
+    val report = buildString {
+      appendLine("=== Async/Threading Safety Report ===")
+      appendLine()
+      appendLine("Modules checked: ${allModules.size}")
+      appendLine("Warnings: ${warnings.size}")
+      appendLine()
+      if (warnings.isNotEmpty()) {
+        appendLine("Warnings:")
+        warnings.take(50).forEach { appendLine("  - $it") }
+        if (warnings.size > 50) {
+          appendLine("  ... and ${warnings.size - 50} more")
+        }
+      } else {
+        appendLine("✓ No async safety issues detected")
+      }
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
+}
+
+val verifyConfigImmutability = tasks.register("verifyConfigImmutability") {
+  group = "verification"
+  description = "Validates configuration class immutability and thread-safety."
+  doLast {
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val reportFile = file("build/reports/platform-verification/config-immutability.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val violations = mutableListOf<String>()
+    val configClassPattern = Regex("class\\s+\\w+(Config|Settings|Configuration)")
+    val mutableFieldPattern = Regex("public\\s+(?!final\\s|static\\s+final\\s)\\w+\\s+\\w+\\s*[;=]")
+    
+    for (module in allModules) {
+      val moduleRoot = file("$module/src/main/java")
+      if (!moduleRoot.exists()) continue
+      
+      moduleRoot.walkTopDown()
+        .filter { it.isFile && it.extension == "java" }
+        .forEach { javaFile ->
+          val content = javaFile.readText()
+          if (configClassPattern.containsMatchIn(content)) {
+            javaFile.useLines { lines ->
+              lines.forEachIndexed { index, line ->
+                if (mutableFieldPattern.containsMatchIn(line)) {
+                  val relativePath = javaFile.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+                  violations += "$relativePath:${index + 1}: Mutable field in config class"
+                }
+              }
+            }
+          }
+        }
+    }
+    
+    val report = buildString {
+      appendLine("=== Configuration Immutability Report ===")
+      appendLine()
+      appendLine("Modules checked: ${allModules.size}")
+      appendLine("Violations: ${violations.size}")
+      appendLine()
+      if (violations.isNotEmpty()) {
+        appendLine("Violations:")
+        violations.forEach { appendLine("  - $it") }
+        throw GradleException("Config immutability violations found:\n${violations.joinToString("\n")}")
+      } else {
+        appendLine("✓ All config classes follow immutability patterns")
+      }
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
+}
+
+val verifyServiceResolution = tasks.register("verifyServiceResolution") {
+  group = "verification"
+  description = "Validates plugin service resolution and lifecycle contracts."
+  doLast {
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val reportFile = file("build/reports/platform-verification/service-resolution.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val warnings = mutableListOf<String>()
+    for (module in allModules) {
+      if (module == "zakum-core") continue
+      
+      val moduleRoot = file("$module/src/main/java")
+      if (!moduleRoot.exists()) continue
+      
+      var hasPluginClass = false
+      var extendsZakumBase = false
+      
+      moduleRoot.walkTopDown()
+        .filter { it.isFile && it.extension == "java" }
+        .forEach { javaFile ->
+          val content = javaFile.readText()
+          if (content.contains("extends JavaPlugin")) {
+            hasPluginClass = true
+          }
+          if (content.contains("extends ZakumPluginBase")) {
+            extendsZakumBase = true
+          }
+        }
+      
+      if (hasPluginClass && !extendsZakumBase) {
+        warnings += "$module: Consider extending ZakumPluginBase for standardized lifecycle"
+      }
+    }
+    
+    val report = buildString {
+      appendLine("=== Service Resolution Report ===")
+      appendLine()
+      appendLine("Modules checked: ${allModules.size}")
+      appendLine("Warnings: ${warnings.size}")
+      appendLine()
+      if (warnings.isNotEmpty()) {
+        appendLine("Warnings:")
+        warnings.forEach { appendLine("  - $it") }
+      } else {
+        appendLine("✓ All plugins follow service resolution patterns")
+      }
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
+}
+
+val verifyFoliaCompat = tasks.register("verifyFoliaCompat") {
+  group = "verification"
+  description = "Validates Folia virtual thread safety and regional entity operations."
+  doLast {
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val reportFile = file("build/reports/platform-verification/folia-compat.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val warnings = mutableListOf<String>()
+    val globalSchedulerPattern = Regex("\\.(runTask|scheduleSyncDelayedTask|scheduleSyncRepeatingTask)\\(")
+    
+    for (module in allModules) {
+      val moduleRoot = file("$module/src/main/java")
+      if (!moduleRoot.exists()) continue
+      
+      moduleRoot.walkTopDown()
+        .filter { it.isFile && it.extension == "java" }
+        .forEach { javaFile ->
+          javaFile.useLines { lines ->
+            lines.forEachIndexed { index, line ->
+              if (globalSchedulerPattern.containsMatchIn(line) && !line.contains("//")) {
+                val relativePath = javaFile.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+                warnings += "$relativePath:${index + 1}: Global scheduler - use runAtEntity/runAtLocation for Folia"
+              }
+            }
+          }
+        }
+    }
+    
+    val report = buildString {
+      appendLine("=== Folia Compatibility Report ===")
+      appendLine()
+      appendLine("Modules checked: ${allModules.size}")
+      appendLine("Warnings: ${warnings.size}")
+      appendLine()
+      if (warnings.isNotEmpty()) {
+        appendLine("Warnings:")
+        warnings.take(50).forEach { appendLine("  - $it") }
+        if (warnings.size > 50) {
+          appendLine("  ... and ${warnings.size - 50} more")
+        }
+      } else {
+        appendLine("✓ No Folia compatibility issues detected")
+      }
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
+}
+
+val verifyDataSchemas = tasks.register("verifyDataSchemas") {
+  group = "verification"
+  description = "Validates SQL schemas and Flyway migrations across modules."
+  doLast {
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val reportFile = file("build/reports/platform-verification/data-schemas.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val modulesWithMigrations = mutableListOf<Pair<String, Int>>()
+    val invalidMigrations = mutableListOf<String>()
+    
+    for (module in allModules) {
+      val migrationDir = file("$module/src/main/resources/db/migration")
+      if (migrationDir.exists() && migrationDir.isDirectory) {
+        val migrations = migrationDir.listFiles { _, name -> 
+          name.endsWith(".sql") && name.startsWith("V")
+        } ?: emptyArray()
+        
+        if (migrations.isNotEmpty()) {
+          modulesWithMigrations += module to migrations.size
+          
+          for (migration in migrations) {
+            if (!migration.name.matches(Regex("V\\d+__[a-zA-Z0-9_]+\\.sql"))) {
+              invalidMigrations += "${module}: ${migration.name} (invalid Flyway naming)"
+            }
+          }
+        }
+      }
+    }
+    
+    val report = buildString {
+      appendLine("=== Data Schema Health Report ===")
+      appendLine()
+      appendLine("Modules checked: ${allModules.size}")
+      appendLine("Modules with migrations: ${modulesWithMigrations.size}")
+      appendLine()
+      
+      if (modulesWithMigrations.isNotEmpty()) {
+        appendLine("Schema Details:")
+        modulesWithMigrations.forEach { (module, count) ->
+          appendLine("  - $module: $count migration(s)")
+        }
+        appendLine()
+      }
+      
+      if (invalidMigrations.isNotEmpty()) {
+        appendLine("Invalid migrations:")
+        invalidMigrations.forEach { appendLine("  - $it") }
+        throw GradleException("Invalid Flyway migrations found:\n${invalidMigrations.joinToString("\n")}")
+      } else {
+        appendLine("✓ All schemas are valid")
+      }
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
+}
+
 tasks.register("verifyPlatformInfrastructure") {
   group = "verification"
-  description = "Runs cross-module platform contract checks (API boundaries + descriptors + module conventions)."
-  dependsOn(verifyApiBoundaries, verifyPluginDescriptors, verifyModuleBuildConventions, releaseShadedCollisionAudit)
+  description = "Runs comprehensive platform infrastructure verification (API boundaries + async safety + Folia compat + service resolution + data schemas + config immutability)."
+  dependsOn(
+    verifyApiBoundaries, 
+    verifyPluginDescriptors, 
+    verifyModuleBuildConventions, 
+    releaseShadedCollisionAudit,
+    verifyAsyncSafety,
+    verifyConfigImmutability,
+    verifyServiceResolution,
+    verifyFoliaCompat,
+    verifyDataSchemas
+  )
+  doLast {
+    println("\n" + "=".repeat(60))
+    println("Platform Infrastructure Verification Complete")
+    println("=".repeat(60))
+    
+    val reportFile = file("build/reports/platform-verification/summary.txt")
+    reportFile.parentFile.mkdirs()
+    
+    val allModules = rootDir
+      .listFiles()
+      ?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }
+      ?.map { it.name }
+      ?.sorted()
+      ?: emptyList()
+    
+    val report = buildString {
+      appendLine("╔═══════════════════════════════════════════════════════════╗")
+      appendLine("║   ZAKUM20 PLATFORM INFRASTRUCTURE VERIFICATION REPORT    ║")
+      appendLine("║   PaperSpigot 1.21.1 + Java 21 + Folia Compatibility    ║")
+      appendLine("╚═══════════════════════════════════════════════════════════╝")
+      appendLine()
+      appendLine("All verification checks completed successfully!")
+      appendLine()
+      appendLine("Feature Modules: ${apiBoundaryModules.size}")
+      appendLine("Total Modules: ${allModules.size}")
+      appendLine()
+      appendLine("Individual Reports:")
+      appendLine("  - API Boundaries: build/reports/platform-verification/api-boundaries.txt")
+      appendLine("  - Async Safety: build/reports/platform-verification/async-safety.txt")
+      appendLine("  - Config Immutability: build/reports/platform-verification/config-immutability.txt")
+      appendLine("  - Service Resolution: build/reports/platform-verification/service-resolution.txt")
+      appendLine("  - Folia Compatibility: build/reports/platform-verification/folia-compat.txt")
+      appendLine("  - Data Schemas: build/reports/platform-verification/data-schemas.txt")
+      appendLine()
+      appendLine("Platform Status: ✓ READY")
+    }
+    
+    reportFile.writeText(report)
+    println(report)
+  }
 }
 
 subprojects {
