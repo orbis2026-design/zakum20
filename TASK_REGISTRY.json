@@ -91,13 +91,14 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Complete remaining 4 points of core runtime/API backbone work",
       "verificationGates": [
         "verifyApiBoundaries",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:58:27Z"
     },
     {
       "id": "data-001",
@@ -411,12 +412,13 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement config validation framework with schema enforcement",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:58:27Z"
     },
     {
       "id": "security-001",
@@ -426,11 +428,12 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Audit and standardize permission system across all modules",
       "verificationGates": [
         "verifyPlatformInfrastructure"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:58:27Z"
     },
     {
       "id": "monitoring-001",
