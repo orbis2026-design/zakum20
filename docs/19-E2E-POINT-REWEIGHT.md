@@ -19,13 +19,13 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 2. **94/100** Scheduler runtime safety (async backpressure + thread guard controls) - complete
 3. **92/100** Command/control diagnostics spine (`/zakum datahealth|tasks|async|threadguard`) - complete
 4. **90/100** Typed storage bootstrap (`datastore.*` typed settings + runtime wiring) - complete
-5. **88/100** HTTP resilience parity for all bridges/control-plane clients - complete (ControlPlane path)
+5. **88/100** HTTP resilience parity for all bridges/control-plane clients - complete
 6. **84/100** Redis burst cache adapter for shared transient workloads - complete
 7. **82/100** Module startup/load-order validator - complete
 8. **80/100** 12h soak automation profile with assertions - complete
 9. **78/100** Structured ACE parse/execute error taxonomy - complete
 10. **76/100** Cross-module data health subchecks (schema/version/read-write probes) - complete
-11. **74/100** Cloud HTTP parity hardening across remaining bridges - pending
+11. **74/100** Cloud HTTP parity hardening across remaining bridges - complete
 
 ## Execution Rule (Directive Alignment)
 
@@ -35,4 +35,4 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 
 ## Next Priority Slice
 
-`Cloud HTTP parity hardening across remaining bridges` is now the highest-scoring pending initiative.
+No pending slices remain in this reweighted list; select the next ticket from the broader roadmap.

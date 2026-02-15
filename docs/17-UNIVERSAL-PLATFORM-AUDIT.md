@@ -97,6 +97,7 @@ Progress updates after this audit:
 - Step 19: completed baseline via soak automation profile and `/zakum soak start|stop|status`.
 - Step 15: completed via ACE parse/execute error taxonomy and `/zakum ace status|errors|clear`.
 - Step 9: completed expanded cross-module SQL probes via `/zakum datahealth modules`.
+- Step 12: completed via cloud HTTP resilience parity (shared `http.*` retry/circuit policy + cloud status telemetry).
 
 ## 7) Diff Mode (This Refactor Pass Only)
 

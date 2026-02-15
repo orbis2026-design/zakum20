@@ -2,11 +2,22 @@ package net.orbis.zakum.core.cloud;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import okhttp3.Dispatcher;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.bson.BsonArray;
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -18,11 +29,8 @@ import org.bukkit.plugin.Plugin;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -38,15 +46,18 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 public final class SecureCloudClient implements AutoCloseable {
 
   private static final String EMPTY_BODY = "";
+  private static final MediaType JSON = MediaType.parse("application/json");
 
   private final ZakumApi api;
   private final Plugin plugin;
@@ -64,7 +75,19 @@ public final class SecureCloudClient implements AutoCloseable {
   private final long dedupeTtlSeconds;
   private final long inflightTtlSeconds;
   private final int maxFailureAttempts;
-  private final HttpClient httpClient;
+  private final OkHttpClient httpClient;
+  private final boolean resilienceEnabled;
+  private final CircuitBreaker circuitBreaker;
+  private final Retry retry;
+  private final AtomicLong httpCalls;
+  private final AtomicLong httpSuccesses;
+  private final AtomicLong httpFailures;
+  private final AtomicLong httpRetries;
+  private final AtomicLong httpShortCircuits;
+  private final AtomicInteger httpLastStatus;
+  private final AtomicLong httpLastLatencyMs;
+  private final AtomicLong httpLastFailureAtMs;
+  private final AtomicReference<String> httpLastError;
   private final MetricsMonitor metrics;
   private final AtomicLong lastPollAttemptMs;
   private final AtomicLong lastPollSuccessMs;
@@ -102,7 +125,14 @@ public final class SecureCloudClient implements AutoCloseable {
   private volatile int ackTaskId;
   private volatile int dedupePersistTaskId;
 
-  public SecureCloudClient(ZakumApi api, ZakumSettings.Cloud cloud, Plugin plugin, Logger logger, MetricsMonitor metrics) {
+  public SecureCloudClient(
+    ZakumApi api,
+    ZakumSettings.Cloud cloud,
+    ZakumSettings.Http http,
+    Plugin plugin,
+    Logger logger,
+    MetricsMonitor metrics
+  ) {
     this.api = api;
     this.plugin = plugin;
     this.scheduler = api.getScheduler();
@@ -134,6 +164,15 @@ public final class SecureCloudClient implements AutoCloseable {
     this.invalidQueueSkips = new AtomicLong(0L);
     this.queueFailures = new AtomicLong(0L);
     this.lastError = new AtomicReference<>("");
+    this.httpCalls = new AtomicLong(0L);
+    this.httpSuccesses = new AtomicLong(0L);
+    this.httpFailures = new AtomicLong(0L);
+    this.httpRetries = new AtomicLong(0L);
+    this.httpShortCircuits = new AtomicLong(0L);
+    this.httpLastStatus = new AtomicInteger(0);
+    this.httpLastLatencyMs = new AtomicLong(0L);
+    this.httpLastFailureAtMs = new AtomicLong(0L);
+    this.httpLastError = new AtomicReference<>("");
     this.processedQueueIds = cloud.dedupeEnabled()
       ? Caffeine.newBuilder()
       .maximumSize(Math.max(100L, cloud.dedupeMaximumSize()))
@@ -170,10 +209,55 @@ public final class SecureCloudClient implements AutoCloseable {
     this.ackDisabled = false;
     this.ackTaskId = -1;
     this.dedupePersistTaskId = -1;
-    this.httpClient = HttpClient.newBuilder()
-      .executor(api.getScheduler().asyncExecutor())
-      .connectTimeout(this.requestTimeout)
+    Dispatcher dispatcher = api.getScheduler().asyncExecutor() instanceof java.util.concurrent.ExecutorService service
+      ? new Dispatcher(service)
+      : new Dispatcher();
+    dispatcher.setMaxRequests(http.maxRequests());
+    dispatcher.setMaxRequestsPerHost(http.maxRequestsPerHost());
+    this.httpClient = new OkHttpClient.Builder()
+      .dispatcher(dispatcher)
+      .connectTimeout(Duration.ofMillis(http.connectTimeoutMs()))
+      .callTimeout(Duration.ofMillis(http.callTimeoutMs()))
+      .readTimeout(Duration.ofMillis(http.readTimeoutMs()))
+      .writeTimeout(Duration.ofMillis(http.writeTimeoutMs()))
       .build();
+    var resilience = http.resilience();
+    this.resilienceEnabled = resilience != null && resilience.enabled();
+    if (resilienceEnabled) {
+      var cbCfg = resilience.circuitBreaker();
+      var rtCfg = resilience.retry();
+      this.circuitBreaker = CircuitBreaker.of(
+        "zakum-cloud",
+        CircuitBreakerConfig.custom()
+          .failureRateThreshold(cbCfg.failureRateThreshold())
+          .slowCallRateThreshold(cbCfg.slowCallRateThreshold())
+          .slowCallDurationThreshold(Duration.ofMillis(cbCfg.slowCallDurationMs()))
+          .slidingWindowSize(cbCfg.slidingWindowSize())
+          .minimumNumberOfCalls(cbCfg.minimumNumberOfCalls())
+          .waitDurationInOpenState(Duration.ofMillis(cbCfg.waitDurationInOpenStateMs()))
+          .build()
+      );
+      this.retry = Retry.of(
+        "zakum-cloud",
+        RetryConfig.custom()
+          .maxAttempts(rtCfg.maxAttempts())
+          .waitDuration(Duration.ofMillis(rtCfg.waitDurationMs()))
+          .retryExceptions(RuntimeException.class)
+          .ignoreExceptions(CallNotPermittedException.class)
+          .build()
+      );
+      this.retry.getEventPublisher().onRetry(event -> {
+        httpRetries.incrementAndGet();
+        record("cloud_http_retry");
+      });
+      this.circuitBreaker.getEventPublisher().onCallNotPermitted(event -> {
+        httpShortCircuits.incrementAndGet();
+        record("cloud_http_short_circuit");
+      });
+    } else {
+      this.circuitBreaker = null;
+      this.retry = null;
+    }
 
     if (dedupePersistEnabled) {
       loadPersistedDedupe();
@@ -210,8 +294,8 @@ public final class SecureCloudClient implements AutoCloseable {
     if (baseUrl.isBlank() || networkSecret == null || networkSecret.isBlank()) return;
     lastPollAttemptMs.set(System.currentTimeMillis());
     String encodedServerId = encodePath(serverId);
-    HttpRequest request = signedGet("/v1/agent/queue/" + encodedServerId);
-    httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+    Request request = signedGet("/v1/agent/queue/" + encodedServerId);
+    executeAsync(request)
       .thenAccept(response -> {
         lastHttpStatus.set(response.statusCode());
         record("cloud_poll");
@@ -235,8 +319,15 @@ public final class SecureCloudClient implements AutoCloseable {
         }
       })
       .exceptionally(ex -> {
-        lastError.set(ex.getMessage() == null ? "poll_error" : ex.getMessage());
-        logger.warning("Cloud queue poll failed: " + ex.getMessage());
+        Throwable cause = unwrap(ex);
+        String message = cause == null ? "poll_error" : summarize(cause);
+        lastError.set(message);
+        if (isCallNotPermitted(cause)) {
+          logger.fine("Cloud queue poll short-circuited by circuit breaker.");
+          record("cloud_poll_short_circuit");
+        } else {
+          logger.warning("Cloud queue poll failed: " + message);
+        }
         return null;
       });
   }
@@ -283,14 +374,16 @@ public final class SecureCloudClient implements AutoCloseable {
 
     long now = System.currentTimeMillis();
     lastAckAttemptMs.set(now);
-    HttpRequest request = signedPost(resolveAckPath(), payload);
-    httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+    Request request = signedPost(resolveAckPath(), payload);
+    executeAsync(request)
       .handle((response, error) -> {
         if (error != null || response == null) {
-          lastAckError.set(error == null ? "ack_error" : error.getMessage());
+          Throwable cause = error == null ? null : unwrap(error);
+          String message = cause == null ? "ack_error" : summarize(cause);
+          lastAckError.set(message);
           lastAckStatus.set(0);
           record("cloud_ack_error");
-          requeueAcks(batch, "exception");
+          requeueAcks(batch, message);
           return null;
         }
 
@@ -399,11 +492,11 @@ public final class SecureCloudClient implements AutoCloseable {
       return CompletableFuture.completedFuture(IdentitySnapshot.EMPTY);
     }
 
-    HttpRequest request = signedGet("/v1/identity/" + encodePath(uuid.toString()));
-    return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+    Request request = signedGet("/v1/identity/" + encodePath(uuid.toString()));
+    return executeAsync(request)
       .handle((response, error) -> {
         if (error != null || response == null) {
-          if (error != null) logger.fine("Cloud identity fetch failed: " + error.getMessage());
+          if (error != null) logger.fine("Cloud identity fetch failed: " + summarize(unwrap(error)));
           return IdentitySnapshot.EMPTY;
         }
         record("cloud_identity_fetch");
@@ -643,37 +736,77 @@ public final class SecureCloudClient implements AutoCloseable {
     }
   }
 
-  private HttpRequest signedGet(String path) {
+  private CompletableFuture<HttpResult> executeAsync(Request request) {
+    if (scheduler == null) {
+      return CompletableFuture.failedFuture(new IllegalStateException("scheduler_offline"));
+    }
+    return CompletableFuture.supplyAsync(() -> executeWithResilience(request), scheduler.asyncExecutor());
+  }
+
+  private HttpResult executeWithResilience(Request request) {
+    httpCalls.incrementAndGet();
+    long started = System.currentTimeMillis();
+    Supplier<HttpResult> call = () -> execute(request);
+    if (resilienceEnabled && circuitBreaker != null && retry != null) {
+      call = Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(circuitBreaker, call));
+    }
+    try {
+      HttpResult result = call.get();
+      httpSuccesses.incrementAndGet();
+      httpLastStatus.set(result.statusCode());
+      httpLastLatencyMs.set(Math.max(0L, System.currentTimeMillis() - started));
+      httpLastError.set("");
+      return result;
+    } catch (RuntimeException ex) {
+      httpFailures.incrementAndGet();
+      httpLastStatus.set(0);
+      httpLastFailureAtMs.set(System.currentTimeMillis());
+      httpLastLatencyMs.set(Math.max(0L, System.currentTimeMillis() - started));
+      httpLastError.set(summarize(ex));
+      throw ex;
+    }
+  }
+
+  private HttpResult execute(Request request) {
+    okhttp3.Call call = httpClient.newCall(request);
+    call.timeout().timeout(Math.max(250L, requestTimeout.toMillis()), TimeUnit.MILLISECONDS);
+    try (Response response = call.execute()) {
+      String body = response.body() == null ? "" : response.body().string();
+      return new HttpResult(response.code(), body);
+    } catch (IOException ex) {
+      throw new RuntimeException("cloud_http_request_failed", ex);
+    }
+  }
+
+  private Request signedGet(String path) {
     long ts = System.currentTimeMillis();
     String nonce = Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 16);
     String signature = generateSignature(ts + nonce + EMPTY_BODY);
 
-    return HttpRequest.newBuilder()
-      .uri(resolveUri(path))
-      .timeout(requestTimeout)
+    return new Request.Builder()
+      .url(resolveUrl(path))
       .header("Accept", "application/json")
       .header("X-Orbis-Signature", signature)
       .header("X-Orbis-TS", String.valueOf(ts))
       .header("X-Orbis-Nonce", nonce)
-      .GET()
+      .get()
       .build();
   }
 
-  private HttpRequest signedPost(String path, String body) {
+  private Request signedPost(String path, String body) {
     long ts = System.currentTimeMillis();
     String nonce = Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 16);
     String payload = body == null ? "" : body;
     String signature = generateSignature(ts + nonce + payload);
 
-    return HttpRequest.newBuilder()
-      .uri(resolveUri(path))
-      .timeout(requestTimeout)
+    return new Request.Builder()
+      .url(resolveUrl(path))
       .header("Accept", "application/json")
       .header("Content-Type", "application/json")
       .header("X-Orbis-Signature", signature)
       .header("X-Orbis-TS", String.valueOf(ts))
       .header("X-Orbis-Nonce", nonce)
-      .POST(HttpRequest.BodyPublishers.ofString(payload))
+      .post(RequestBody.create(payload, JSON))
       .build();
   }
 
@@ -688,13 +821,13 @@ public final class SecureCloudClient implements AutoCloseable {
     }
   }
 
-  private URI resolveUri(String path) {
+  private String resolveUrl(String path) {
     String normalizedPath = path == null ? "" : path.trim();
     if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
-      return URI.create(normalizedPath);
+      return normalizedPath;
     }
     if (!normalizedPath.startsWith("/")) normalizedPath = "/" + normalizedPath;
-    return URI.create(baseUrl + normalizedPath);
+    return baseUrl + normalizedPath;
   }
 
   private String resolveAckPath() {
@@ -865,6 +998,30 @@ public final class SecureCloudClient implements AutoCloseable {
     }
   }
 
+  private static Throwable unwrap(Throwable error) {
+    Throwable current = error;
+    while (current != null && (current instanceof java.util.concurrent.CompletionException || current instanceof java.util.concurrent.ExecutionException)) {
+      if (current.getCause() == null) break;
+      current = current.getCause();
+    }
+    return current == null ? error : current;
+  }
+
+  private static boolean isCallNotPermitted(Throwable error) {
+    return error instanceof CallNotPermittedException;
+  }
+
+  private static String summarize(Throwable error) {
+    if (error == null) return "";
+    String message = error.getMessage();
+    if (message == null || message.isBlank()) {
+      message = error.getClass().getSimpleName();
+    }
+    String clean = message.replace('\n', ' ').replace('\r', ' ').trim();
+    if (clean.length() <= 280) return clean;
+    return clean.substring(0, 280) + "...";
+  }
+
   private static String firstNonBlank(String a, String b) {
     if (a != null && !a.isBlank()) return a;
     return (b != null && !b.isBlank()) ? b : null;
@@ -896,14 +1053,27 @@ public final class SecureCloudClient implements AutoCloseable {
   }
 
   private record QueueAck(String queueId, String status, String reason, int attempt) {}
+  private record HttpResult(int statusCode, String body) {}
 
   public CloudStatusSnapshot statusSnapshot() {
     long processedSize = processedQueueIds == null ? 0L : processedQueueIds.estimatedSize();
     long inflightSize = inflightQueueIds == null ? 0L : inflightQueueIds.estimatedSize();
     int pendingSize = pendingAcks.size();
+    String circuitState = resilienceEnabled && circuitBreaker != null ? circuitBreaker.getState().name() : "DISABLED";
     return new CloudStatusSnapshot(
       serverId,
       baseUrl,
+      resilienceEnabled,
+      circuitState,
+      httpCalls.get(),
+      httpSuccesses.get(),
+      httpFailures.get(),
+      httpRetries.get(),
+      httpShortCircuits.get(),
+      httpLastStatus.get(),
+      httpLastLatencyMs.get(),
+      httpLastFailureAtMs.get(),
+      httpLastError.get(),
       lastPollAttemptMs.get(),
       lastPollSuccessMs.get(),
       lastHttpStatus.get(),
@@ -942,6 +1112,17 @@ public final class SecureCloudClient implements AutoCloseable {
   public record CloudStatusSnapshot(
     String serverId,
     String baseUrl,
+    boolean httpResilienceEnabled,
+    String httpCircuitState,
+    long httpCalls,
+    long httpSuccesses,
+    long httpFailures,
+    long httpRetries,
+    long httpShortCircuits,
+    int httpLastStatus,
+    long httpLastLatencyMs,
+    long httpLastFailureAtMs,
+    String httpLastError,
     long lastPollAttemptMs,
     long lastPollSuccessMs,
     int lastHttpStatus,

@@ -492,7 +492,7 @@ public final class ZakumPlugin extends JavaPlugin {
       return;
     }
 
-    this.cloudClient = new SecureCloudClient(api, cloud, this, getLogger(), metricsMonitor);
+    this.cloudClient = new SecureCloudClient(api, cloud, settings.http(), this, getLogger(), metricsMonitor);
     cloudClient.start();
     if (cloud.identityOnJoin()) {
       this.cloudIdentityListener = new CloudIdentityListener(api, cloudClient, cloudTabRenderer, getLogger());
@@ -1084,6 +1084,18 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("client=online");
     sender.sendMessage("baseUrl=" + snap.baseUrl());
     sender.sendMessage("serverId=" + snap.serverId());
+    sender.sendMessage("http.resilience.enabled=" + snap.httpResilienceEnabled());
+    sender.sendMessage("http.circuitState=" + snap.httpCircuitState());
+    sender.sendMessage("http.calls=" + snap.httpCalls());
+    sender.sendMessage("http.successes=" + snap.httpSuccesses());
+    sender.sendMessage("http.failures=" + snap.httpFailures());
+    sender.sendMessage("http.retries=" + snap.httpRetries());
+    sender.sendMessage("http.shortCircuits=" + snap.httpShortCircuits());
+    sender.sendMessage("http.lastStatus=" + snap.httpLastStatus());
+    sender.sendMessage("http.lastLatencyMs=" + snap.httpLastLatencyMs());
+    sender.sendMessage("http.lastFailureAt=" + formatEpochMillis(snap.httpLastFailureAtMs()));
+    String httpErr = snap.httpLastError();
+    sender.sendMessage("http.lastError=" + (httpErr == null || httpErr.isBlank() ? "none" : httpErr));
     sender.sendMessage("lastPollAttempt=" + formatEpochMillis(snap.lastPollAttemptMs()));
     sender.sendMessage("lastPollSuccess=" + formatEpochMillis(snap.lastPollSuccessMs()));
     sender.sendMessage("lastHttpStatus=" + snap.lastHttpStatus());

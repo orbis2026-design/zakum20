@@ -69,7 +69,7 @@ This snapshot is:
 ### http
 - shared defaults for any outbound HTTP client
 - optional resilience policies (circuit breaker + retry)
-- currently enforced by `HttpControlPlaneClient` (ControlPlane runtime)
+- enforced by `HttpControlPlaneClient` and cloud delivery (`SecureCloudClient`)
 
 ### cache
 - default cache posture for future systems

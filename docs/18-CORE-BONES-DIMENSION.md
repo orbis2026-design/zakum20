@@ -33,13 +33,13 @@ Total: **140 points**
 Estimated from current source and command surfaces:
 
 - Runtime safety kernel: **30 / 30**
-- Data/storage spine: **27 / 28**
+- Data/storage spine: **28 / 28**
 - Command/control spine: **24 / 24**
 - Observability + diagnostics: **22 / 22**
 - Scheduler and task lifecycle: **20 / 20**
 - Capability contract surface: **16 / 16**
 
-**Core Bones subtotal: 139 / 140 (99%)**
+**Core Bones subtotal: 140 / 140 (100%)**
 
 ## What Was Implemented In This Pass
 
@@ -69,10 +69,11 @@ Estimated from current source and command surfaces:
 - Added cross-module SQL health probes (`operations.dataHealthProbes.*`) with schema + read/write checks.
 - Added module probe command surface (`/zakum datahealth modules`) in fallback and CommandAPI.
 - Added module probe summary counters into `/zakum datahealth status`.
+- Added cloud HTTP resilience parity with ControlPlane (`http.*` retry/circuit policy + status telemetry).
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 
-1. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
+- No open items in this dimension.
 
 ## End-of-Cycle Test Categories (Server Jar Validation)
 

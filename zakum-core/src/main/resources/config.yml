@@ -272,7 +272,7 @@ operations:
     includeWriteProbe: true
 
 http:
-  # Default client used by Zakum (controlPlane, future bridges).
+  # Shared HTTP policy used by controlPlane and cloud delivery clients.
   connectTimeoutMs: 3000
   callTimeoutMs: 6000
   readTimeoutMs: 6000
