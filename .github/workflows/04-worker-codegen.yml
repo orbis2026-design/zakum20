@@ -1,0 +1,179 @@
+name: "04 - Worker Codegen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      module_id:
+        description: 'Module ID (e.g., zakum-achievements)'
+        required: true
+        type: string
+      plugin_name:
+        description: 'Plugin name (e.g., OrbisAchievements)'
+        required: true
+        type: string
+      kind:
+        description: 'Module kind (plugin or bridge)'
+        required: false
+        type: choice
+        options:
+          - plugin
+          - bridge
+        default: plugin
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-module:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PowerShell
+        run: |
+          # PowerShell Core is already installed on Ubuntu runners
+          pwsh --version
+
+      - name: Generate module scaffolding
+        id: generate
+        run: |
+          echo "🏗️ Generating module: ${{ github.event.inputs.module_id }}"
+          
+          # Run the module generator script
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-plugin-module.ps1 \
+            -ModuleId "${{ github.event.inputs.module_id }}" \
+            -PluginName "${{ github.event.inputs.plugin_name }}" \
+            -Kind "${{ github.event.inputs.kind }}"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Module generated successfully"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Module generation failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Verify generated module
+        id: verify
+        run: |
+          MODULE_ID="${{ github.event.inputs.module_id }}"
+          
+          echo "🔍 Verifying generated module..."
+          
+          # Check if module directory exists
+          if [ ! -d "$MODULE_ID" ]; then
+            echo "❌ Module directory not found"
+            exit 1
+          fi
+          
+          # Check for required files
+          REQUIRED_FILES=(
+            "$MODULE_ID/build.gradle.kts"
+            "$MODULE_ID/src/main/resources/plugin.yml"
+            "$MODULE_ID/src/main/resources/config.yml"
+            "$MODULE_ID/README.md"
+          )
+          
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Required file not found: $file"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All required files present"
+
+      - name: Run verification gates
+        id: gates
+        run: |
+          echo "🔍 Running verification gates..."
+          
+          # Verify platform infrastructure
+          if ./gradlew verifyPlatformInfrastructure --no-daemon; then
+            echo "✅ Platform infrastructure verification passed"
+          else
+            echo "❌ Platform infrastructure verification failed"
+            exit 1
+          fi
+          
+          # Try to compile the new module
+          MODULE_ID="${{ github.event.inputs.module_id }}"
+          if ./gradlew :$MODULE_ID:assemble --no-daemon; then
+            echo "✅ Module compilation successful"
+          else
+            echo "❌ Module compilation failed"
+            exit 1
+          fi
+
+      - name: Create Pull Request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MODULE_ID="${{ github.event.inputs.module_id }}"
+          PLUGIN_NAME="${{ github.event.inputs.plugin_name }}"
+          KIND="${{ github.event.inputs.kind }}"
+          
+          # Create branch
+          BRANCH_NAME="codegen/$MODULE_ID"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Commit changes
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "feat: generate $MODULE_ID module scaffolding"
+          git push -u origin "$BRANCH_NAME"
+          
+          # Create PR
+          PR_TITLE="[Codegen] Add $PLUGIN_NAME module"
+          PR_BODY=$(cat << 'EOF'
+          ## Module Generation
+          
+          **Module ID:** $MODULE_ID
+          **Plugin Name:** $PLUGIN_NAME
+          **Kind:** $KIND
+          
+          ### Generated Files
+          - ✅ build.gradle.kts
+          - ✅ plugin.yml
+          - ✅ config.yml
+          - ✅ Main plugin class
+          - ✅ README.md
+          
+          ### Verification
+          - ✅ Platform infrastructure checks passed
+          - ✅ Module compiles successfully
+          
+          ### Next Steps
+          - [ ] Review generated code
+          - [ ] Add custom functionality
+          - [ ] Add tests
+          - [ ] Update documentation
+          
+          ---
+          *This PR was created by the Zakum Codegen Worker*
+          EOF
+          )
+          
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --label "codegen,new-module"
+
+      - name: Summary
+        run: |
+          echo "## 🏗️ Module Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Module ID:** ${{ github.event.inputs.module_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Plugin Name:** ${{ github.event.inputs.plugin_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Kind:** ${{ github.event.inputs.kind }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Successfully generated and verified" >> $GITHUB_STEP_SUMMARY

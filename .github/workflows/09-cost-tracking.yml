@@ -1,0 +1,244 @@
+name: "09 - Cost Tracking"
+
+on:
+  schedule:
+    # Run twice daily to track costs
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Report type'
+        required: false
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
+        default: daily
+
+permissions:
+  contents: write
+
+jobs:
+  track-costs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Calculate workflow costs
+        id: workflow_costs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "💰 Calculating workflow costs..."
+          
+          # GitHub Actions pricing (approximate)
+          # Free tier: 2000 minutes/month for private repos, unlimited for public
+          # Beyond free: $0.008/minute for Linux runners
+          
+          # Get workflow runs from the last 24 hours
+          SINCE_DATE=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-24H +%Y-%m-%dT%H:%M:%SZ)
+          
+          # Fetch recent workflow runs
+          TOTAL_MINUTES=0
+          
+          # Note: This is a simplified cost calculation
+          # Real implementation would use GitHub API to get actual workflow run durations
+          
+          cat > workflow-costs.json << EOF
+          {
+            "period": "last_24_hours",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "total_minutes": 0,
+            "estimated_cost": 0.00,
+            "note": "Cost tracking placeholder - integrate with GitHub API for real metrics"
+          }
+          EOF
+          
+          ESTIMATED_COST=$(jq -r '.estimated_cost' workflow-costs.json)
+          echo "estimated_cost=$ESTIMATED_COST" >> $GITHUB_OUTPUT
+
+      - name: Update budget tracking
+        id: budget
+        run: |
+          echo "📊 Updating budget tracking..."
+          
+          mkdir -p .github/automation
+          TODAY=$(date +%Y-%m-%d)
+          BUDGET_FILE=".github/automation/budget-$TODAY.json"
+          
+          # Initialize budget file if it doesn't exist
+          if [ ! -f "$BUDGET_FILE" ]; then
+            echo '{"date":"'$TODAY'","spent":0,"limit":25,"tasks":[],"cycles":0}' > "$BUDGET_FILE"
+          fi
+          
+          # Read current budget
+          SPENT=$(jq -r '.spent' "$BUDGET_FILE")
+          LIMIT=$(jq -r '.limit' "$BUDGET_FILE")
+          REMAINING=$(echo "$LIMIT - $SPENT" | bc)
+          
+          echo "spent=$SPENT" >> $GITHUB_OUTPUT
+          echo "limit=$LIMIT" >> $GITHUB_OUTPUT
+          echo "remaining=$REMAINING" >> $GITHUB_OUTPUT
+
+      - name: Generate cost report
+        run: |
+          REPORT_TYPE="${{ github.event.inputs.report_type || 'daily' }}"
+          
+          echo "📋 Generating $REPORT_TYPE cost report..."
+          
+          mkdir -p .github/automation/reports
+          REPORT_FILE=".github/automation/reports/cost-report-$(date +%Y%m%d).md"
+          
+          cat > "$REPORT_FILE" << 'EOF'
+          # Cost Tracking Report
+          
+          **Report Type:** $REPORT_TYPE
+          **Generated:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Budget Status
+          
+          - **Today's Spent:** \$${{ steps.budget.outputs.spent }}
+          - **Daily Limit:** \$${{ steps.budget.outputs.limit }}
+          - **Remaining:** \$${{ steps.budget.outputs.remaining }}
+          - **Status:** ${{ steps.budget.outputs.remaining > 0 && '✅ Within budget' || '⚠️ Budget exhausted' }}
+          
+          ## Workflow Execution Costs
+          
+          - **Estimated Cost (24h):** \$${{ steps.workflow_costs.outputs.estimated_cost }}
+          
+          ## Cost Breakdown by Workflow
+          
+          | Workflow | Runs | Avg Duration | Est. Cost |
+          |----------|------|--------------|-----------|
+          | 00 - Manager Orchestrator | - | ~2 min | \$0.016/run |
+          | 01 - Worker Executor | - | ~30 min | \$0.24/run |
+          | 02 - 24/7 Scheduler | - | ~1 min | \$0.008/run |
+          | 03 - Quality Gates | - | ~10 min | \$0.08/run |
+          | 04 - Worker Codegen | - | ~5 min | \$0.04/run |
+          | 05 - Worker Documentation | - | ~10 min | \$0.08/run |
+          | 06 - Worker Testing | - | ~20 min | \$0.16/run |
+          | 07 - Worker Soak | - | ~720 min | \$5.76/run |
+          | 08 - Analytics Dashboard | - | ~2 min | \$0.016/run |
+          | 09 - Cost Tracking | - | ~1 min | \$0.008/run |
+          
+          ## Optimization Recommendations
+          
+          1. **Use caching** - Gradle and dependency caching is enabled
+          2. **Parallel execution** - Tasks run in parallel when possible
+          3. **Conditional workflows** - Workflows only run when needed
+          4. **Budget limits** - \$25/day hard limit with automatic pause
+          5. **Free tier usage** - Public repos have unlimited minutes
+          
+          ## Budget Allocation Strategy
+          
+          - **Wave A Tasks:** 40% (\$10/day)
+          - **Core Platform:** 30% (\$7.50/day)
+          - **Data Hardening:** 20% (\$5/day)
+          - **Features:** 5% (\$1.25/day)
+          - **Documentation:** 5% (\$1.25/day)
+          
+          ## Monthly Projection
+          
+          Based on current usage:
+          - **Daily Average:** \$${{ steps.budget.outputs.spent }}
+          - **Monthly Estimate:** \$$(echo "${{ steps.budget.outputs.spent }} * 30" | bc)
+          - **Monthly Budget:** \$750 (30 days × \$25)
+          
+          ## Cost Optimization Notes
+          
+          - GitHub Actions is **free for public repositories** with unlimited minutes
+          - Private repositories get 2,000 free minutes/month
+          - Beyond free tier: \$0.008/minute for Linux runners
+          - Current automation is designed to stay within free tier for public repos
+          
+          ---
+          *This report was generated by the Zakum Cost Tracking Worker*
+          EOF
+          
+          cat "$REPORT_FILE"
+
+      - name: Check for budget alerts
+        id: alerts
+        run: |
+          REMAINING=${{ steps.budget.outputs.remaining }}
+          LIMIT=${{ steps.budget.outputs.limit }}
+          
+          # Calculate percentage remaining
+          PERCENT_REMAINING=$(echo "scale=0; $REMAINING * 100 / $LIMIT" | bc)
+          
+          if [ "$PERCENT_REMAINING" -le 10 ]; then
+            echo "🚨 CRITICAL: Only $PERCENT_REMAINING% of daily budget remaining!"
+            echo "level=critical" >> $GITHUB_OUTPUT
+          elif [ "$PERCENT_REMAINING" -le 25 ]; then
+            echo "⚠️ WARNING: Only $PERCENT_REMAINING% of daily budget remaining"
+            echo "level=warning" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Budget healthy: $PERCENT_REMAINING% remaining"
+            echo "level=ok" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "percent_remaining=$PERCENT_REMAINING" >> $GITHUB_OUTPUT
+
+      - name: Send budget alert
+        if: steps.alerts.outputs.level != 'ok' && env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          LEVEL="${{ steps.alerts.outputs.level }}"
+          EMOJI="${{ steps.alerts.outputs.level == 'critical' && '🚨' || '⚠️' }}"
+          COLOR="${{ steps.alerts.outputs.level == 'critical' && '15158332' || '16776960' }}"
+          
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"$EMOJI Budget Alert\",
+                \"description\": \"Daily budget is running low!\",
+                \"color\": $COLOR,
+                \"fields\": [
+                  {
+                    \"name\": \"Remaining\",
+                    \"value\": \"\$${{ steps.budget.outputs.remaining }} (${{ steps.alerts.outputs.percent_remaining }}%)\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Spent\",
+                    \"value\": \"\$${{ steps.budget.outputs.spent }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Limit\",
+                    \"value\": \"\$${{ steps.budget.outputs.limit }}\",
+                    \"inline\": true
+                  }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" || echo "⚠️ Failed to send Discord notification"
+
+      - name: Commit cost reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .github/automation/reports/
+          git commit -m "chore: update cost tracking report" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Summary
+        run: |
+          echo "## 💰 Cost Tracking Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Budget Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Spent:** \$${{ steps.budget.outputs.spent }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Limit:** \$${{ steps.budget.outputs.limit }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Remaining:** \$${{ steps.budget.outputs.remaining }} (${{ steps.alerts.outputs.percent_remaining }}%)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Alert Level" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.alerts.outputs.level == 'critical' && '🚨 CRITICAL' || steps.alerts.outputs.level == 'warning' && '⚠️ WARNING' || '✅ OK' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Workflow Costs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Estimated (24h):** \$${{ steps.workflow_costs.outputs.estimated_cost }}" >> $GITHUB_STEP_SUMMARY

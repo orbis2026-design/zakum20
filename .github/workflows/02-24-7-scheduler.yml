@@ -1,0 +1,231 @@
+name: "02 - 24/7 Scheduler"
+
+on:
+  schedule:
+    # Run every 6 hours for budget tracking and cycle management
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      reset_budget:
+        description: 'Reset daily budget (new day)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  manage-cycle:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check and manage budget
+        id: budget
+        run: |
+          mkdir -p .github/automation
+          TODAY=$(date +%Y-%m-%d)
+          BUDGET_FILE=".github/automation/budget-$TODAY.json"
+          YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
+          YESTERDAY_FILE=".github/automation/budget-$YESTERDAY.json"
+          
+          # Archive yesterday's budget
+          if [ -f "$YESTERDAY_FILE" ]; then
+            mkdir -p .github/automation/archive
+            mv "$YESTERDAY_FILE" ".github/automation/archive/"
+            echo "📦 Archived yesterday's budget"
+          fi
+          
+          # Initialize or reset today's budget
+          if [ ! -f "$BUDGET_FILE" ] || [ "${{ github.event.inputs.reset_budget }}" == "true" ]; then
+            echo '{"date":"'$TODAY'","spent":0,"limit":25,"tasks":[],"cycles":0}' > "$BUDGET_FILE"
+            echo "✅ Initialized budget for $TODAY"
+            echo "reset=true" >> $GITHUB_OUTPUT
+          else
+            echo "📊 Budget file exists for $TODAY"
+            echo "reset=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Read current budget
+          SPENT=$(jq -r '.spent' "$BUDGET_FILE")
+          LIMIT=$(jq -r '.limit' "$BUDGET_FILE")
+          CYCLES=$(jq -r '.cycles' "$BUDGET_FILE")
+          REMAINING=$(echo "$LIMIT - $SPENT" | bc)
+          
+          echo "spent=$SPENT" >> $GITHUB_OUTPUT
+          echo "limit=$LIMIT" >> $GITHUB_OUTPUT
+          echo "remaining=$REMAINING" >> $GITHUB_OUTPUT
+          echo "cycles=$CYCLES" >> $GITHUB_OUTPUT
+          
+          # Update cycle count
+          NEW_CYCLES=$((CYCLES + 1))
+          TMP_FILE=$(mktemp)
+          jq '.cycles = '$NEW_CYCLES "$BUDGET_FILE" > "$TMP_FILE"
+          mv "$TMP_FILE" "$BUDGET_FILE"
+          
+          echo "💰 Budget: \$$SPENT / \$$LIMIT (Remaining: \$$REMAINING)"
+          echo "🔄 Cycle: $NEW_CYCLES"
+
+      - name: Check workflow health
+        id: health
+        run: |
+          echo "🏥 Checking workflow health..."
+          
+          # Check for stuck tasks
+          REGISTRY="TASK_REGISTRY.json"
+          STUCK_TASKS=$(jq '[.tasks[] | select(.status == "in-progress" and (.startedAt | . != null))] | length' "$REGISTRY")
+          
+          echo "stuck_count=$STUCK_TASKS" >> $GITHUB_OUTPUT
+          
+          if [ "$STUCK_TASKS" -gt 0 ]; then
+            echo "⚠️ Found $STUCK_TASKS potentially stuck task(s)"
+            
+            # List stuck tasks
+            jq -r '.tasks[] | select(.status == "in-progress") | "- \(.id): \(.name) (started: \(.startedAt))"' "$REGISTRY"
+          else
+            echo "✅ No stuck tasks detected"
+          fi
+
+      - name: Calculate metrics
+        id: metrics
+        run: |
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Count tasks by status
+          READY=$(jq '[.tasks[] | select(.status == "ready")] | length' "$REGISTRY")
+          ASSIGNED=$(jq '[.tasks[] | select(.status == "assigned")] | length' "$REGISTRY")
+          IN_PROGRESS=$(jq '[.tasks[] | select(.status == "in-progress")] | length' "$REGISTRY")
+          TESTING=$(jq '[.tasks[] | select(.status == "testing")] | length' "$REGISTRY")
+          COMPLETED=$(jq '[.tasks[] | select(.status == "completed")] | length' "$REGISTRY")
+          BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$REGISTRY")
+          TOTAL=$(jq '.tasks | length' "$REGISTRY")
+          
+          echo "ready=$READY" >> $GITHUB_OUTPUT
+          echo "assigned=$ASSIGNED" >> $GITHUB_OUTPUT
+          echo "in_progress=$IN_PROGRESS" >> $GITHUB_OUTPUT
+          echo "testing=$TESTING" >> $GITHUB_OUTPUT
+          echo "completed=$COMPLETED" >> $GITHUB_OUTPUT
+          echo "blocked=$BLOCKED" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          
+          # Calculate completion percentage
+          if [ "$TOTAL" -gt 0 ]; then
+            COMPLETION=$(echo "scale=1; $COMPLETED * 100 / $TOTAL" | bc)
+          else
+            COMPLETION=0
+          fi
+          echo "completion=$COMPLETION" >> $GITHUB_OUTPUT
+          
+          # Calculate points completed
+          POINTS_COMPLETED=$(jq '[.tasks[] | select(.status == "completed") | .points] | add' "$REGISTRY")
+          POINTS_TOTAL=$(jq '[.tasks[] | .points] | add' "$REGISTRY")
+          echo "points_completed=${POINTS_COMPLETED:-0}" >> $GITHUB_OUTPUT
+          echo "points_total=${POINTS_TOTAL:-0}" >> $GITHUB_OUTPUT
+          
+          echo "📊 Metrics:"
+          echo "  - Ready: $READY"
+          echo "  - Assigned: $ASSIGNED"
+          echo "  - In Progress: $IN_PROGRESS"
+          echo "  - Testing: $TESTING"
+          echo "  - Completed: $COMPLETED ($COMPLETION%)"
+          echo "  - Blocked: $BLOCKED"
+          echo "  - Points: ${POINTS_COMPLETED:-0}/${POINTS_TOTAL:-0}"
+
+      - name: Check for budget pause condition
+        id: pause
+        run: |
+          REMAINING=${{ steps.budget.outputs.remaining }}
+          
+          if (( $(echo "$REMAINING <= 0" | bc -l) )); then
+            echo "⏸️ Budget exhausted - automation paused until next cycle"
+            echo "paused=true" >> $GITHUB_OUTPUT
+          else
+            echo "▶️ Budget available - automation active"
+            echo "paused=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit budget updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/automation/
+          git commit -m "chore: update budget cycle ${{ steps.budget.outputs.cycles }}" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Send status update
+        if: env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          STATUS_EMOJI="${{ steps.pause.outputs.paused == 'true' && '⏸️' || '▶️' }}"
+          STATUS_TEXT="${{ steps.pause.outputs.paused == 'true' && 'Paused (budget exhausted)' || 'Active' }}"
+          
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"$STATUS_EMOJI Zakum Automation Status\",
+                \"description\": \"24/7 system health check and budget update\",
+                \"color\": 5814783,
+                \"fields\": [
+                  {
+                    \"name\": \"Status\",
+                    \"value\": \"$STATUS_TEXT\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Budget\",
+                    \"value\": \"\$${{ steps.budget.outputs.spent }} / \$${{ steps.budget.outputs.limit }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Cycle\",
+                    \"value\": \"${{ steps.budget.outputs.cycles }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Tasks\",
+                    \"value\": \"Ready: ${{ steps.metrics.outputs.ready }}\\nIn Progress: ${{ steps.metrics.outputs.in_progress }}\\nCompleted: ${{ steps.metrics.outputs.completed }} (${{ steps.metrics.outputs.completion }}%)\",
+                    \"inline\": false
+                  },
+                  {
+                    \"name\": \"Points\",
+                    \"value\": \"${{ steps.metrics.outputs.points_completed }} / ${{ steps.metrics.outputs.points_total }}\",
+                    \"inline\": true
+                  }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" || echo "⚠️ Failed to send Discord notification"
+
+      - name: Summary
+        run: |
+          echo "## 📊 24/7 Scheduler Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Budget Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Date:** $(date +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Spent:** \$${{ steps.budget.outputs.spent }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Remaining:** \$${{ steps.budget.outputs.remaining }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Limit:** \$${{ steps.budget.outputs.limit }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cycle:** ${{ steps.budget.outputs.cycles }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Task Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ready:** ${{ steps.metrics.outputs.ready }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assigned:** ${{ steps.metrics.outputs.assigned }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **In Progress:** ${{ steps.metrics.outputs.in_progress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Testing:** ${{ steps.metrics.outputs.testing }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Completed:** ${{ steps.metrics.outputs.completed }} (${{ steps.metrics.outputs.completion }}%)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Blocked:** ${{ steps.metrics.outputs.blocked }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total:** ${{ steps.metrics.outputs.total }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Points Progress" >> $GITHUB_STEP_SUMMARY
+          echo "- **Completed:** ${{ steps.metrics.outputs.points_completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total:** ${{ steps.metrics.outputs.points_total }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### System Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Automation:** ${{ steps.pause.outputs.paused == 'true' && '⏸️ Paused' || '▶️ Active' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stuck Tasks:** ${{ steps.health.outputs.stuck_count }}" >> $GITHUB_STEP_SUMMARY

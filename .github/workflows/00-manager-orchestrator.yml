@@ -1,0 +1,229 @@
+name: "00 - Manager Orchestrator"
+
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_assign:
+        description: 'Force task assignment even if budget exhausted'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-latest
+    outputs:
+      tasks_assigned: ${{ steps.assign.outputs.tasks }}
+      budget_remaining: ${{ steps.budget.outputs.remaining }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check daily budget
+        id: budget
+        run: |
+          # Create budget tracking file if it doesn't exist
+          mkdir -p .github/automation
+          BUDGET_FILE=".github/automation/budget-$(date +%Y-%m-%d).json"
+          
+          if [ ! -f "$BUDGET_FILE" ]; then
+            echo '{"date":"'$(date +%Y-%m-%d)'","spent":0,"limit":25,"tasks":[]}' > "$BUDGET_FILE"
+          fi
+          
+          SPENT=$(jq -r '.spent' "$BUDGET_FILE")
+          LIMIT=$(jq -r '.limit' "$BUDGET_FILE")
+          REMAINING=$(echo "$LIMIT - $SPENT" | bc)
+          
+          echo "spent=$SPENT" >> $GITHUB_OUTPUT
+          echo "remaining=$REMAINING" >> $GITHUB_OUTPUT
+          echo "limit=$LIMIT" >> $GITHUB_OUTPUT
+          
+          echo "💰 Budget Status: \$$SPENT / \$$LIMIT spent today (\$$REMAINING remaining)"
+          
+          # Check if budget is exhausted (unless forced)
+          if [ "${{ github.event.inputs.force_assign }}" != "true" ] && (( $(echo "$REMAINING <= 0" | bc -l) )); then
+            echo "❌ Daily budget exhausted. Skipping task assignment."
+            echo "exhausted=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "exhausted=false" >> $GITHUB_OUTPUT
+
+      - name: Assign highest priority tasks
+        id: assign
+        if: steps.budget.outputs.exhausted != 'true'
+        run: |
+          # Read task registry
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Get ready tasks sorted by priority
+          READY_TASKS=$(jq -c '[.tasks[] | select(.status == "ready")] | sort_by(-.priority, -.points)' "$REGISTRY")
+          
+          # Check for tasks with satisfied dependencies
+          ASSIGNABLE_TASKS=$(echo "$READY_TASKS" | jq -c '[.[] | select(.dependencies | length == 0 or all(. as $dep | any($dep == "'$REGISTRY'" | .tasks[] | select(.id == $dep and .status == "completed"))))]')
+          
+          # Select up to 3 tasks based on remaining budget
+          REMAINING=${{ steps.budget.outputs.remaining }}
+          SELECTED_TASKS='[]'
+          TOTAL_ESTIMATED=0
+          
+          echo "$ASSIGNABLE_TASKS" | jq -c '.[]' | while read task; do
+            TASK_ID=$(echo "$task" | jq -r '.id')
+            TASK_EST=$(echo "$task" | jq -r '.estimatedMinutes')
+            TASK_COST=$(echo "scale=2; $TASK_EST * 0.008 / 60" | bc) # GitHub Actions cost estimate
+            
+            NEW_TOTAL=$(echo "$TOTAL_ESTIMATED + $TASK_COST" | bc)
+            
+            if (( $(echo "$NEW_TOTAL <= $REMAINING" | bc -l) )); then
+              SELECTED_TASKS=$(echo "$SELECTED_TASKS" | jq ". += [$task]")
+              TOTAL_ESTIMATED=$NEW_TOTAL
+              echo "✅ Selected task: $TASK_ID (estimated cost: \$$TASK_COST)"
+            fi
+            
+            # Limit to 3 concurrent tasks
+            TASK_COUNT=$(echo "$SELECTED_TASKS" | jq 'length')
+            if [ "$TASK_COUNT" -ge 3 ]; then
+              break
+            fi
+          done
+          
+          # Output selected tasks
+          echo "tasks<<EOF" >> $GITHUB_OUTPUT
+          echo "$SELECTED_TASKS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          TASK_COUNT=$(echo "$SELECTED_TASKS" | jq 'length')
+          echo "📋 Assigned $TASK_COUNT task(s) with estimated cost: \$$TOTAL_ESTIMATED"
+
+      - name: Trigger worker workflows
+        if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TASKS='${{ steps.assign.outputs.tasks }}'
+          
+          echo "$TASKS" | jq -c '.[]' | while read task; do
+            TASK_ID=$(echo "$task" | jq -r '.id')
+            TASK_NAME=$(echo "$task" | jq -r '.name')
+            TASK_CATEGORY=$(echo "$task" | jq -r '.category')
+            
+            echo "🚀 Triggering worker for task: $TASK_ID - $TASK_NAME"
+            
+            # Determine which worker workflow to use based on category
+            WORKFLOW="01-worker-executor.yml"
+            case "$TASK_CATEGORY" in
+              "waveA"|"corePlatform"|"features")
+                WORKFLOW="01-worker-executor.yml"
+                ;;
+              "documentation")
+                WORKFLOW="05-worker-documentation.yml"
+                ;;
+              "dataHardening")
+                WORKFLOW="06-worker-testing.yml"
+                ;;
+            esac
+            
+            # Trigger the workflow
+            gh workflow run "$WORKFLOW" \
+              -f task_id="$TASK_ID" \
+              -f task_json="$(echo "$task" | jq -c .)" \
+              || echo "⚠️ Failed to trigger workflow for $TASK_ID"
+          done
+
+      - name: Send Discord notification
+        if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != '' && env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          TASKS='${{ steps.assign.outputs.tasks }}'
+          TASK_COUNT=$(echo "$TASKS" | jq 'length')
+          BUDGET_REMAINING='${{ steps.budget.outputs.remaining }}'
+          
+          # Build task list for Discord
+          TASK_LIST=""
+          echo "$TASKS" | jq -c '.[]' | while read task; do
+            TASK_ID=$(echo "$task" | jq -r '.id')
+            TASK_NAME=$(echo "$task" | jq -r '.name')
+            TASK_POINTS=$(echo "$task" | jq -r '.points')
+            TASK_LIST="$TASK_LIST\n• **$TASK_ID** ($TASK_POINTS pts): $TASK_NAME"
+          done
+          
+          # Send Discord webhook
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🤖 Zakum Automation: Tasks Assigned\",
+                \"description\": \"Assigned $TASK_COUNT task(s) for automated execution.\",
+                \"color\": 3447003,
+                \"fields\": [
+                  {
+                    \"name\": \"Tasks\",
+                    \"value\": \"$TASK_LIST\"
+                  },
+                  {
+                    \"name\": \"Budget Remaining\",
+                    \"value\": \"\$$BUDGET_REMAINING / \$25.00\"
+                  }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" || echo "⚠️ Failed to send Discord notification"
+
+      - name: Update task status
+        if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != ''
+        run: |
+          TASKS='${{ steps.assign.outputs.tasks }}'
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Update task status to "assigned"
+          TMP_REGISTRY=$(mktemp)
+          jq '.tasks |= map(
+            if ([.id] | inside(['$(echo "$TASKS" | jq -r '[.[].id] | @json')')
+            then .status = "assigned" | .assignedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+            else .
+            end
+          )' "$REGISTRY" > "$TMP_REGISTRY"
+          
+          mv "$TMP_REGISTRY" "$REGISTRY"
+          
+          # Commit and push changes
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$REGISTRY"
+          git commit -m "chore: assign tasks from orchestrator" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Summary
+        run: |
+          echo "## 🎯 Orchestration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Budget Status:** \$${{ steps.budget.outputs.spent }} / \$${{ steps.budget.outputs.limit }} spent" >> $GITHUB_STEP_SUMMARY
+          echo "**Remaining:** \$${{ steps.budget.outputs.remaining }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.budget.outputs.exhausted }}" == "true" ]; then
+            echo "❌ Daily budget exhausted. No tasks assigned." >> $GITHUB_STEP_SUMMARY
+          else
+            TASKS='${{ steps.assign.outputs.tasks }}'
+            TASK_COUNT=$(echo "$TASKS" | jq 'length')
+            echo "**Tasks Assigned:** $TASK_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "$TASKS" | jq -r '.[] | "- **\(.id)** (\(.points) pts): \(.name)"' >> $GITHUB_STEP_SUMMARY
+          fi
