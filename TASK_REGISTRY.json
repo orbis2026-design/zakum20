@@ -91,14 +91,15 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Complete remaining 4 points of core runtime/API backbone work",
       "verificationGates": [
         "verifyApiBoundaries",
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-15T18:58:27Z"
+      "assignedAt": "2026-02-15T18:58:27Z",
+      "startedAt": "2026-02-15T18:58:30Z"
     },
     {
       "id": "data-001",
