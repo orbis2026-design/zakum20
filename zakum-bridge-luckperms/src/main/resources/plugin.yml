@@ -1,6 +1,6 @@
 name: OrbisBridgeLuckPerms
 main: net.orbis.zakum.bridge.luckperms.OrbisBridgeLuckPermsPlugin
-version: 1.0.0
+version: ${version}
 api-version: "1.21"
 depend: [Zakum]
 softdepend: [LuckPerms]

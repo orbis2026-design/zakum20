@@ -1,0 +1,19 @@
+name: OrbisLoot
+version: ${version}
+main: net.orbis.orbisloot.OrbisLootPlugin
+api-version: "1.21"
+author: Orbis Network
+description: Crate and weighted reward runtime for Orbis.
+depend: [Zakum]
+commands:
+  orbisloot:
+    description: Orbis loot control surface
+    usage: /orbisloot <status|reload|simulate>
+    aliases: [oloot]
+permissions:
+  orbisloot.admin:
+    default: op
+  orbisloot.reload:
+    default: op
+  orbisloot.simulate:
+    default: op

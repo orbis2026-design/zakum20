@@ -3,8 +3,10 @@
 # tiers.<N>.pointsRequired: points needed to reach tier N
 # tiers.<N>.free.<id> / tiers.<N>.premium.<id>: reward definitions
 #
-# Supported reward types (v1):
+# Supported reward types:
 # - COMMAND: console command list
+# - MESSAGE: rich-text chat lines sent to the claimer
+# - ACE_SCRIPT: raw ACE lines executed as-is
 #
 # Placeholders:
 # - %player% (player name)
@@ -27,14 +29,15 @@ tiers:
     pointsRequired: 250
     free:
       r1:
-        type: COMMAND
-        commands:
-          - "give %player% arrow 32"
+        type: MESSAGE
+        messages:
+          - "<gradient:#8EDCFF:#D8F4FF>Tier 2 unlocked!</gradient> &7Keep going."
     premium:
       r1:
-        type: COMMAND
-        commands:
-          - "give %player% diamond 1"
+        type: ACE_SCRIPT
+        script:
+          - "[MESSAGE] <gold>Premium reward claimed for tier 2.</gold>"
+          - "[COMMAND] give %player% diamond 1"
   "3":
     pointsRequired: 500
     free:

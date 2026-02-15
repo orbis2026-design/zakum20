@@ -1,0 +1,17 @@
+name: OrbisWorlds
+version: ${version}
+main: net.orbis.orbisworlds.OrbisWorldsPlugin
+api-version: "1.21"
+author: Orbis Network
+description: World lifecycle and teleport orchestration for Orbis.
+depend: [Zakum]
+commands:
+  orbisworld:
+    description: Orbis worlds control surface
+    usage: /orbisworld <status|reload>
+    aliases: [oworld]
+permissions:
+  orbisworlds.admin:
+    default: op
+  orbisworlds.reload:
+    default: op

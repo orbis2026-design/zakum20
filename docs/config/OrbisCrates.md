@@ -13,6 +13,7 @@ Keys:
   - `weight`
   - `messages[]`
   - `commands[]` (console)
+  - `script[]` (raw ACE lines; placeholder substitution supported)
   - `items[]` (material, amount, modelData, name, lore)
 - `animation.steps`
 - `animation.ticksPerStep`

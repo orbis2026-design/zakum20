@@ -1,14 +1,14 @@
 codeid: cosmetics.main
 rows: 5
 type: chest
-title: "&dCosmetics"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fCosmetics"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: PINK_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 11
         item: WOLF_SPAWN_EGG
         amount: 1
-        item-name: "&bCompanion Pets"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fCompanion Pets"
         item-lore:
           - "&7Summon and manage pets."
         click-events:
@@ -32,7 +32,7 @@ scenes:
         slot: 13
         item: RABBIT_SPAWN_EGG
         amount: 1
-        item-name: "&dMini Pets"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fMini Pets"
         item-lore:
           - "&7Tiny companions + hats."
         click-events:
@@ -42,17 +42,17 @@ scenes:
         slot: 15
         item: NAME_TAG
         amount: 1
-        item-name: "&aTags"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fTags"
         item-lore:
           - "&7Chat and nameplate tags."
         click-events:
           message:
-            message: "&7Tags menu will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7tags menu will be wired."
       '4':
         slot: 22
         item: CHEST
         amount: 1
-        item-name: "&eCrates"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fCrates"
         item-lore:
           - "&7Return to crates."
         click-events:
@@ -62,7 +62,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

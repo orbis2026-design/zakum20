@@ -1,14 +1,14 @@
 codeid: economy.main
 rows: 5
 type: chest
-title: "&6Economy"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fEconomy"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: ORANGE_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 13
         item: EMERALD
         amount: 1
-        item-name: "&aBalance"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fBalance"
         item-lore:
           - "&7Current: &a$%balance%"
         click-events:
@@ -33,27 +33,27 @@ scenes:
         slot: 20
         item: GOLD_INGOT
         amount: 1
-        item-name: "&eDeposit"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fDeposit"
         item-lore:
           - "&7Add funds to your account."
         click-events:
           message:
-            message: "&7Use &f/zakum economy add %player% <amount>&7."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7use &f/zakum economy add %player% <amount>&7."
       '3':
         slot: 22
         item: REDSTONE
         amount: 1
-        item-name: "&cWithdraw"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fWithdraw"
         item-lore:
           - "&7Remove funds from your account."
         click-events:
           message:
-            message: "&7Use &f/zakum economy take %player% <amount>&7."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7use &f/zakum economy take %player% <amount>&7."
       '4':
         slot: 24
         item: DIAMOND
         amount: 1
-        item-name: "&bSet Balance"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fSet Balance"
         item-lore:
           - "&7Admin-only balance overrides."
         click-events:
@@ -64,17 +64,17 @@ scenes:
         slot: 31
         item: FIREWORK_ROCKET
         amount: 1
-        item-name: "&dBoosters"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fBoosters"
         item-lore:
           - "&7Active multipliers + boosts."
         click-events:
           message:
-            message: "&7Use &f/zakum boosters list_player&7."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7use &f/zakum boosters list_player&7."
       '6':
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

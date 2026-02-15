@@ -1,0 +1,14 @@
+worlds:
+  enabled: true
+  updateIntervalTicks: 40
+  autoLoad: true
+  safeTeleport: true
+  maxParallelWorldLoads: 2
+
+managed:
+  world:
+    name: world
+    autoLoad: true
+  world_nether:
+    name: world_nether
+    autoLoad: false

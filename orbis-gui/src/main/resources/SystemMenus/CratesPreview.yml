@@ -1,14 +1,14 @@
 codeid: crates.preview
 rows: 5
 type: chest
-title: "&eCrates &8| &f%crate_name%"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &f%crate_name%"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: LIGHT_GRAY_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,35 +22,35 @@ scenes:
         slot: 10
         item: DIAMOND
         amount: 3
-        item-name: "&bSample Reward"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fSample Reward"
         item-lore:
           - "&7Example drop from &f%crate_name%&7."
       '2':
         slot: 12
         item: EMERALD
         amount: 5
-        item-name: "&aCurrency Pack"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fCurrency Pack"
         item-lore:
           - "&7Example economy reward."
       '3':
         slot: 14
         item: NETHERITE_INGOT
         amount: 1
-        item-name: "&dMythic Drop"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fMythic Drop"
         item-lore:
           - "&7Example rare reward."
       '4':
         slot: 16
         item: EXPERIENCE_BOTTLE
         amount: 16
-        item-name: "&eXP Burst"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fXP Burst"
         item-lore:
           - "&7Example experience reward."
       '5':
         slot: 22
         item: BEACON
         amount: 1
-        item-name: "&bOpen %crate_name%"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fOpen %crate_name%"
         item-lore:
           - "&7Requires: &f%crate_key%"
           - "&7Crate id: &f%crate_id%"
@@ -63,7 +63,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: crates.main

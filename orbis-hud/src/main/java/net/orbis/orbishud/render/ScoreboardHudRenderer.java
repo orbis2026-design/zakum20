@@ -2,10 +2,13 @@ package net.orbis.orbishud.render;
 
 import net.orbis.orbishud.config.HudProfile;
 import net.orbis.orbishud.state.HudPlayerState;
+import net.orbis.zakum.api.util.BrandingText;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -139,6 +142,7 @@ public final class ScoreboardHudRenderer {
     out = out.replace("%max_health%", String.valueOf((int) Math.floor(player.getMaxHealth())));
     out = out.replace("%time%", LocalTime.now(ZoneOffset.UTC).format(TIME_FORMAT));
     out = out.replace("%server_id%", serverId == null ? "unknown" : serverId);
+    out = out.replace("%rank%", readRank(player));
 
     String ping = "0";
     try {
@@ -162,13 +166,18 @@ public final class ScoreboardHudRenderer {
   }
 
   private static String color(String input) {
-    if (input == null) return "";
-    return ChatColor.translateAlternateColorCodes('&', input);
+    return BrandingText.render(input);
   }
 
   private static String truncate(String input, int max) {
     if (input == null) return "";
     if (input.length() <= max) return input;
     return input.substring(0, max);
+  }
+
+  private static String readRank(Player player) {
+    NamespacedKey rankKey = new NamespacedKey("orbis", "cloud_rank");
+    String rank = player.getPersistentDataContainer().get(rankKey, PersistentDataType.STRING);
+    return rank == null || rank.isBlank() ? "Cirrus" : rank;
   }
 }

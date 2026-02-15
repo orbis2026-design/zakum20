@@ -1,12 +1,11 @@
 package net.orbis.orbisessentials.util;
 
-import org.bukkit.ChatColor;
+import net.orbis.zakum.api.util.BrandingText;
 
 public final class Color {
   private Color() {}
 
   public static String legacy(String s) {
-    if (s == null) return "";
-    return ChatColor.translateAlternateColorCodes('&', s);
+    return BrandingText.render(s);
   }
 }

@@ -1,6 +1,6 @@
 ﻿# Config Specification
 
-Updated (UTC): 2026-02-15T11:37:13Z
+Updated (UTC): 2026-02-15T12:26:01Z
 Module: orbis-hud
 Source of truth: `orbis-hud/src/main/resources/config.yml` and `HudConfig.load(...)`.
 
@@ -22,7 +22,7 @@ Source of truth: `orbis-hud/src/main/resources/config.yml` and `HudConfig.load(.
   Behavior: sidebar hidden while player is spectator.
 - `profiles` (map, required logically)
   Validation: if missing/empty, fallback profile generated.
-- `profiles.<id>.title` (string, default: `&b&lORBIS`)
+- `profiles.<id>.title` (string, default: `<gradient:#38bdf8:#60a5fa>Orbis</gradient>`)
   Validation: blank -> default title; render-time truncate to scoreboard-safe length.
 - `profiles.<id>.lines[]` (list of strings)
   Validation:
@@ -35,7 +35,7 @@ Supported placeholders:
 - `%world%`, `%online%`, `%ping%`
 - `%x%`, `%y%`, `%z%`
 - `%health%`, `%max_health%`
-- `%server_id%`, `%time%` (UTC)
+- `%server_id%`, `%time%` (UTC), `%rank%`
 
 ## Validation Behavior
 - Every correction path emits a warning (clamp/fallback/trim).

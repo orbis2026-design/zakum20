@@ -1,14 +1,14 @@
 codeid: ace.lab
 rows: 5
 type: chest
-title: "&bACE Lab"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fACE Lab"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: CYAN_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,33 +22,33 @@ scenes:
         slot: 11
         item: ENCHANTED_BOOK
         amount: 1
-        item-name: "&bEffects Library"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fEffects Library"
         item-lore:
           - "&7Browse core ACE effects."
         click-events:
           message:
-            message: "&7ACE effects library will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7ACE effects library will be wired."
       '2':
         slot: 13
         item: BOOK
         amount: 1
-        item-name: "&aScript Editor"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fScript Editor"
         item-lore:
           - "&7Edit ACE YAML scripts."
         click-events:
           message:
-            message: "&7Script editor will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7script editor will be wired."
       '3':
         slot: 15
         item: REDSTONE
         amount: 1
-        item-name: "&cDebug Trigger"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fDebug Trigger"
         item-lore:
           - "&7Fire a test trigger."
         click-events:
           ace-trigger:
             script:
-              - "[MESSAGE] <aqua>ACE Debug</aqua> triggered by <white>%player%</white>"
+              - "[MESSAGE] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>ACE Debug triggered by <white>%player%</white></gray>"
               - "[SOUND] ENTITY_EXPERIENCE_ORB_PICKUP {volume=0.8 pitch=1.2}"
             metadata:
               source: "ace.lab"
@@ -56,17 +56,17 @@ scenes:
         slot: 22
         item: OBSERVER
         amount: 1
-        item-name: "&eTelemetry"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fTelemetry"
         item-lore:
           - "&7Effects execution metrics."
         click-events:
           message:
-            message: "&7ACE metrics will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7ACE metrics will be wired."
       '5':
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

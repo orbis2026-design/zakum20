@@ -1,6 +1,6 @@
 ﻿# OrbisHud Configuration
 
-Updated (UTC): 2026-02-15T11:40:55Z
+Updated (UTC): 2026-02-15T12:26:01Z
 Config folder: `plugins/OrbisHud/`
 Primary file: `config.yml`
 
@@ -47,7 +47,7 @@ Primary file: `config.yml`
 
 ### `profiles.<id>.title`
 - Type: string
-- Default: `&b&lORBIS`
+- Default: `<gradient:#38bdf8:#60a5fa>Orbis</gradient>`
 - Validation: blank -> default title
 - Runtime behavior: colorized and truncated to scoreboard-safe length.
 
@@ -69,6 +69,7 @@ Primary file: `config.yml`
 - `%health%`, `%max_health%`
 - `%server_id%`
 - `%time%` (UTC `HH:mm:ss`)
+- `%rank%` (defaults to `Cirrus`; rank names use Orbis pastel gradients)
 
 ## Commands
 - `/orbishud status`
@@ -90,9 +91,10 @@ hud:
 
 profiles:
   default:
-    title: "&b&lORBIS"
+    title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     lines:
       - "&7Player: &f%player%"
+      - "&7Rank: %rank%"
       - "&7World: &b%world%"
       - "&7Online: &a%online%"
       - "&7Ping: &e%ping%ms"

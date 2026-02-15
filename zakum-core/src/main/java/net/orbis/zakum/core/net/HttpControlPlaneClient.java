@@ -8,6 +8,7 @@ import io.github.resilience4j.retry.RetryConfig;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.net.ControlPlaneClient;
 import net.orbis.zakum.api.net.ZakumHttpResponse;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -35,6 +36,7 @@ public final class HttpControlPlaneClient implements ControlPlaneClient {
   private final String baseUrl;
   private final String authToken;
   private final ExecutorService async;
+  private final ThreadGuard threadGuard;
   private final boolean resilienceEnabled;
   private final CircuitBreaker circuitBreaker;
   private final Retry retry;
@@ -48,10 +50,17 @@ public final class HttpControlPlaneClient implements ControlPlaneClient {
   private final AtomicLong lastFailureAtMs;
   private final AtomicReference<String> lastError;
 
-  private HttpControlPlaneClient(String baseUrl, String authToken, ExecutorService async, ZakumSettings.Http http) {
+  private HttpControlPlaneClient(
+    String baseUrl,
+    String authToken,
+    ExecutorService async,
+    ZakumSettings.Http http,
+    ThreadGuard threadGuard
+  ) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.authToken = authToken;
     this.async = async;
+    this.threadGuard = threadGuard;
 
     Dispatcher dispatcher = new Dispatcher(async);
     dispatcher.setMaxRequests(http.maxRequests());
@@ -108,11 +117,19 @@ public final class HttpControlPlaneClient implements ControlPlaneClient {
   }
 
   public static Optional<ControlPlaneClient> fromSettings(ZakumSettings settings, ExecutorService async) {
+    return fromSettings(settings, async, null);
+  }
+
+  public static Optional<ControlPlaneClient> fromSettings(
+    ZakumSettings settings,
+    ExecutorService async,
+    ThreadGuard threadGuard
+  ) {
     var cp = settings.controlPlane();
     if (!cp.enabled()) return Optional.empty();
     if (cp.baseUrl() == null || cp.baseUrl().isBlank()) return Optional.empty();
     if (cp.apiKey() == null || cp.apiKey().isBlank()) return Optional.empty();
-    return Optional.of(new HttpControlPlaneClient(cp.baseUrl(), cp.apiKey(), async, settings.http()));
+    return Optional.of(new HttpControlPlaneClient(cp.baseUrl(), cp.apiKey(), async, settings.http(), threadGuard));
   }
 
   @Override
@@ -172,6 +189,9 @@ public final class HttpControlPlaneClient implements ControlPlaneClient {
   }
 
   private ZakumHttpResponse execute(Request request) {
+    if (threadGuard != null) {
+      threadGuard.checkAsync("http.controlPlane.execute");
+    }
     try (Response response = client.newCall(request).execute()) {
       String body = response.body() != null ? response.body().string() : "";
       Map<String, List<String>> headers = response.headers().toMultimap();

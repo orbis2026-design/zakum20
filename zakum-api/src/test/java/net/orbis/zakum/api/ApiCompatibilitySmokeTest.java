@@ -4,6 +4,7 @@ import net.orbis.zakum.api.capability.Capability;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.config.ZakumSettings;
+import net.orbis.zakum.api.plugin.ZakumPluginBase;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -43,13 +44,28 @@ final class ApiCompatibilitySmokeTest {
     for (Method method : ZakumApi.class.getMethods()) {
       methodNames.add(method.getName());
     }
+    assertTrue(methodNames.contains("plugin"));
+    assertTrue(methodNames.contains("server"));
+    assertTrue(methodNames.contains("clock"));
+    assertTrue(methodNames.contains("async"));
+    assertTrue(methodNames.contains("database"));
+    assertTrue(methodNames.contains("actions"));
+    assertTrue(methodNames.contains("entitlements"));
+    assertTrue(methodNames.contains("boosters"));
+    assertTrue(methodNames.contains("getAceEngine"));
     assertTrue(methodNames.contains("capabilities"));
     assertTrue(methodNames.contains("capability"));
+    assertTrue(methodNames.contains("getCapabilityRegistry"));
     assertTrue(methodNames.contains("getScheduler"));
     assertTrue(methodNames.contains("getStorage"));
+    assertTrue(methodNames.contains("getAnimations"));
     assertTrue(methodNames.contains("getBridgeManager"));
     assertTrue(methodNames.contains("getProgression"));
+    assertTrue(methodNames.contains("getAssetManager"));
+    assertTrue(methodNames.contains("getGui"));
+    assertTrue(methodNames.contains("controlPlane"));
     assertTrue(methodNames.contains("settings"));
+    assertTrue(methodNames.contains("chatBuffer"));
   }
 
   @Test
@@ -72,5 +88,18 @@ final class ApiCompatibilitySmokeTest {
     assertNotNull(root);
     assertNotNull(dataStore);
     assertEquals(5, dataStore.length, "Datastore section should stay explicit and typed.");
+  }
+
+  @Test
+  void pluginBootstrapBaseRemainsAvailable() {
+    Set<String> methodNames = new HashSet<>();
+    for (Method method : ZakumPluginBase.class.getDeclaredMethods()) {
+      methodNames.add(method.getName());
+    }
+    assertTrue(methodNames.contains("onZakumEnable"));
+    assertTrue(methodNames.contains("onZakumDisable"));
+    assertTrue(methodNames.contains("zakum"));
+    assertTrue(methodNames.contains("optionalService"));
+    assertTrue(methodNames.contains("requiredService"));
   }
 }

@@ -33,3 +33,11 @@ If you install the CommandAPI plugin, you can also install `ZakumBridgeCommandAP
 - OrbisBridgeMythicMobs
 - OrbisBridgeJobs
 - OrbisBridgeSuperiorSkyblock2
+
+## Plugin Dev Infrastructure
+- Directive: `docs/22-ANY-PLUGIN-INFRASTRUCTURE-DIRECTIVE.md`
+- Playbook: `docs/23-PLUGIN-DEVKIT.md`
+- OSS Capability Strategy: `docs/24-OSS-ABSORPTION-DIRECTIVE.md`
+- Process Priority Board: `docs/25-DEVELOPMENT-PROCESS-PRIORITY-DIRECTIVE.md`
+- Generator: `tools/new-plugin-module.ps1`
+- Verification: `./gradlew verifyPlatformInfrastructure`

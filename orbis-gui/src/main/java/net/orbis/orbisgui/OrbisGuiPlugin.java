@@ -6,8 +6,8 @@ import net.orbis.orbisgui.runtime.OrbisGuiService;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.gui.GuiIds;
 import net.orbis.zakum.api.gui.GuiService;
+import net.orbis.zakum.api.util.BrandingText;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -113,7 +113,7 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
                            @NotNull String label,
                            @NotNull String[] args) {
     if (!(sender instanceof Player player)) {
-      sender.sendMessage(ChatColor.RED + "Players only.");
+      sender.sendMessage(color("&cPlayers only."));
       return true;
     }
 
@@ -126,24 +126,24 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
     switch (sub) {
       case "open" -> {
         if (args.length < 2) {
-          player.sendMessage(ChatColor.RED + "Usage: /" + label + " open <id>");
+          player.sendMessage(color("&cUsage: /" + label + " open <id>"));
           return true;
         }
         String id = args[1];
         if (!gui.open(player, id)) {
-          player.sendMessage(ChatColor.RED + "Unknown GUI id: " + id);
+          player.sendMessage(color("&cUnknown GUI id: " + id));
         }
         return true;
       }
       case "list" -> {
         List<String> ids = menus.ids().stream().sorted().toList();
-        player.sendMessage(ChatColor.AQUA + "OrbisGUI menus (" + ids.size() + "):");
-        for (String id : ids) player.sendMessage(ChatColor.GRAY + " - " + id);
+        player.sendMessage(color("&8[<gradient:#38bdf8:#60a5fa>Orbis</gradient>&8] &bGUI Menus &7(" + ids.size() + ")"));
+        for (String id : ids) player.sendMessage(color("&7- &f" + id));
         return true;
       }
       case "reload" -> {
         if (!player.hasPermission("orbis.gui.admin")) {
-          player.sendMessage(ChatColor.RED + "No permission.");
+          player.sendMessage(color("&cNo permission."));
           return true;
         }
         reloadConfig();
@@ -151,13 +151,17 @@ public final class OrbisGuiPlugin extends JavaPlugin implements CommandExecutor 
         menus.reload();
         prompts.reloadFromConfig();
         gui.reload();
-        player.sendMessage(ChatColor.GREEN + "OrbisGUI reloaded. Loaded " + menus.ids().size() + " menu(s).");
+        player.sendMessage(color("&aOrbis GUI reloaded. &7loaded=&f" + menus.ids().size()));
         return true;
       }
       default -> {
-        player.sendMessage(ChatColor.RED + "Unknown subcommand. Try: /" + label + " open|list|reload");
+        player.sendMessage(color("&cUnknown subcommand. &7Try: &f/" + label + " open|list|reload"));
         return true;
       }
     }
+  }
+
+  private static String color(String message) {
+    return BrandingText.render(message);
   }
 }

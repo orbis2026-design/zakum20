@@ -36,6 +36,11 @@ public final class ZakumAceEngine implements AceEngine {
     "FRIENDS",
     "RIVALS"
   );
+  private static final int DEFAULT_BOUNDED_TARGETS = 24;
+  private static final int MAX_BOUNDED_TARGETS = 128;
+  private static final double DEFAULT_RADIUS = 6.0d;
+  private static final double MIN_RADIUS = 0.5d;
+  private static final double MAX_RADIUS = 64.0d;
 
   private final Map<String, EffectAction> effects;
   private final MetricsMonitor metrics;
@@ -141,30 +146,55 @@ public final class ZakumAceEngine implements AceEngine {
       case "SELF" -> List.of(actor);
       case "VICTIM" -> context.victim().<List<Entity>>map(List::of).orElse(List.of(actor));
       case "ALL" -> new ArrayList<>(actor.getWorld().getPlayers());
-      case "RADIUS", "NEARBY" -> nearby(actor, params);
-      case "ALLIES" -> allies(actor);
+      case "RADIUS", "NEARBY" -> {
+        int limit = boundedTargetLimit(params);
+        yield nearby(actor, params, limit);
+      }
+      case "ALLIES" -> allies(actor, boundedTargetLimit(params));
       case "FRIENDS" -> friends(actor);
       case "RIVALS" -> rivals(actor);
       default -> List.of(actor);
     };
   }
 
-  private static List<Entity> nearby(Player actor, Map<String, String> params) {
+  private static int boundedTargetLimit(Map<String, String> params) {
+    if (params == null || params.isEmpty()) return DEFAULT_BOUNDED_TARGETS;
+    String raw = params.get("target_limit");
+    if (raw == null || raw.isBlank()) raw = params.get("targetlimit");
+    if (raw == null || raw.isBlank()) raw = params.get("max_targets");
+    if (raw == null || raw.isBlank()) raw = params.get("maxtargets");
+    if (raw == null || raw.isBlank()) raw = params.get("limit");
+    int requested = parseInt(raw, DEFAULT_BOUNDED_TARGETS);
+    return Math.max(1, Math.min(MAX_BOUNDED_TARGETS, requested));
+  }
+
+  private static List<Entity> applyTargetLimit(List<Entity> targets, int limit) {
+    if (targets == null || targets.isEmpty()) return List.of();
+    int bounded = Math.max(1, Math.min(MAX_BOUNDED_TARGETS, limit));
+    if (targets.size() <= bounded) return targets;
+    return List.copyOf(targets.subList(0, bounded));
+  }
+
+  private static List<Entity> nearby(Player actor, Map<String, String> params, int limit) {
+    int boundedLimit = Math.max(1, Math.min(MAX_BOUNDED_TARGETS, limit));
     String value = params.get("radius");
     if (value == null || value.isBlank()) value = params.get("value");
-    double radius = parseDouble(value, 6.0);
-    double r = Math.max(0.5, radius);
+    double radius = parseDouble(value, DEFAULT_RADIUS);
+    double r = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, radius));
 
     List<Entity> out = new ArrayList<>();
     out.add(actor);
+    if (out.size() >= boundedLimit) return out;
     for (Entity e : actor.getNearbyEntities(r, r, r)) {
       out.add(e);
+      if (out.size() >= boundedLimit) break;
     }
     return out;
   }
 
-  private static List<Entity> allies(Player actor) {
-    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.ALLY);
+  private static List<Entity> allies(Player actor, int limit) {
+    int boundedLimit = Math.max(1, Math.min(MAX_BOUNDED_TARGETS, limit));
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.ALLY, boundedLimit);
     if (!fromSocial.isEmpty()) return fromSocial;
 
     var board = actor.getScoreboard();
@@ -174,27 +204,29 @@ public final class ZakumAceEngine implements AceEngine {
 
     List<Entity> out = new ArrayList<>();
     out.add(actor);
+    if (out.size() >= boundedLimit) return out;
     for (Player p : actor.getWorld().getPlayers()) {
       if (p.equals(actor)) continue;
       var other = p.getScoreboard().getEntryTeam(p.getName());
       if (other != null && other.getName().equals(team.getName())) {
         out.add(p);
+        if (out.size() >= boundedLimit) break;
       }
     }
     return out;
   }
 
   private static List<Entity> friends(Player actor) {
-    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.FRIEND);
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.FRIEND, MAX_BOUNDED_TARGETS);
     return fromSocial.isEmpty() ? List.of(actor) : fromSocial;
   }
 
   private static List<Entity> rivals(Player actor) {
-    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.RIVAL);
+    List<Entity> fromSocial = selectBySocial(actor, SocialRelation.RIVAL, MAX_BOUNDED_TARGETS);
     return fromSocial.isEmpty() ? List.of(actor) : fromSocial;
   }
 
-  private static List<Entity> selectBySocial(Player actor, SocialRelation relation) {
+  private static List<Entity> selectBySocial(Player actor, SocialRelation relation, int limit) {
     ZakumApi api = ZakumApi.get();
     if (api == null) return List.of();
     SocialService social = api.capability(ZakumCapabilities.SOCIAL).orElse(null);
@@ -211,10 +243,12 @@ public final class ZakumAceEngine implements AceEngine {
 
     List<Entity> out = new ArrayList<>();
     out.add(actor);
+    if (out.size() >= limit) return out;
     for (Player player : actor.getWorld().getPlayers()) {
       UUID id = player.getUniqueId();
       if (!id.equals(actor.getUniqueId()) && ids.contains(id)) {
         out.add(player);
+        if (out.size() >= limit) break;
       }
     }
     return out;
@@ -265,6 +299,15 @@ public final class ZakumAceEngine implements AceEngine {
     if (value == null || value.isBlank()) return fallback;
     try {
       return Double.parseDouble(value);
+    } catch (NumberFormatException ignored) {
+      return fallback;
+    }
+  }
+
+  private static int parseInt(String value, int fallback) {
+    if (value == null || value.isBlank()) return fallback;
+    try {
+      return Integer.parseInt(value.trim());
     } catch (NumberFormatException ignored) {
       return fallback;
     }

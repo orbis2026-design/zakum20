@@ -1,7 +1,7 @@
 codeid: example
 rows: 4
 type: chest
-title: "&fExample Layout"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fExample Layout"
 commandAlias: example
 
 empty-fill:
@@ -9,7 +9,7 @@ empty-fill:
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: GRAY_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -23,17 +23,17 @@ scenes:
         slot: 10
         item: PAPER
         amount: 1
-        item-name: "&aSay hello"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fGreeting"
         item-lore:
           - "&7Basic message event."
         click-events:
           message:
-            message: "&aHello %player%!"
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7hello, %player%!"
       '2':
         slot: 12
         item: BOOK
         amount: 1
-        item-name: "&bOpen System"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fHub"
         item-lore:
           - "&7Open the main hub GUI."
         click-events:
@@ -45,7 +45,7 @@ scenes:
         slot: 14
         item: COMMAND_BLOCK
         amount: 1
-        item-name: "&eRun Command"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fCommand"
         item-lore:
           - "&7Executes a command as player."
         click-events:
@@ -56,18 +56,18 @@ scenes:
         slot: 16
         item: REDSTONE
         amount: 1
-        item-name: "&cACE Trigger"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fACE Trigger"
         item-lore:
           - "&7Fire a quick ACE script."
         click-events:
           ace-trigger:
             script:
-              - "[MESSAGE] <green>ACE test from example GUI</green>"
+              - "[MESSAGE] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>ACE test from example GUI</gray>"
       '5':
         slot: 31
         item: BARRIER
         amount: 1
-        item-name: "&cClose"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fClose"
         click-events:
           close-inventory: {}
   '1':
@@ -77,9 +77,9 @@ scenes:
         slot: 22
         item: CLOCK
         amount: 1
-        item-name: "&eScene 2"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fScene 2"
         item-lore:
           - "&7This item appears after 2 seconds."
         click-events:
           message:
-            message: "&eScene 2 active."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7scene 2 active."

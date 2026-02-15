@@ -11,10 +11,12 @@ import org.bukkit.entity.Player;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.logging.Logger;
 
@@ -43,6 +45,9 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
   private final LongAdder resolveHits;
   private final LongAdder resolveMisses;
   private final LongAdder sendCount;
+  private final LongAdder warmupRuns;
+  private final AtomicLong lastWarmupEntries;
+  private final AtomicLong lastWarmupDurationMs;
 
   public LocalizedChatPacketBuffer(
     AssetManager assets,
@@ -87,6 +92,9 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     this.resolveHits = new LongAdder();
     this.resolveMisses = new LongAdder();
     this.sendCount = new LongAdder();
+    this.warmupRuns = new LongAdder();
+    this.lastWarmupEntries = new AtomicLong();
+    this.lastWarmupDurationMs = new AtomicLong();
 
     if (localization != null && localization.templates() != null) {
       for (Map.Entry<String, Map<String, String>> entry : localization.templates().entrySet()) {
@@ -97,34 +105,31 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
 
   @Override
   public void registerTemplate(String key, String locale, String miniMessageTemplate) {
-    if (key == null || key.isBlank()) return;
-    if (locale == null || locale.isBlank()) return;
-    if (miniMessageTemplate == null || miniMessageTemplate.isBlank()) return;
-
-    String normalizedKey = key.trim();
-    String normalizedLocale = normalizeLocale(locale);
-    templates.compute(normalizedKey, (k, existing) -> {
-      Map<String, String> next = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(existing);
-      next.put(normalizedLocale, miniMessageTemplate);
-      return Map.copyOf(next);
-    });
-    preparedCache.invalidateAll();
+    if (!putTemplate(key, locale, miniMessageTemplate)) return;
+    invalidatePreparedCaches();
   }
 
   @Override
   public void registerTemplate(String key, Map<String, String> localizedTemplates) {
     if (localizedTemplates == null || localizedTemplates.isEmpty()) return;
+    boolean changed = false;
     for (Map.Entry<String, String> entry : localizedTemplates.entrySet()) {
-      registerTemplate(key, entry.getKey(), entry.getValue());
+      changed |= putTemplate(key, entry.getKey(), entry.getValue());
+    }
+    if (changed) {
+      invalidatePreparedCaches();
     }
   }
 
   @Override
   public void warmup() {
-    int prepared = 0;
+    long startNanos = System.nanoTime();
+    long prepared = 0L;
     boolean warmBedrock = bedrockRemapper != null;
-    for (String key : templates.keySet()) {
-      for (String locale : supportedLocales) {
+    for (Map.Entry<String, Map<String, String>> entry : templates.entrySet()) {
+      String key = entry.getKey();
+      Set<String> warmLocales = collectWarmupLocales(entry.getValue());
+      for (String locale : warmLocales) {
         PreparedPayload message = resolvePayload(key, normalizeLocale(locale), Map.of(), false);
         if (message.message() != PreparedMessage.EMPTY) prepared++;
         if (warmBedrock) {
@@ -133,6 +138,10 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
         }
       }
     }
+    long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
+    warmupRuns.increment();
+    lastWarmupEntries.set(prepared);
+    lastWarmupDurationMs.set(durationMs);
     logger.fine("Localized chat buffer warmed entries=" + prepared);
   }
 
@@ -199,7 +208,12 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
       sendCount.sum(),
       packetTransport.packetSends(),
       packetTransport.fallbackSends(),
-      packetTransport.sendFailures()
+      packetTransport.sendFailures(),
+      preparedJsonCache.estimatedSize(),
+      preparedPacketCache.estimatedSize(),
+      warmupRuns.sum(),
+      lastWarmupEntries.get(),
+      lastWarmupDurationMs.get()
     );
   }
 
@@ -262,6 +276,40 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
       if (value != null && !value.isBlank()) return value;
     }
     return null;
+  }
+
+  private boolean putTemplate(String key, String locale, String miniMessageTemplate) {
+    if (key == null || key.isBlank()) return false;
+    if (locale == null || locale.isBlank()) return false;
+    if (miniMessageTemplate == null || miniMessageTemplate.isBlank()) return false;
+
+    String normalizedKey = key.trim();
+    String normalizedLocale = normalizeLocale(locale);
+    templates.compute(normalizedKey, (k, existing) -> {
+      Map<String, String> next = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(existing);
+      next.put(normalizedLocale, miniMessageTemplate);
+      return Map.copyOf(next);
+    });
+    return true;
+  }
+
+  private void invalidatePreparedCaches() {
+    preparedCache.invalidateAll();
+    preparedJsonCache.invalidateAll();
+    preparedPacketCache.invalidateAll();
+  }
+
+  private Set<String> collectWarmupLocales(Map<String, String> localizedTemplates) {
+    LinkedHashSet<String> locales = new LinkedHashSet<>();
+    locales.add(defaultLocale);
+    locales.addAll(supportedLocales);
+    if (localizedTemplates != null) {
+      for (String locale : localizedTemplates.keySet()) {
+        String normalized = normalizeLocale(locale);
+        if (!normalized.isBlank()) locales.add(normalized);
+      }
+    }
+    return locales;
   }
 
   private static String applyPlaceholders(String input, Map<String, String> placeholders) {
@@ -365,7 +413,12 @@ public final class LocalizedChatPacketBuffer implements ChatPacketBuffer {
     long sends,
     long packetSends,
     long fallbackSends,
-    long packetFailures
+    long packetFailures,
+    long preparedJsonCacheSize,
+    long preparedPacketCacheSize,
+    long warmupRuns,
+    long lastWarmupEntries,
+    long lastWarmupDurationMs
   ) {}
 
   private record PreparedPayload(PreparedMessage message, String json, String cacheKey) {

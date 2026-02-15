@@ -4,30 +4,48 @@ settings:
     table-prefix: "orbis_crates_"
   
   gui:
-    title: "Global Crates"
+    title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fGlobal Crates"
     rows: 3
     fill-item: GRAY_STAINED_GLASS_PANE
 
 crates:
   vote:
-    name: "&a&lVote Crate"
+    name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fVote Crate"
     type: ROULETTE
     preview: true
     block: ENDER_CHEST
     key:
       material: TRIPWIRE_HOOK
-      name: "&aVote Key"
+      name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fVote Key"
       lore:
-        - "&7Use this at the crate area"
-        - "&7to win rewards!"
+        - "&7Use this at the crate area."
+        - "&7Tier: <gradient:#8EDCFF:#D8F4FF>Cirrus</gradient>"
       glow: true
+    rewards:
+      - weight: 80
+        messages:
+          - "&aYou cracked a Cirrus crate."
+        commands:
+          - "give %player% diamond 2"
+      - weight: 20
+        script[]:
+          - "[MESSAGE] <gold>Cirrus jackpot roll!</gold>"
+          - "[GIVE_MONEY] amount=500"
   
   rare:
-    name: "&6&lRare Crate"
+    name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fRare Crate"
     type: CSGO
     preview: true
     block: TRAPPED_CHEST
     key:
       material: BLAZE_ROD
-      name: "&6Rare Key"
+      name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fRare Key"
       glow: true
+    rewards:
+      - weight: 95
+        commands:
+          - "give %player% diamond 4"
+      - weight: 5
+        script[]:
+          - "[MESSAGE] <gradient:#9FB7FF:#FFEAA6>Zenith jackpot!</gradient>"
+          - "[COMMAND] give %player% netherite_ingot 1"

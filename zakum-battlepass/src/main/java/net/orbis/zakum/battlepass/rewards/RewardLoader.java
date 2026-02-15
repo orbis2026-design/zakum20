@@ -182,12 +182,26 @@ public final class RewardLoader {
       try { type = RewardType.valueOf(typeRaw); }
       catch (IllegalArgumentException ex) { type = RewardType.COMMAND; }
 
-      if (type == RewardType.COMMAND) {
-        List<String> cmds = r.getStringList("commands");
-        out.add(new RewardDef(type, List.copyOf(cmds)));
+      List<String> commands = r.getStringList("commands");
+      List<String> messages = listOrSingle(r, "messages", "message");
+      List<String> aceScript = listOrSingle(r, "script", "aceScript");
+
+      switch (type) {
+        case COMMAND -> out.add(new RewardDef(type, commands, List.of(), List.of()));
+        case MESSAGE -> out.add(new RewardDef(type, List.of(), messages, List.of()));
+        case ACE_SCRIPT -> out.add(new RewardDef(type, List.of(), List.of(), aceScript));
       }
     }
     return List.copyOf(out);
+  }
+
+  private static List<String> listOrSingle(ConfigurationSection section, String listKey, String scalarKey) {
+    if (section == null) return List.of();
+    List<String> values = section.getStringList(listKey);
+    if (!values.isEmpty()) return List.copyOf(values);
+    String single = section.getString(scalarKey);
+    if (single == null || single.isBlank()) return List.of();
+    return List.of(single);
   }
 
   private static void ensureDefault(Plugin plugin) {

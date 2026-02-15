@@ -1,11 +1,10 @@
 package net.orbis.zakum.pets.util;
 
-import org.bukkit.ChatColor;
+import net.orbis.zakum.api.util.BrandingText;
 
 public final class Colors {
   private Colors() {}
   public static String color(String s) {
-    if (s == null) return "";
-    return ChatColor.translateAlternateColorCodes('&', s);
+    return BrandingText.render(s);
   }
 }

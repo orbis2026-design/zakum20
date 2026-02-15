@@ -4,7 +4,7 @@ rewards:
     chance: 50.0
     display:
       material: DIAMOND
-      name: "&b2x Diamonds"
+      name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &f2x Diamonds"
     commands:
       - "give %player% diamond 2"
   
@@ -13,19 +13,21 @@ rewards:
     chance: 20.0
     display:
       material: PAPER
-      name: "&a$1000 Cash"
+      name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &f$1000 Cash"
     commands:
       - "eco give %player% 1000"
+    script[]:
+      - "[MESSAGE] <gradient:#A8FFE3:#FFF2B0>Stratus payout delivered.</gradient>"
 
   rare_sword:
     crate: rare
     chance: 5.0
     display:
       material: DIAMOND_SWORD
-      name: "&6Legendary Sword"
+      name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fLegendary Sword"
       enchanted: true
     items:
       - material: DIAMOND_SWORD
-        name: "&6Legendary Sword"
+        name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fLegendary Sword"
         enchantments:
           DAMAGE_ALL: 5

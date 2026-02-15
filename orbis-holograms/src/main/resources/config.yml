@@ -1,0 +1,17 @@
+holograms:
+  enabled: true
+  renderTickInterval: 10
+  viewDistance: 48
+  maxVisiblePerPlayer: 64
+  hideThroughWalls: false
+
+definitions:
+  spawn:
+    world: world
+    x: 0.5
+    y: 80.0
+    z: 0.5
+    lines:
+      - "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
+      - "&7Welcome to the <gradient:#38bdf8:#60a5fa>Orbis</gradient> network"
+      - "&7Ranks: <gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &8| <gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &8| <gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &8| <gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &8| <gradient:#9FB7FF:#FFEAA6>Zenith</gradient>"

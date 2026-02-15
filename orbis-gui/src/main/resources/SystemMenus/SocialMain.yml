@@ -1,14 +1,14 @@
 codeid: social.main
 rows: 5
 type: chest
-title: "&dSocial"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fSocial"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: MAGENTA_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,47 +22,47 @@ scenes:
         slot: 11
         item: PLAYER_HEAD
         amount: 1
-        item-name: "&aFriends"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fFriends"
         item-lore:
           - "&7Total: &f%friends%"
         click-events:
           message:
-            message: "&aFriends panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7friends panel will be wired."
       '2':
         slot: 13
         item: SHIELD
         amount: 1
-        item-name: "&bClans"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fClans"
         item-lore:
           - "&7Manage clan members."
         click-events:
           message:
-            message: "&bClans panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7clans panel will be wired."
       '3':
         slot: 15
         item: NETHER_STAR
         amount: 1
-        item-name: "&dAlliances"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fAlliances"
         item-lore:
           - "&7Allies: &f%allies%"
         click-events:
           message:
-            message: "&dAlliances panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7alliances panel will be wired."
       '4':
         slot: 22
         item: REDSTONE
         amount: 1
-        item-name: "&cRivals"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fRivals"
         item-lore:
           - "&7Rivals: &f%rivals%"
         click-events:
           message:
-            message: "&cRivals panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7rivals panel will be wired."
       '5':
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

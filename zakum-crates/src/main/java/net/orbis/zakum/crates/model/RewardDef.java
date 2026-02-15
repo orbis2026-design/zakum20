@@ -9,5 +9,13 @@ public record RewardDef(
   double economyAmount,
   List<String> messages,
   List<String> commands,
+  List<String> script,
   List<ItemStack> items
-) {}
+) {
+  public RewardDef {
+    messages = messages == null ? List.of() : List.copyOf(messages);
+    commands = commands == null ? List.of() : List.copyOf(commands);
+    script = script == null ? List.of() : List.copyOf(script);
+    items = items == null ? List.of() : List.copyOf(items);
+  }
+}

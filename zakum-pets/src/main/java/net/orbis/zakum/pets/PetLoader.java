@@ -8,6 +8,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.Plugin;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -36,10 +37,24 @@ public final class PetLoader {
       }
 
       int xp = Math.max(0, s.getInt("xpPerMobKill", 10));
+      List<String> summonScript = scriptList(s, "summonScript[]", "summonScript");
+      List<String> dismissScript = scriptList(s, "dismissScript[]", "dismissScript");
+      List<String> levelUpScript = scriptList(s, "levelUpScript[]", "levelUpScript");
 
-      out.put(id, new PetDef(id, name, type, mode, xp));
+      out.put(id, new PetDef(id, name, type, mode, xp, summonScript, dismissScript, levelUpScript));
     }
 
     return Map.copyOf(out);
+  }
+
+  private static List<String> scriptList(ConfigurationSection section, String arrayKey, String fallbackKey) {
+    if (section == null) return List.of();
+    List<String> out = section.getStringList(arrayKey);
+    if (!out.isEmpty()) return List.copyOf(out);
+    out = section.getStringList(fallbackKey);
+    if (!out.isEmpty()) return List.copyOf(out);
+    String single = section.getString(fallbackKey);
+    if (single == null || single.isBlank()) return List.of();
+    return List.of(single);
   }
 }

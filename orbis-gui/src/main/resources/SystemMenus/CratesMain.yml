@@ -1,14 +1,14 @@
 codeid: crates.main
 rows: 5
 type: chest
-title: "&eCrates"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fCrates"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: GRAY_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 11
         item: ENDER_CHEST
         amount: 1
-        item-name: "&aVote Crate"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fVote Crate"
         item-lore:
           - "&7Basic rewards for votes."
           - "&7Key: &aVote Key"
@@ -37,7 +37,7 @@ scenes:
         slot: 13
         item: TRAPPED_CHEST
         amount: 1
-        item-name: "&6Rare Crate"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fRare Crate"
         item-lore:
           - "&7Enhanced rewards + boosts."
           - "&7Key: &6Rare Key"
@@ -52,18 +52,18 @@ scenes:
         slot: 15
         item: PAPER
         amount: 1
-        item-name: "&bCrate Keys"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fCrate Keys"
         item-lore:
           - "&7Collect keys to open crates."
           - "&7Use &f/ocrates givekey&7 (admin)."
         click-events:
           message:
-            message: "&7Ask staff for crate keys or vote rewards."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7ask staff for crate keys or vote rewards."
       '4':
         slot: 22
         item: CHEST_MINECART
         amount: 1
-        item-name: "&bPreview Rewards"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fPreview Rewards"
         item-lore:
           - "&7View sample drops."
         click-events:
@@ -77,7 +77,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

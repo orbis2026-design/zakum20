@@ -1,6 +1,7 @@
 package net.orbis.zakum.pets.runtime;
 
 import net.orbis.zakum.api.ZakumApi;
+import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.actions.ActionEvent;
 import net.orbis.zakum.api.actions.ActionSubscription;
 import net.orbis.zakum.api.boosters.BoosterKind;
@@ -15,7 +16,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -94,13 +98,19 @@ public final class PetsRuntime {
     dirty.add(p.getUniqueId());
 
     entities.summon(p, def);
+    executeLifecycleScript(p, def, st, def.summonScript());
 
     p.sendMessage(Colors.color("&aSummoned pet: &f" + def.name()));
   }
 
   public void dismiss(Player p) {
+    PetPlayerState st = state.get(p.getUniqueId());
+    if (st != null && st.selectedPetId != null && !st.selectedPetId.isBlank()) {
+      PetDef def = defs.get(st.selectedPetId);
+      executeLifecycleScript(p, def, st, def == null ? null : def.dismissScript());
+    }
     entities.despawn(p.getUniqueId());
-    p.sendMessage("§7Pet dismissed.");
+    p.sendMessage(Colors.color("&7Pet dismissed."));
   }
 
   private void onAction(ActionEvent e) {
@@ -140,9 +150,47 @@ public final class PetsRuntime {
 
       Player p = Bukkit.getPlayer(uuid);
       if (p != null && p.isOnline()) {
-        p.sendMessage("§aYour pet reached level §f" + st.level + "§a!");
+        PetDef def = defs.get(st.selectedPetId);
+        executeLifecycleScript(p, def, st, def == null ? null : def.levelUpScript());
+        p.sendMessage(Colors.color("&aYour pet reached level &f" + st.level + "&a!"));
       }
     }
+  }
+
+
+  private void executeLifecycleScript(Player player, PetDef def, PetPlayerState st, List<String> scriptLines) {
+    if (player == null || def == null || st == null || scriptLines == null || scriptLines.isEmpty()) return;
+
+    List<String> script = new java.util.ArrayList<>(scriptLines.size());
+    for (String raw : scriptLines) {
+      if (raw == null || raw.isBlank()) continue;
+      script.add(applyLifecyclePlaceholders(raw, def, st));
+    }
+    if (script.isEmpty()) return;
+
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put("pet_id", def.id());
+    metadata.put("pet_name", def.name());
+    metadata.put("pet_level", st.level);
+    metadata.put("pet_xp", st.xp);
+    zakum.getAceEngine().executeScript(script, new AceEngine.ActionContext(player, Optional.empty(), metadata));
+  }
+
+  private static String applyLifecyclePlaceholders(String raw, PetDef def, PetPlayerState st) {
+    if (raw == null) return "";
+    String petId = def.id() == null ? "" : def.id();
+    String petName = def.name() == null ? "" : def.name();
+    String petLevel = String.valueOf(st.level);
+    String petXp = String.valueOf(st.xp);
+    return raw
+      .replace("{pet_id}", petId)
+      .replace("{pet_name}", petName)
+      .replace("{pet_level}", petLevel)
+      .replace("{pet_xp}", petXp)
+      .replace("%pet_id%", petId)
+      .replace("%pet_name%", petName)
+      .replace("%pet_level%", petLevel)
+      .replace("%pet_xp%", petXp);
   }
 
   private void loadAsync(UUID uuid) {

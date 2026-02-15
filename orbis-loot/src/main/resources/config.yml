@@ -1,0 +1,22 @@
+loot:
+  enabled: true
+  cleanupIntervalTicks: 100
+  openCooldownSeconds: 1
+  maxRewardsPerOpen: 1
+
+crates:
+  starter:
+    displayName: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fStarter Crate"
+    permission: ""
+    rewards:
+      coins_small:
+        weight: 70.0
+        actions:
+          - "[MESSAGE] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>+<green>100</green> coins</gray>"
+          - "[ACTION_BAR] <gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> <gray>starter payout</gray>"
+      coins_large:
+        weight: 30.0
+        actions:
+          - "[MESSAGE] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>+<green>500</green> coins</gray>"
+          - "[TITLE] <gradient:#9FB7FF:#FFEAA6>Zenith</gradient>|<gray>+500 coins</gray> {fadein=5 stay=25 fadeout=8}"
+          - "[BOSS_BAR] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>reward claimed</gray> {color=BLUE style=SOLID progress=1.0 duration=4}"

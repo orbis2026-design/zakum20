@@ -12,6 +12,7 @@ import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -89,6 +90,7 @@ public final class SecureCloudClient implements AutoCloseable {
   private final AtomicLong httpLastFailureAtMs;
   private final AtomicReference<String> httpLastError;
   private final MetricsMonitor metrics;
+  private final ThreadGuard threadGuard;
   private final AtomicLong lastPollAttemptMs;
   private final AtomicLong lastPollSuccessMs;
   private final AtomicInteger lastHttpStatus;
@@ -131,7 +133,8 @@ public final class SecureCloudClient implements AutoCloseable {
     ZakumSettings.Http http,
     Plugin plugin,
     Logger logger,
-    MetricsMonitor metrics
+    MetricsMonitor metrics,
+    ThreadGuard threadGuard
   ) {
     this.api = api;
     this.plugin = plugin;
@@ -153,6 +156,7 @@ public final class SecureCloudClient implements AutoCloseable {
     this.dedupePersistFile = cloud.dedupePersistFile() == null ? "cloud-dedupe.yml" : cloud.dedupePersistFile().trim();
     this.dedupePersistFlushSeconds = Math.max(5, cloud.dedupePersistFlushSeconds());
     this.metrics = metrics;
+    this.threadGuard = threadGuard;
     this.lastPollAttemptMs = new AtomicLong(0L);
     this.lastPollSuccessMs = new AtomicLong(0L);
     this.lastHttpStatus = new AtomicInteger(0);
@@ -422,6 +426,9 @@ public final class SecureCloudClient implements AutoCloseable {
 
   private void loadPersistedDedupe() {
     if (!dedupePersistEnabled || processedQueueIds == null) return;
+    if (threadGuard != null) {
+      threadGuard.checkAsync("cloud.dedupe.load");
+    }
     File file = resolveDedupeFile();
     if (file == null || !file.exists()) return;
     long now = System.currentTimeMillis();
@@ -452,6 +459,9 @@ public final class SecureCloudClient implements AutoCloseable {
 
   private void flushPersistedDedupe() {
     if (!dedupePersistEnabled || processedQueueIds == null) return;
+    if (threadGuard != null) {
+      threadGuard.checkAsync("cloud.dedupe.flush");
+    }
     File file = resolveDedupeFile();
     if (file == null) return;
     File parent = file.getParentFile();
@@ -768,6 +778,9 @@ public final class SecureCloudClient implements AutoCloseable {
   }
 
   private HttpResult execute(Request request) {
+    if (threadGuard != null) {
+      threadGuard.checkAsync("cloud.http.execute");
+    }
     okhttp3.Call call = httpClient.newCall(request);
     call.timeout().timeout(Math.max(250L, requestTimeout.toMillis()), TimeUnit.MILLISECONDS);
     try (Response response = call.execute()) {

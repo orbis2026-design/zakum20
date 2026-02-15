@@ -1,14 +1,14 @@
 codeid: network.status
 rows: 4
 type: chest
-title: "&9Network Status"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fNetwork Status"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: LIGHT_BLUE_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 11
         item: END_CRYSTAL
         amount: 1
-        item-name: "&bCloud Delivery"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fCloud Delivery"
         item-lore:
           - "&7ACK + retry status."
         click-events:
@@ -33,7 +33,7 @@ scenes:
         slot: 13
         item: REDSTONE_TORCH
         amount: 1
-        item-name: "&cPacket Culling"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fPacket Culling"
         item-lore:
           - "&7Outbound density controls."
         click-events:
@@ -44,7 +44,7 @@ scenes:
         slot: 15
         item: CLOCK
         amount: 1
-        item-name: "&ePerformance"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fPerformance"
         item-lore:
           - "&7Visual circuit breaker."
         click-events:
@@ -55,18 +55,18 @@ scenes:
         slot: 22
         item: MAP
         amount: 1
-        item-name: "&fServer Info"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fServer Info"
         item-lore:
           - "&7Server: &f%server_id%"
           - "&7TPS: &f%tps%"
         click-events:
           message:
-            message: "&7Network snapshot loaded."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7network snapshot loaded."
       '5':
         slot: 31
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

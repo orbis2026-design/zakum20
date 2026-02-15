@@ -31,18 +31,21 @@ public final class CrateRewardExecutor {
       }
     }
 
-    executeAceCommands(p, reward);
+    executeAceCommands(p, reward.commands(), reward.economyAmount(), true);
+    executeAceCommands(p, reward.script(), reward.economyAmount(), false);
 
     giveItems(p, reward.items());
   }
 
-  private void executeAceCommands(Player player, RewardDef reward) {
-    List<String> script = reward.commands().stream()
+  private void executeAceCommands(Player player, List<String> lines, double amount, boolean commandMode) {
+    if (lines == null || lines.isEmpty()) return;
+    List<String> script = lines.stream()
       .filter(cmd -> cmd != null && !cmd.isBlank())
       .map(cmd -> cmd
         .replace("{player}", player.getName())
-        .replace("{amount}", String.valueOf(reward.economyAmount())))
-      .map(cmd -> cmd.startsWith("[") ? cmd : "[COMMAND] " + cmd)
+        .replace("{uuid}", player.getUniqueId().toString())
+        .replace("{amount}", String.valueOf(amount)))
+      .map(cmd -> commandMode && !cmd.startsWith("[") ? "[COMMAND] " + cmd : cmd)
       .collect(Collectors.toList());
 
     if (script.isEmpty()) return;

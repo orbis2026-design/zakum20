@@ -1,14 +1,14 @@
 codeid: system.root
 rows: 6
 type: chest
-title: "&bOrbis &8| &fControl Hub"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fControl Hub"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: BLACK_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,18 +22,18 @@ scenes:
         slot: 4
         item: NETHER_STAR
         amount: 1
-        item-name: "&bOrbis Control Hub"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fControl Hub"
         item-lore:
           - "&7Server: &f%server_id%"
           - "&7Online: &f%online% &7| TPS: &f%tps%"
         click-events:
           message:
-            message: "&bOrbis &7hub loaded."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7hub loaded."
       '2':
         slot: 10
         item: NAME_TAG
         amount: 1
-        item-name: "&aProfile"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fProfile"
         item-lore:
           - "&7Rank: &f%rank%"
           - "&7Balance: &a$%balance%"
@@ -46,7 +46,7 @@ scenes:
         slot: 12
         item: HEART_OF_THE_SEA
         amount: 1
-        item-name: "&dSocial"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fSocial"
         item-lore:
           - "&7Friends: &f%friends%"
           - "&7Allies: &f%allies% &7| Rivals: &f%rivals%"
@@ -59,7 +59,7 @@ scenes:
         slot: 14
         item: EMERALD
         amount: 1
-        item-name: "&6Economy"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fEconomy"
         item-lore:
           - "&7Balance: &a$%balance%"
         click-events:
@@ -69,7 +69,7 @@ scenes:
         slot: 16
         item: COMPARATOR
         amount: 1
-        item-name: "&eSettings"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fSettings"
         item-lore:
           - "&7Performance + UI preferences."
         click-events:
@@ -79,7 +79,7 @@ scenes:
         slot: 20
         item: BOOK
         amount: 1
-        item-name: "&aBattlePass"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fBattlePass"
         item-lore:
           - "&7Tier progress, quests, rewards."
         click-events:
@@ -89,7 +89,7 @@ scenes:
         slot: 22
         item: CHEST
         amount: 1
-        item-name: "&eCrates"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fCrates"
         item-lore:
           - "&7Preview and open crates."
         click-events:
@@ -99,7 +99,7 @@ scenes:
         slot: 24
         item: ENCHANTED_BOOK
         amount: 1
-        item-name: "&bACE Lab"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fACE Lab"
         item-lore:
           - "&7Effects library + scripting."
         click-events:
@@ -109,7 +109,7 @@ scenes:
         slot: 29
         item: LEATHER_CHESTPLATE
         amount: 1
-        item-name: "&dCosmetics"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fCosmetics"
         item-lore:
           - "&7Pets, tags, and flair."
         click-events:
@@ -119,7 +119,7 @@ scenes:
         slot: 31
         item: MAP
         amount: 1
-        item-name: "&9Network Status"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fNetwork Status"
         item-lore:
           - "&7Cloud, packets, and metrics."
         click-events:
@@ -134,11 +134,11 @@ scenes:
           - "&7Quick tips and commands."
         click-events:
           message:
-            message: "&7Use &f/zakum status &7for ops info."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7use &f/zakum status &7for ops info."
       '12':
         slot: 49
         item: BARRIER
         amount: 1
-        item-name: "&cClose"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fClose"
         click-events:
           close-inventory: {}

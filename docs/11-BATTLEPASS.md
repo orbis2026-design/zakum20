@@ -60,7 +60,9 @@ Tier is derived from `rewards.yml` thresholds using binary search:
 Rewards live in `plugins/OrbisBattlePass/rewards.yml`.
 
 v1 reward types:
-- `COMMAND`: console command list
+- `COMMAND`: command-style ACE lines using command flow
+- `MESSAGE`: rich message lines sent to the claimer
+- `ACE_SCRIPT`: raw ACE script lines executed directly
 
 Claiming:
 - Free track is always claimable once tier reached.
@@ -131,6 +133,11 @@ Quest placeholders:
 - `%orbisbp_quest_<questId>_step%`
 - `%orbisbp_quest_<questId>_progress%`
 - `%orbisbp_quest_<questId>_required%`
+
+Reward payload keys in `rewards.yml`:
+- `commands`
+- `messages` (or single `message`)
+- `script` (or `aceScript`)
 
 
 ---

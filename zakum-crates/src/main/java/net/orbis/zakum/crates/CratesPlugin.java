@@ -6,6 +6,7 @@ import net.orbis.zakum.crates.anim.CrateAnimator;
 import net.orbis.zakum.crates.command.CratesCommand;
 import net.orbis.zakum.crates.db.CrateBlockStore;
 import net.orbis.zakum.crates.db.CratesSchema;
+import net.orbis.zakum.crates.listener.CrateBlockListener;
 import net.orbis.zakum.crates.listener.CrateGuiListener;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.crates.listener.CrateInteractListener;
@@ -55,6 +56,7 @@ public final class CratesPlugin extends JavaPlugin {
 
     store.loadAll();
 
+    getServer().getPluginManager().registerEvents(new CrateBlockListener(store), this);
     getServer().getPluginManager().registerEvents(new CrateInteractListener(registry, store, service), this);
     getServer().getPluginManager().registerEvents(new CrateGuiListener(animator), this);
 

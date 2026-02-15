@@ -1,15 +1,27 @@
 pets:
   wolf:
-    name: "&fWolf"
+    name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fWolf"
     entity: WOLF
     followMode: AI
     xpPerMobKill: 10
+    summonScript[]:
+      - "[MESSAGE] <gradient:#8EDCFF:#D8F4FF>{pet_name}</gradient> summoned."
+    dismissScript[]:
+      - "[MESSAGE] <gray>{pet_name} dismissed.</gray>"
+    levelUpScript[]:
+      - "[ACTION_BAR] <green>{pet_name} -> level {pet_level}</green>"
 
   parrot:
-    name: "&aParrot"
+    name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fParrot"
     entity: PARROT
     followMode: AI
     xpPerMobKill: 12
+    summonScript[]:
+      - "[MESSAGE] <gradient:#A8FFE3:#FFF2B0>{pet_name}</gradient> summoned."
+    dismissScript[]:
+      - "[MESSAGE] <gray>{pet_name} dismissed.</gray>"
+    levelUpScript[]:
+      - "[ACTION_BAR] <green>{pet_name} -> level {pet_level}</green>"
 
 levels:
   maxLevel: 50

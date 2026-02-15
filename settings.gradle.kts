@@ -30,3 +30,9 @@ include("orbis-hud")
 include("zakum-bridge-mythicmobs")
 include("zakum-bridge-jobs")
 include("zakum-bridge-superiorskyblock2")
+
+include("orbis-worlds")
+
+include("orbis-holograms")
+
+include("orbis-loot")

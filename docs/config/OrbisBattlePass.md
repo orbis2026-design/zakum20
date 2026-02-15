@@ -27,6 +27,12 @@ Gameplay-facing:
 - `/battlepass claim|claimall` for reward claiming
 - `/battlepass top` shows leaderboard (chat)
 
+Reward schema (`rewards.yml`):
+- `type: COMMAND|MESSAGE|ACE_SCRIPT`
+- `commands` for `COMMAND`
+- `messages` (or `message`) for `MESSAGE`
+- `script` (or `aceScript`) for `ACE_SCRIPT`
+
 
 ---
 *Development Note: Edit this module using IntelliJ IDEA with Gradle Sync enabled.*

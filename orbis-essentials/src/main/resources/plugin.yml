@@ -1,6 +1,6 @@
 name: OrbisEssentials
 main: net.orbis.orbisessentials.OrbisEssentialsPlugin
-version: 1.0.0
+version: ${version}
 api-version: "1.21"
 depend: [Zakum]
 

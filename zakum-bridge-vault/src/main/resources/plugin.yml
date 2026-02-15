@@ -1,6 +1,6 @@
 name: OrbisBridgeVault
 main: net.orbis.zakum.bridge.vault.OrbisBridgeVaultPlugin
-version: 1.0.0
+version: ${version}
 api-version: "1.21"
 depend: [Zakum]
 softdepend: [Vault]

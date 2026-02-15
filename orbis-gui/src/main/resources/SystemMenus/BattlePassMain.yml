@@ -1,14 +1,14 @@
 codeid: battlepass.main
 rows: 5
 type: chest
-title: "&aBattlePass"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fBattlePass"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: LIME_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 4
         item: EXPERIENCE_BOTTLE
         amount: 1
-        item-name: "&aOpen BattlePass"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fOpen BattlePass"
         item-lore:
           - "&7Tier progress, quests, rewards."
         click-events:
@@ -33,7 +33,7 @@ scenes:
         slot: 19
         item: BOOK
         amount: 1
-        item-name: "&fQuests"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fQuests"
         item-lore:
           - "&7Daily + weekly objectives."
         click-events:
@@ -44,7 +44,7 @@ scenes:
         slot: 21
         item: MAP
         amount: 1
-        item-name: "&bLeaderboard"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fLeaderboard"
         item-lore:
           - "&7Top BattlePass performers."
         click-events:
@@ -55,7 +55,7 @@ scenes:
         slot: 23
         item: CHEST
         amount: 1
-        item-name: "&eRewards"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fRewards"
         item-lore:
           - "&7Preview + claim tiers."
         click-events:
@@ -65,7 +65,7 @@ scenes:
         slot: 25
         item: NETHER_STAR
         amount: 1
-        item-name: "&6Premium Status"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fPremium Status"
         item-lore:
           - "&7Check premium access."
         click-events:
@@ -76,7 +76,7 @@ scenes:
         slot: 31
         item: EMERALD
         amount: 1
-        item-name: "&aClaim All"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fClaim All"
         item-lore:
           - "&7Collect available rewards."
         click-events:
@@ -87,7 +87,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

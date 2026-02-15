@@ -165,7 +165,7 @@ public final class ZakumPlugin extends JavaPlugin {
     this.sql = new SqlManager(this, async, clock, settings, metrics.registry(), threadGuard);
     this.sql.start();
 
-    var controlPlane = HttpControlPlaneClient.fromSettings(settings, async);
+    var controlPlane = HttpControlPlaneClient.fromSettings(settings, async, threadGuard);
     this.capabilityRegistry = new ServicesManagerCapabilityRegistry(Bukkit.getServicesManager(), controlPlane);
 
     this.actionBus = new SimpleActionBus();
@@ -310,7 +310,7 @@ public final class ZakumPlugin extends JavaPlugin {
     startSocialRefresh();
 
     ZakumApiProvider.set(api);
-    this.stressHarness = new StressHarnessV2(this, api, settings.operations().stress(), metricsMonitor, getLogger());
+    this.stressHarness = new StressHarnessV2(this, api, settings.operations().stress(), metricsMonitor, getLogger(), threadGuard);
     this.soakProfile = new SoakAutomationProfile(
       this,
       scheduler,
@@ -492,7 +492,7 @@ public final class ZakumPlugin extends JavaPlugin {
       return;
     }
 
-    this.cloudClient = new SecureCloudClient(api, cloud, settings.http(), this, getLogger(), metricsMonitor);
+    this.cloudClient = new SecureCloudClient(api, cloud, settings.http(), this, getLogger(), metricsMonitor, threadGuard);
     cloudClient.start();
     if (cloud.identityOnJoin()) {
       this.cloudIdentityListener = new CloudIdentityListener(api, cloudClient, cloudTabRenderer, getLogger());
@@ -1574,6 +1574,11 @@ public final class ZakumPlugin extends JavaPlugin {
       sender.sendMessage("prepared.packetSends=" + prepared.packetSends());
       sender.sendMessage("prepared.fallbackSends=" + prepared.fallbackSends());
       sender.sendMessage("prepared.packetFailures=" + prepared.packetFailures());
+      sender.sendMessage("prepared.jsonCacheSize=" + prepared.preparedJsonCacheSize());
+      sender.sendMessage("prepared.packetCacheSize=" + prepared.preparedPacketCacheSize());
+      sender.sendMessage("prepared.warmupRuns=" + prepared.warmupRuns());
+      sender.sendMessage("prepared.lastWarmupEntries=" + prepared.lastWarmupEntries());
+      sender.sendMessage("prepared.lastWarmupDurationMs=" + prepared.lastWarmupDurationMs());
       return;
     }
     sender.sendMessage("prepared.buffer=not-localized");

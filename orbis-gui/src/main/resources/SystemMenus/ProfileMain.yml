@@ -1,14 +1,14 @@
 codeid: profile.main
 rows: 5
 type: chest
-title: "&aProfile &8| &f%player%"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fProfile %player%"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: BLUE_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -31,27 +31,27 @@ scenes:
         slot: 21
         item: PAPER
         amount: 1
-        item-name: "&eStats"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fStats"
         item-lore:
           - "&7Kills, playtime, progression."
         click-events:
           message:
-            message: "&eStats panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7stats panel will be wired."
       '3':
         slot: 23
         item: NAME_TAG
         amount: 1
-        item-name: "&bTitles"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fTitles"
         item-lore:
           - "&7Manage your titles."
         click-events:
           message:
-            message: "&bTitles panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7titles panel will be wired."
       '4':
         slot: 29
         item: ARMOR_STAND
         amount: 1
-        item-name: "&dCosmetics"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fCosmetics"
         item-lore:
           - "&7Pets, tags, and flair."
         click-events:
@@ -61,7 +61,7 @@ scenes:
         slot: 31
         item: HEART_OF_THE_SEA
         amount: 1
-        item-name: "&dSocial"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fSocial"
         item-lore:
           - "&7Friends: &f%friends%"
           - "&7Allies: &f%allies% &7| Rivals: &f%rivals%"
@@ -72,7 +72,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

@@ -1,20 +1,20 @@
 pets:
   bunny:
-    name: "&fBunny"
+    name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fBunny"
     entity: RABBIT
     followMode: TELEPORT
     hat:
       material: WHITE_WOOL
-      name: "&fBunny Hat"
+      name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fBunny Hat"
     rideEntity: HORSE
 
   bee:
-    name: "&eBee"
+    name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fBee"
     entity: BEE
     followMode: TELEPORT
     hat:
       material: YELLOW_WOOL
-      name: "&eBee Hat"
+      name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fBee Hat"
     rideEntity: PIG
 
 follow:

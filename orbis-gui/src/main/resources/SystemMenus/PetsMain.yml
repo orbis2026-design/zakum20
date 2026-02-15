@@ -1,14 +1,14 @@
 codeid: pets.main
 rows: 5
 type: chest
-title: "&dPets &8| &fCompanions"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fCompanion Pets"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: PURPLE_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 11
         item: WOLF_SPAWN_EGG
         amount: 1
-        item-name: "&fWolf"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fWolf"
         item-lore:
           - "&7Summon a loyal companion."
         click-events:
@@ -33,7 +33,7 @@ scenes:
         slot: 13
         item: PARROT_SPAWN_EGG
         amount: 1
-        item-name: "&aParrot"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fParrot"
         item-lore:
           - "&7Summon a colorful companion."
         click-events:
@@ -44,7 +44,7 @@ scenes:
         slot: 15
         item: LEAD
         amount: 1
-        item-name: "&eDismiss Pet"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fDismiss Pet"
         item-lore:
           - "&7Send your pet away."
         click-events:
@@ -55,7 +55,7 @@ scenes:
         slot: 21
         item: BOOK
         amount: 1
-        item-name: "&bPet Info"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fPet Info"
         item-lore:
           - "&7Show current pet status."
         click-events:
@@ -66,7 +66,7 @@ scenes:
         slot: 23
         item: PAPER
         amount: 1
-        item-name: "&dList Pets"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fList Pets"
         item-lore:
           - "&7View available pet ids."
         click-events:
@@ -77,7 +77,7 @@ scenes:
         slot: 31
         item: RABBIT_FOOT
         amount: 1
-        item-name: "&dMini Pets"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fMini Pets"
         item-lore:
           - "&7Open mini pet controls."
         click-events:
@@ -87,7 +87,7 @@ scenes:
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: cosmetics.main

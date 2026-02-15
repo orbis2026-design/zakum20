@@ -8,9 +8,9 @@ import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.api.gui.GuiService;
 import net.orbis.zakum.api.social.SocialService;
+import net.orbis.zakum.api.util.BrandingText;
 import net.orbis.zakum.api.vault.EconomyService;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -198,7 +198,7 @@ public final class OrbisGuiService implements GuiService, Listener {
   private static String color(String raw, Player player, Map<String, String> context) {
     if (raw == null) return "";
     String out = applyPlaceholders(raw, player, context);
-    return ChatColor.translateAlternateColorCodes('&', out);
+    return BrandingText.render(out);
   }
 
   private static String applyPlaceholders(String raw, Player player, Map<String, String> context) {

@@ -71,5 +71,36 @@ public final class CrateBlockStore {
     ));
   }
 
+  public String unset(Block block) {
+    return unset(block.getWorld(), block.getX(), block.getY(), block.getZ());
+  }
+
+  public String unset(World world, int x, int y, int z) {
+    UUID worldId = world.getUID();
+    long packed = BlockKey.pack(x, y, z);
+    String removed;
+
+    synchronized (this) {
+      Map<Long, String> m = blocks.get(worldId);
+      if (m == null) return null;
+      removed = m.remove(packed);
+      if (m.isEmpty()) {
+        blocks.remove(worldId);
+      }
+    }
+
+    if (removed == null) return null;
+    if (zakum.database().state() != DatabaseState.ONLINE) return removed;
+
+    zakum.async().execute(() -> zakum.database().jdbc().update(
+      "DELETE FROM orbis_crate_blocks WHERE server_id=? AND world_uuid=? AND x=? AND y=? AND z=?",
+      serverId,
+      UuidBytes.toBytes(worldId),
+      x, y, z
+    ));
+
+    return removed;
+  }
+
   private record Row(byte[] worldUuid, int x, int y, int z, String crateId) {}
 }

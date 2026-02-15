@@ -42,6 +42,7 @@ public final class CrateLoader {
 
         List<String> msgs = listOfStrings(raw.get("messages"));
         List<String> cmds = listOfStrings(raw.get("commands"));
+        List<String> script = listOfStrings(firstNonNull(raw.get("script[]"), raw.get("script")));
 
         List<ItemStack> items = new ArrayList<>();
         Object itemsObj = raw.get("items");
@@ -55,7 +56,7 @@ public final class CrateLoader {
           }
         }
 
-        RewardDef r = new RewardDef(w, eco, List.copyOf(msgs), List.copyOf(cmds), List.copyOf(items));
+        RewardDef r = new RewardDef(w, eco, msgs, cmds, script, items);
         builder.add(r, w);
       }
 
@@ -98,5 +99,9 @@ public final class CrateLoader {
     List<String> out = new ArrayList<>();
     for (Object x : l) out.add(String.valueOf(x));
     return out;
+  }
+
+  private static Object firstNonNull(Object a, Object b) {
+    return a != null ? a : b;
   }
 }

@@ -1,9 +1,9 @@
 package net.orbis.zakum.crates.util;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import net.orbis.zakum.api.util.BrandingText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +64,7 @@ public final class ItemBuilder {
   }
 
   public static String color(String s) {
-    return ChatColor.translateAlternateColorCodes('&', s);
+    return BrandingText.render(s);
   }
 
   private static String str(Object o) {

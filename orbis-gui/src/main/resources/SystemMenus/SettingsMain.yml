@@ -1,14 +1,14 @@
 codeid: settings.main
 rows: 5
 type: chest
-title: "&eSettings"
+title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &8| &fSettings"
 
 empty-fill:
   enabled: true
   slots:
     - all
   item:
-    name: "&r"
+    name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     type: YELLOW_STAINED_GLASS_PANE
     amount: 1
     item-flags:
@@ -22,7 +22,7 @@ scenes:
         slot: 11
         item: COMPARATOR
         amount: 1
-        item-name: "&ePerf Mode: Auto"
+        item-name: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient> &fPerf Mode: Auto"
         item-lore:
           - "&7Let the system decide."
         click-events:
@@ -33,7 +33,7 @@ scenes:
         slot: 13
         item: REDSTONE_TORCH
         amount: 1
-        item-name: "&cPerf Mode: On"
+        item-name: "<gradient:#FFB3C7:#FFF0D8>Cumulus</gradient> &fPerf Mode: On"
         item-lore:
           - "&7Force low visuals."
         click-events:
@@ -44,7 +44,7 @@ scenes:
         slot: 15
         item: GLOWSTONE_DUST
         amount: 1
-        item-name: "&aPerf Mode: Off"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fPerf Mode: Off"
         item-lore:
           - "&7Force full visuals."
         click-events:
@@ -55,37 +55,37 @@ scenes:
         slot: 21
         item: PAPER
         amount: 1
-        item-name: "&fChat Settings"
+        item-name: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> &fChat Settings"
         item-lore:
           - "&7Toggle chat effects and filters."
         click-events:
           message:
-            message: "&7Chat settings panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7chat settings panel will be wired."
       '5':
         slot: 23
         item: ITEM_FRAME
         amount: 1
-        item-name: "&bVisuals"
+        item-name: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fVisuals"
         item-lore:
           - "&7Tune animations and LOD."
         click-events:
           message:
-            message: "&7Visual settings panel will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7visual settings panel will be wired."
       '6':
         slot: 22
         item: BELL
         amount: 1
-        item-name: "&aNotifications"
+        item-name: "<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> &fNotifications"
         item-lore:
           - "&7Toggle UI alerts."
         click-events:
           message:
-            message: "&7Notification settings will be wired."
+            message: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &7notification settings will be wired."
       '7':
         slot: 40
         item: ARROW
         amount: 1
-        item-name: "&bBack"
+        item-name: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> &fBack"
         click-events:
           open-gui:
             id: system.root

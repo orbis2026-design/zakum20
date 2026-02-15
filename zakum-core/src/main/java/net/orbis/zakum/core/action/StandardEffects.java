@@ -4,6 +4,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.capability.ZakumCapabilities;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
+import net.orbis.zakum.api.util.BrandingText;
 import net.orbis.zakum.core.bridge.DecentHologramsBridge;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.VisualCircuitState;
@@ -16,6 +17,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.WeatherType;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -31,6 +33,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.List;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -76,6 +79,11 @@ public final class StandardEffects {
     registerBroadcast(engine);
     registerLightning(engine);
     registerGamemode(engine);
+    registerSetFly(engine);
+    registerSetGlowing(engine);
+    registerClearInventory(engine);
+    registerSetTime(engine);
+    registerSetWeather(engine);
     registerSetModel(engine);
     registerBossBar(engine);
     registerGuiEffects(engine);
@@ -163,7 +171,7 @@ public final class StandardEffects {
 
       for (Entity target : targets) {
         if (!(target instanceof Player player)) continue;
-        String finalMessage = placeholders(message, ctx, target);
+        String finalMessage = BrandingText.render(placeholders(message, ctx, target));
         runAtEntity(target, () -> player.sendActionBar(finalMessage));
       }
     });
@@ -210,8 +218,8 @@ public final class StandardEffects {
 
       for (Entity target : targets) {
         if (!(target instanceof Player player)) continue;
-        String t = placeholders(title, ctx, target);
-        String s = placeholders(subtitle, ctx, target);
+        String t = BrandingText.render(placeholders(title, ctx, target));
+        String s = BrandingText.render(placeholders(subtitle, ctx, target));
         runAtEntity(target, () -> player.sendTitle(t, s, fadeIn, stay, fadeOut));
       }
     });
@@ -538,6 +546,126 @@ public final class StandardEffects {
     });
   }
 
+  private static void registerSetFly(AceEngine engine) {
+    engine.registerEffect("SET_FLY", (ctx, targets, params) -> {
+      String rawValue = firstNonBlank(params.get("enabled"), params.get("fly"), params.get("value"), raw(params));
+      boolean enabled = parseBooleanValue(rawValue, true);
+      String rawFlying = firstNonBlank(params.get("flying"), params.get("set_flying"));
+      boolean flying = parseBooleanValue(rawFlying, enabled);
+
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        runAtEntity(player, () -> {
+          player.setAllowFlight(enabled);
+          if (!enabled) {
+            player.setFlying(false);
+          } else if (flying) {
+            player.setFlying(true);
+          }
+        });
+      }
+    });
+  }
+
+  private static void registerSetGlowing(AceEngine engine) {
+    engine.registerEffect("SET_GLOWING", (ctx, targets, params) -> {
+      String rawValue = firstNonBlank(params.get("enabled"), params.get("glowing"), params.get("value"), raw(params));
+      boolean glowing = parseBooleanValue(rawValue, true);
+      for (Entity target : targets) {
+        runAtEntity(target, () -> target.setGlowing(glowing));
+      }
+    });
+  }
+
+  private static void registerClearInventory(AceEngine engine) {
+    engine.registerEffect("CLEAR_INVENTORY", (ctx, targets, params) -> {
+      boolean clearEnderChest = boolParam(params, "enderchest", boolParam(params, "ender_chest", false));
+      for (Entity target : targets) {
+        if (!(target instanceof Player player)) continue;
+        runAtEntity(player, () -> {
+          player.getInventory().clear();
+          player.getInventory().setArmorContents(new ItemStack[4]);
+          player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+          if (clearEnderChest) {
+            player.getEnderChest().clear();
+          }
+        });
+      }
+    });
+  }
+
+  private static void registerSetTime(AceEngine engine) {
+    engine.registerEffect("SET_TIME", (ctx, targets, params) -> {
+      String rawValue = firstNonBlank(params.get("time"), params.get("value"), raw(params));
+      long parsed = parseTimeTicks(rawValue);
+      if (parsed < 0L) return;
+      long absoluteTicks = Math.floorMod(parsed, 24000L);
+      boolean relative = boolParam(params, "relative", false);
+
+      for (Entity target : targets) {
+        runAtEntity(target, () -> {
+          long next = relative ? Math.floorMod(target.getWorld().getTime() + absoluteTicks, 24000L) : absoluteTicks;
+          target.getWorld().setTime(next);
+        });
+      }
+    });
+  }
+
+  private static void registerSetWeather(AceEngine engine) {
+    engine.registerEffect("SET_WEATHER", (ctx, targets, params) -> {
+      String modeRaw = firstNonBlank(params.get("weather"), params.get("value"), raw(params));
+      WeatherMode mode = parseWeatherMode(modeRaw);
+      if (mode == null) return;
+
+      String scope = firstNonBlank(params.get("scope"), params.get("target"), params.get("apply"));
+      boolean playerScope = boolParam(params, "player", false)
+        || (scope != null && (scope.equalsIgnoreCase("player") || scope.equalsIgnoreCase("personal")));
+      boolean worldScope = boolParam(params, "world", false)
+        || scope == null
+        || scope.isBlank()
+        || scope.equalsIgnoreCase("world")
+        || scope.equalsIgnoreCase("global")
+        || scope.equalsIgnoreCase("both");
+
+      int seconds = Math.max(1, intParam(params, "duration", intParam(params, "seconds", 300)));
+      int durationTicks = Math.max(20, seconds * 20);
+      var worldVisited = new HashSet<UUID>();
+
+      for (Entity target : targets) {
+        runAtEntity(target, () -> {
+          if (playerScope && target instanceof Player player) {
+            if (mode == WeatherMode.CLEAR) {
+              player.resetPlayerWeather();
+            } else {
+              player.setPlayerWeather(WeatherType.DOWNFALL);
+            }
+          }
+
+          if (!worldScope) return;
+          var world = target.getWorld();
+          if (world == null || !worldVisited.add(world.getUID())) return;
+
+          switch (mode) {
+            case CLEAR -> {
+              world.setStorm(false);
+              world.setThundering(false);
+            }
+            case RAIN -> {
+              world.setStorm(true);
+              world.setThundering(false);
+            }
+            case THUNDER -> {
+              world.setStorm(true);
+              world.setThundering(true);
+            }
+          }
+          world.setWeatherDuration(durationTicks);
+          world.setThunderDuration(durationTicks);
+        });
+      }
+    });
+  }
+
   private static void registerSetModel(AceEngine engine) {
     engine.registerEffect("SET_MODEL", (ctx, targets, params) -> {
       String modelId = firstNonBlank(params.get("id"), params.get("model"), raw(params));
@@ -565,7 +693,7 @@ public final class StandardEffects {
 
       for (Entity target : targets) {
         if (!(target instanceof Player player)) continue;
-        String text = placeholders(raw, ctx, target);
+        String text = BrandingText.render(placeholders(raw, ctx, target));
         runAtEntity(player, () -> {
           BossBar existing = ACTIVE_BOSS_BARS.remove(player.getUniqueId());
           if (existing != null) existing.removeAll();
@@ -765,6 +893,46 @@ public final class StandardEffects {
     return value.equalsIgnoreCase("true") || value.equalsIgnoreCase("yes") || value.equalsIgnoreCase("1");
   }
 
+  private static boolean parseBooleanValue(String value, boolean fallback) {
+    if (value == null || value.isBlank()) return fallback;
+    String normalized = value.trim().toLowerCase(Locale.ROOT);
+    return switch (normalized) {
+      case "true", "yes", "y", "on", "1", "enable", "enabled" -> true;
+      case "false", "no", "n", "off", "0", "disable", "disabled" -> false;
+      default -> fallback;
+    };
+  }
+
+  private static long parseTimeTicks(String raw) {
+    if (raw == null || raw.isBlank()) return -1L;
+    String value = raw.trim().toLowerCase(Locale.ROOT);
+    return switch (value) {
+      case "day", "noon" -> 6000L;
+      case "sunrise" -> 0L;
+      case "sunset" -> 12000L;
+      case "night" -> 13000L;
+      case "midnight" -> 18000L;
+      default -> {
+        try {
+          yield Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+          yield -1L;
+        }
+      }
+    };
+  }
+
+  private static WeatherMode parseWeatherMode(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    String value = raw.trim().toLowerCase(Locale.ROOT);
+    return switch (value) {
+      case "clear", "sun", "sunny" -> WeatherMode.CLEAR;
+      case "rain", "storm" -> WeatherMode.RAIN;
+      case "thunder", "thunderstorm" -> WeatherMode.THUNDER;
+      default -> null;
+    };
+  }
+
   private static BarColor parseBarColor(String value) {
     if (value == null || value.isBlank()) return BarColor.BLUE;
     try {
@@ -960,5 +1128,11 @@ public final class StandardEffects {
   private static String sanitizeHologramId(String value) {
     if (value == null || value.isBlank()) return "zakum-" + UUID.randomUUID();
     return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
+  }
+
+  private enum WeatherMode {
+    CLEAR,
+    RAIN,
+    THUNDER
   }
 }

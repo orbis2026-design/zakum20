@@ -5,6 +5,7 @@ import net.orbis.zakum.crates.CrateRegistry;
 import net.orbis.zakum.crates.CrateService;
 import net.orbis.zakum.crates.db.CrateBlockStore;
 import net.orbis.zakum.crates.model.CrateDef;
+import net.orbis.zakum.crates.util.ItemBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -12,13 +13,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-
 public final class CratesCommand implements CommandExecutor {
 
   private final Plugin plugin;
   private final CrateBlockStore store;
   private final CrateService service;
-
   private final CrateRegistry registry;
 
   public CratesCommand(Plugin plugin, CrateRegistry registry, CrateBlockStore store, CrateService service) {
@@ -31,7 +30,8 @@ public final class CratesCommand implements CommandExecutor {
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     if (args.length == 0) {
-      sender.sendMessage("§b/ocrates§7 open <crateId> | setblock <crateId> | givekey <player> <crateId> [amt] | reload");
+      sender.sendMessage(ItemBuilder.color(
+        "&b/ocrates &7open <crateId> | setblock <crateId> | unsetblock | givekey <player> <crateId> [amt] | reload"));
       return true;
     }
 
@@ -39,7 +39,7 @@ public final class CratesCommand implements CommandExecutor {
 
     if (sub.equals("reload")) {
       if (!sender.hasPermission("orbis.crates.admin")) {
-        sender.sendMessage("§cNo permission.");
+        sender.sendMessage(ItemBuilder.color("&cNo permission."));
         return true;
       }
 
@@ -47,23 +47,23 @@ public final class CratesCommand implements CommandExecutor {
       registry.set(CrateLoader.load(plugin));
       store.loadAll();
 
-      sender.sendMessage("§aReloaded crates. count=" + registry.size());
+      sender.sendMessage(ItemBuilder.color("&aReloaded crates. count=&f" + registry.size()));
       return true;
     }
 
     if (sub.equals("open")) {
       if (!(sender instanceof Player p)) {
-        sender.sendMessage("§cPlayers only.");
+        sender.sendMessage(ItemBuilder.color("&cPlayers only."));
         return true;
       }
       if (args.length < 2) {
-        sender.sendMessage("§cUsage: /ocrates open <crateId>");
+        sender.sendMessage(ItemBuilder.color("&cUsage: /ocrates open <crateId>"));
         return true;
       }
 
       CrateDef def = registry.get(args[1]);
       if (def == null) {
-        p.sendMessage("§cUnknown crate.");
+        p.sendMessage(ItemBuilder.color("&cUnknown crate."));
         return true;
       }
 
@@ -73,61 +73,90 @@ public final class CratesCommand implements CommandExecutor {
 
     if (sub.equals("setblock")) {
       if (!(sender instanceof Player p)) {
-        sender.sendMessage("§cPlayers only.");
+        sender.sendMessage(ItemBuilder.color("&cPlayers only."));
         return true;
       }
       if (!sender.hasPermission("orbis.crates.admin")) {
-        sender.sendMessage("§cNo permission.");
+        sender.sendMessage(ItemBuilder.color("&cNo permission."));
         return true;
       }
       if (args.length < 2) {
-        p.sendMessage("§cUsage: /ocrates setblock <crateId>");
+        p.sendMessage(ItemBuilder.color("&cUsage: /ocrates setblock <crateId>"));
         return true;
       }
 
       String crateId = args[1];
       CrateDef def = registry.get(crateId);
       if (def == null) {
-        p.sendMessage("§cUnknown crate.");
+        p.sendMessage(ItemBuilder.color("&cUnknown crate."));
         return true;
       }
 
       var b = p.getTargetBlockExact(5);
       if (b == null) {
-        p.sendMessage("§cLook at a block within 5 blocks.");
+        p.sendMessage(ItemBuilder.color("&cLook at a block within 5 blocks."));
         return true;
       }
 
       store.set(b, crateId);
-      p.sendMessage("§aSet crate block for §f" + crateId);
+      p.sendMessage(ItemBuilder.color("&aSet crate block for &f" + crateId + "&a."));
+      return true;
+    }
+
+    if (sub.equals("unsetblock")) {
+      if (!(sender instanceof Player p)) {
+        sender.sendMessage(ItemBuilder.color("&cPlayers only."));
+        return true;
+      }
+      if (!sender.hasPermission("orbis.crates.admin")) {
+        sender.sendMessage(ItemBuilder.color("&cNo permission."));
+        return true;
+      }
+
+      var b = p.getTargetBlockExact(5);
+      if (b == null) {
+        p.sendMessage(ItemBuilder.color("&cLook at a block within 5 blocks."));
+        return true;
+      }
+
+      String removed = store.unset(b);
+      if (removed == null) {
+        p.sendMessage(ItemBuilder.color("&cThat block is not a crate block."));
+        return true;
+      }
+      p.sendMessage(ItemBuilder.color("&aRemoved crate block mapping for &f" + removed + "&a."));
       return true;
     }
 
     if (sub.equals("givekey")) {
       if (!sender.hasPermission("orbis.crates.admin")) {
-        sender.sendMessage("§cNo permission.");
+        sender.sendMessage(ItemBuilder.color("&cNo permission."));
         return true;
       }
       if (args.length < 3) {
-        sender.sendMessage("§cUsage: /ocrates givekey <player> <crateId> [amt]");
+        sender.sendMessage(ItemBuilder.color("&cUsage: /ocrates givekey <player> <crateId> [amt]"));
         return true;
       }
 
       Player target = Bukkit.getPlayerExact(args[1]);
       if (target == null) {
-        sender.sendMessage("§cPlayer not online.");
+        sender.sendMessage(ItemBuilder.color("&cPlayer not online."));
         return true;
       }
 
       CrateDef def = registry.get(args[2]);
       if (def == null) {
-        sender.sendMessage("§cUnknown crate.");
+        sender.sendMessage(ItemBuilder.color("&cUnknown crate."));
         return true;
       }
 
       int amt = 1;
       if (args.length >= 4) {
-        try { amt = Math.max(1, Integer.parseInt(args[3])); } catch (Exception ignored) {}
+        try {
+          amt = Math.max(1, Integer.parseInt(args[3]));
+        } catch (Exception ignored) {
+          amt = 1;
+        }
       }
 
       var key = def.keyItem().clone();
@@ -135,14 +164,17 @@ public final class CratesCommand implements CommandExecutor {
 
       var leftover = target.getInventory().addItem(key);
       if (!leftover.isEmpty()) {
-        for (var it : leftover.values()) target.getWorld().dropItemNaturally(target.getLocation(), it);
+        for (var it : leftover.values()) {
+          target.getWorld().dropItemNaturally(target.getLocation(), it);
+        }
       }
 
-      sender.sendMessage("§aGave " + amt + " key(s) for " + def.id() + " to " + target.getName());
+      sender.sendMessage(ItemBuilder.color(
+        "&aGave &f" + amt + "&a key(s) for &f" + def.id() + "&a to &f" + target.getName() + "&a."));
       return true;
     }
 
-    sender.sendMessage("§cUnknown subcommand.");
+    sender.sendMessage(ItemBuilder.color("&cUnknown subcommand."));
     return true;
   }
 }

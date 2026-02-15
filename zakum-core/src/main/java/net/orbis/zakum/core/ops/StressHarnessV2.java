@@ -7,6 +7,7 @@ import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -45,6 +46,7 @@ public final class StressHarnessV2 implements AutoCloseable {
   private final ZakumSettings.Operations.Stress cfg;
   private final MetricsMonitor metrics;
   private final Logger logger;
+  private final ThreadGuard threadGuard;
   private final ZakumSettings.Operations.StressReport reportCfg;
 
   private final List<Scenario> baseScenarios;
@@ -80,7 +82,8 @@ public final class StressHarnessV2 implements AutoCloseable {
     ZakumApi api,
     ZakumSettings.Operations.Stress cfg,
     MetricsMonitor metrics,
-    Logger logger
+    Logger logger,
+    ThreadGuard threadGuard
   ) {
     this.plugin = Objects.requireNonNull(plugin, "plugin");
     this.api = Objects.requireNonNull(api, "api");
@@ -88,6 +91,7 @@ public final class StressHarnessV2 implements AutoCloseable {
     this.cfg = Objects.requireNonNull(cfg, "cfg");
     this.metrics = metrics;
     this.logger = logger;
+    this.threadGuard = threadGuard;
     this.reportCfg = cfg.report();
     this.baseScenarios = buildScenarios(cfg);
     this.scenarioCounts = new ConcurrentHashMap<>();
@@ -222,6 +226,9 @@ public final class StressHarnessV2 implements AutoCloseable {
   public ReportResult writeReport(String label) {
     if (reportCfg == null || !reportCfg.enabled()) {
       return new ReportResult(false, null, "Stress reporting is disabled.");
+    }
+    if (threadGuard != null) {
+      threadGuard.checkAsync("stress.report.write");
     }
 
     File folder = resolveReportFolder();
@@ -601,8 +608,11 @@ public final class StressHarnessV2 implements AutoCloseable {
     return new File(plugin.getDataFolder(), folderName);
   }
 
-  private static void pruneReports(File folder, int keep) {
+  private void pruneReports(File folder, int keep) {
     if (folder == null || keep <= 0) return;
+    if (threadGuard != null) {
+      threadGuard.checkAsync("stress.report.prune");
+    }
     File[] files = folder.listFiles((dir, name) -> name != null && name.startsWith("stress-report-") && name.endsWith(".yml"));
     if (files == null || files.length <= keep) return;
     java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));

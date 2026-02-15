@@ -3,11 +3,12 @@ plugins {
 }
 
 dependencies {
+  compileOnly(libs.annotations)
   compileOnly(project(":zakum-api"))
   compileOnly(project(":zakum-core"))
-  compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+  compileOnly(libs.paper.api)
 }
 
-java {
-  toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+tasks.processResources {
+  filesMatching("plugin.yml") { expand("version" to project.version) }
 }

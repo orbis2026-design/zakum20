@@ -1,0 +1,17 @@
+name: OrbisHolograms
+version: ${version}
+main: net.orbis.orbisholograms.OrbisHologramsPlugin
+api-version: "1.21"
+author: Orbis Network
+description: Display-entity hologram runtime for Orbis.
+depend: [Zakum]
+commands:
+  orbishologram:
+    description: Orbis holograms control surface
+    usage: /orbishologram <status|reload>
+    aliases: [oholo]
+permissions:
+  orbisholograms.admin:
+    default: op
+  orbisholograms.reload:
+    default: op

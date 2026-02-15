@@ -333,13 +333,23 @@ chat:
     warmupOnStart: true
     templates:
       battlepass_level_up:
-        en_us: "<gradient:<primary>:<secondary>>:logo: BattlePass</gradient> <gray>Tier <aqua>%tier%</aqua> unlocked <gray>(%points% pts)"
+        en_us: "<gradient:#38bdf8:#60a5fa>:logo: Orbis BattlePass</gradient> <gray>Tier <aqua>%tier%</aqua> unlocked <gray>(%points% pts)"
       battlepass_points_gain:
-        en_us: "<gray>+<aqua>%points%</aqua> BattlePass points"
+        en_us: "<gradient:#8EDCFF:#D8F4FF>Cirrus</gradient> <gray>+<aqua>%points%</aqua> BattlePass points"
+      battlepass_points_gain_title:
+        en_us: "<gradient:#9FB7FF:#FFEAA6>Zenith</gradient>|<gray>+%points% BattlePass points</gray>"
+      battlepass_points_gain_bossbar:
+        en_us: "<gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>Progress +%points%</gray>"
+    # Examples for TITLE/BOSS_BAR ACE scripts using Orbis gradients.
+    scriptExamples:
+      title:
+        - "[TITLE] <gradient:#38bdf8:#60a5fa>Orbis</gradient>|<gradient:#A8FFE3:#FFF2B0>Stratus</gradient> <gray>event live</gray> {fadein=8 stay=30 fadeout=8}"
+      bossbar:
+        - "[BOSS_BAR] <gradient:#38bdf8:#60a5fa>Orbis</gradient> <gray>network event active</gray> {color=BLUE style=SEGMENTED_10 progress=1.0 duration=6}"
   bedrock:
     enabled: true
     fallbackGlyphs:
-      ":logo:": "[ORBIS]"
+      ":logo:": "[Orbis]"
       ":coin:": "$"
       ":check:": "OK"
 

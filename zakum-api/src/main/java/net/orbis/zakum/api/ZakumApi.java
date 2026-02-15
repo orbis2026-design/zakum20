@@ -7,6 +7,8 @@ import net.orbis.zakum.api.boosters.BoosterService;
 import net.orbis.zakum.api.bridge.BridgeManager;
 import net.orbis.zakum.api.capability.Capability;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
+import net.orbis.zakum.api.capability.ZakumCapabilities;
+import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.db.ZakumDatabase;
 import net.orbis.zakum.api.entitlements.EntitlementService;
@@ -80,6 +82,13 @@ public interface ZakumApi {
    */
   default <T> Optional<T> capability(Capability<T> capability) {
     return capabilities().get(capability);
+  }
+
+  /**
+   * Optional localized/pre-serialized chat buffer capability.
+   */
+  default Optional<ChatPacketBuffer> chatBuffer() {
+    return capability(ZakumCapabilities.CHAT_BUFFER);
   }
 
   /**

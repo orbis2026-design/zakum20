@@ -6,9 +6,10 @@ hud:
 
 profiles:
   default:
-    title: "&b&lORBIS"
+    title: "<gradient:#38bdf8:#60a5fa>Orbis</gradient>"
     lines:
       - "&7Player: &f%player%"
+      - "&7Rank: %rank%"
       - "&7World: &b%world%"
       - "&7Online: &a%online%"
       - "&7Ping: &e%ping%ms"
@@ -17,8 +18,9 @@ profiles:
       - "&7Server: &b%server_id%"
       - "&7UTC: &f%time%"
   compact:
-    title: "&3&lORBIS"
+    title: "<gradient:#D3B6FF:#6FA8FF>Nimbus</gradient> &fHUD"
     lines:
+      - "%rank% &8| &f%player%"
       - "&f%player% &7| &b%world%"
       - "&a%online% online &7| &e%ping%ms"
       - "&7%time% UTC"

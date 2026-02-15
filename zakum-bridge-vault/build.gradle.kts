@@ -3,14 +3,18 @@ plugins {
 }
 
 dependencies {
+  compileOnly(libs.annotations)
   compileOnly(project(":zakum-api"))
   compileOnly(project(":zakum-core"))
-  compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+  compileOnly(libs.paper.api)
 
   // Soft dependency (present at runtime only when installed)
-  compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+  compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
+    exclude(group = "org.bukkit", module = "bukkit")
+    exclude(group = "org.spigotmc", module = "spigot-api")
+  }
 }
 
-java {
-  toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+tasks.processResources {
+  filesMatching("plugin.yml") { expand("version" to project.version) }
 }
