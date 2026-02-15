@@ -333,7 +333,68 @@ Archived to: `.github/automation/archive/`
 2. Wait for midnight UTC reset
 3. Or manually trigger with `force_assign: true`
 
-### Tasks Stuck
+### Tasks Stuck in 'assigned' Status
+
+Tasks may become stuck in 'assigned' status if workflow dispatch fails (e.g., HTTP 422 errors due to incorrect parameters).
+
+**Common causes:**
+- Workflow dispatch HTTP 422 error (invalid parameters)
+- GitHub Actions service outage
+- Network connectivity issues
+- Rate limiting
+
+**Solutions:**
+
+1. **Use the admin reset utility** (Recommended):
+   ```bash
+   # Interactive mode - shows stuck tasks and asks for confirmation
+   ./tools/admin-reset-tasks.sh
+   
+   # Auto mode - resets all stuck tasks without confirmation
+   ./tools/admin-reset-tasks.sh --auto
+   
+   # Reset specific task(s)
+   ./tools/admin-reset-tasks.sh data-001 data-002
+   ```
+   
+   The script will:
+   - Create a backup of TASK_REGISTRY.json
+   - Reset specified or all 'assigned' tasks to 'ready' status
+   - Provide git commands for committing changes
+
+2. **Manual reset** (Alternative):
+   - Edit TASK_REGISTRY.json
+   - Find tasks with `"status": "assigned"`
+   - Change to `"status": "ready"`
+   - Remove the `"assignedAt"` field
+   - Commit and push changes
+
+3. **Check workflow logs**:
+   - Go to Actions tab
+   - Check 00-manager-orchestrator workflow logs
+   - Look for workflow dispatch errors
+   - Fix any configuration issues
+
+4. **Re-run failed workflows**:
+   - After fixing issues, tasks will be picked up in next orchestrator run
+   - Or manually trigger the orchestrator with `workflow_dispatch`
+
+### Workflow Dispatch HTTP 422 Errors
+
+HTTP 422 errors typically indicate invalid workflow parameters.
+
+**For 06-worker-testing.yml errors:**
+- Ensure only `task_id` and optionally `test_scope` are passed
+- Do not pass `task_json` parameter (not supported by this workflow)
+- The orchestrator has been fixed to handle this correctly
+
+**General debugging:**
+1. Check workflow definition in `.github/workflows/`
+2. Verify `workflow_dispatch` inputs match what's being passed
+3. Review orchestrator logs for exact error messages
+4. Check GitHub Status page for API issues
+
+### Tasks Stuck (General)
 
 1. Check Scheduler workflow output
 2. Look for stuck task reports
@@ -427,6 +488,76 @@ Edit `03-quality-gates.yml`:
 - name: Custom gate
   run: |
     ./gradlew customTask --no-daemon
+```
+
+## Administrative Tools
+
+### Task Reset Utility
+
+The `admin-reset-tasks.sh` script helps recover from stuck tasks.
+
+**Location:** `tools/admin-reset-tasks.sh`
+
+**Use cases:**
+- Tasks stuck in 'assigned' status due to workflow dispatch failures
+- HTTP 422 errors during task assignment
+- GitHub Actions service disruptions
+- Need to retry failed task assignments
+
+**Usage:**
+
+```bash
+# Interactive mode (recommended for manual use)
+./tools/admin-reset-tasks.sh
+
+# Automatic mode (for scripts/automation)
+./tools/admin-reset-tasks.sh --auto
+
+# Reset specific tasks
+./tools/admin-reset-tasks.sh data-001
+./tools/admin-reset-tasks.sh data-001 data-002
+
+# Show help
+./tools/admin-reset-tasks.sh --help
+```
+
+**Features:**
+- Automatic backup before changes
+- Interactive confirmation (unless --auto)
+- Support for resetting specific tasks or all stuck tasks
+- Colorized output for better readability
+- Validation of task status before reset
+
+**Example workflow:**
+
+1. Identify stuck tasks:
+   ```bash
+   ./tools/admin-reset-tasks.sh
+   ```
+   
+2. Review the list of stuck tasks
+
+3. Confirm reset (or press Ctrl+C to cancel)
+
+4. The script creates a backup and resets tasks
+
+5. Review changes:
+   ```bash
+   git diff TASK_REGISTRY.json
+   ```
+
+6. Commit and push:
+   ```bash
+   git add TASK_REGISTRY.json
+   git commit -m "chore: reset stuck tasks"
+   git push origin master
+   ```
+
+**Recovery from errors:**
+
+If you need to restore the backup:
+```bash
+cp TASK_REGISTRY.json.backup-YYYYMMDD-HHMMSS TASK_REGISTRY.json
 ```
 
 ## Security
