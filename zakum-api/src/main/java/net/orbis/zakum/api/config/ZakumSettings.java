@@ -124,12 +124,21 @@ public record ZakumSettings(
   }
 
   public record Cache(
-    Defaults defaults
+    Defaults defaults,
+    Burst burst
   ) {
     public record Defaults(
       long maximumSize,
       long expireAfterWriteSeconds,
       long expireAfterAccessSeconds
+    ) {}
+
+    public record Burst(
+      boolean enabled,
+      String redisUri,
+      String keyPrefix,
+      long defaultTtlSeconds,
+      long maximumLocalEntries
     ) {}
   }
 
@@ -178,7 +187,8 @@ public record ZakumSettings(
     CircuitBreaker circuitBreaker,
     Stress stress,
     ThreadGuard threadGuard,
-    Async async
+    Async async,
+    StartupValidator startupValidator
   ) {
     public record CircuitBreaker(
       boolean enabled,
@@ -249,6 +259,19 @@ public record ZakumSettings(
       int maxQueue,
       boolean callerRunsOffMainThread
     ) {}
+
+    public record StartupValidator(
+      boolean enabled,
+      boolean strictMode,
+      int initialDelayTicks,
+      Set<String> requiredPlugins,
+      Set<String> requiredCapabilities
+    ) {
+      public StartupValidator {
+        requiredPlugins = requiredPlugins == null ? Set.of() : Set.copyOf(requiredPlugins);
+        requiredCapabilities = requiredCapabilities == null ? Set.of() : Set.copyOf(requiredCapabilities);
+      }
+    }
   }
 
   public record Economy(

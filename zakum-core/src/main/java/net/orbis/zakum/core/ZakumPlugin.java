@@ -7,6 +7,7 @@ import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
 import net.orbis.zakum.api.action.AceEngine;
 import net.orbis.zakum.api.bridge.BridgeManager;
+import net.orbis.zakum.api.cache.BurstCacheService;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
@@ -29,6 +30,7 @@ import net.orbis.zakum.core.anticheat.GrimFlagBridge;
 import net.orbis.zakum.core.asset.InMemoryAssetManager;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.bridge.SimpleBridgeManager;
+import net.orbis.zakum.core.cache.RedisBurstCacheService;
 import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.concurrent.EarlySchedulerRuntime;
 import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
@@ -42,6 +44,7 @@ import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.ops.StressHarnessV2;
+import net.orbis.zakum.core.ops.ModuleStartupValidator;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
@@ -104,6 +107,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private GuiBridge guiBridge;
   private ThreadGuard threadGuard;
   private MongoDataStore dataStore;
+  private BurstCacheService burstCache;
   private PlayerJoinListener playerJoinListener;
   private ProfileProvider profileProvider;
   private SecureCloudClient cloudClient;
@@ -126,6 +130,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private PacketCullingKernel packetCullingKernel;
   private VisualCircuitBreaker visualCircuitBreaker;
   private StressHarnessV2 stressHarness;
+  private ModuleStartupValidator moduleStartupValidator;
 
   private MovementSampler movementSampler;
 
@@ -281,6 +286,10 @@ public final class ZakumPlugin extends JavaPlugin {
       this.playerJoinListener = new PlayerJoinListener(scheduler, dataStore, cloudTabRenderer, profileProvider);
       getServer().getPluginManager().registerEvents(playerJoinListener, this);
     }
+    this.burstCache = createBurstCacheService();
+    if (burstCache != null) {
+      sm.register(BurstCacheService.class, burstCache, this, ServicePriority.Highest);
+    }
     long socialTtl = settings.cache().defaults().expireAfterAccessSeconds();
     if (socialTtl <= 0L) socialTtl = 300L;
     this.socialService = new CaffeineSocialService(
@@ -297,6 +306,15 @@ public final class ZakumPlugin extends JavaPlugin {
     this.stressHarness = new StressHarnessV2(this, api, settings.operations().stress(), metricsMonitor, getLogger());
     startCloudPolling();
     startGrimBridge();
+    this.moduleStartupValidator = new ModuleStartupValidator(
+      this,
+      settings,
+      capabilityRegistry,
+      scheduler,
+      metricsMonitor,
+      getLogger()
+    );
+    moduleStartupValidator.start();
 
     registerCoreActionEmitters(clock);
 
@@ -321,6 +339,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (guiBridge != null) sm.unregister(GuiBridge.class, guiBridge);
     if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
     if (dataStore != null) sm.unregister(DataStore.class, dataStore);
+    if (burstCache != null) sm.unregister(BurstCacheService.class, burstCache);
     if (socialService != null) sm.unregister(SocialService.class, socialService);
     if (chatPacketBuffer != null) sm.unregister(ChatPacketBuffer.class, chatPacketBuffer);
     if (visualModeService != null) sm.unregister(PlayerVisualModeService.class, visualModeService);
@@ -383,6 +402,10 @@ public final class ZakumPlugin extends JavaPlugin {
       try { stressHarness.close(); } catch (Throwable ignored) {}
       stressHarness = null;
     }
+    if (moduleStartupValidator != null) {
+      moduleStartupValidator.stop();
+      moduleStartupValidator = null;
+    }
 
     if (metrics != null) metrics.stop();
 
@@ -390,6 +413,12 @@ public final class ZakumPlugin extends JavaPlugin {
     if (dataStore != null) {
       dataStore.close();
       dataStore = null;
+    }
+    if (burstCache instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception ignored) {}
+      burstCache = null;
     }
     if (scheduler != null) scheduler.shutdown();
 
@@ -528,6 +557,37 @@ public final class ZakumPlugin extends JavaPlugin {
     }
   }
 
+  private BurstCacheService createBurstCacheService() {
+    var burst = settings == null || settings.cache() == null ? null : settings.cache().burst();
+    if (burst == null || !burst.enabled()) return null;
+    String redisUri = firstNonBlank(
+      burst.redisUri(),
+      settings.dataStore() == null ? "" : settings.dataStore().redisUri()
+    );
+    if (redisUri == null || redisUri.isBlank()) {
+      getLogger().warning("Burst cache is enabled but cache.burst.redisUri (or datastore.redisUri fallback) is blank.");
+    }
+    return new RedisBurstCacheService(
+      scheduler,
+      threadGuard,
+      metricsMonitor,
+      getLogger(),
+      burst.enabled(),
+      redisUri,
+      burst.keyPrefix(),
+      burst.defaultTtlSeconds(),
+      burst.maximumLocalEntries()
+    );
+  }
+
+  private static String firstNonBlank(String... values) {
+    if (values == null) return "";
+    for (String value : values) {
+      if (value != null && !value.isBlank()) return value.trim();
+    }
+    return "";
+  }
+
   // --- Command Handling & Helpers omitted for brevity (kept standard) ---
   // The minimal necessary for compilation is onEnable/onDisable and cloud status.
 
@@ -630,6 +690,22 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("burstcache")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleBurstCacheCommand(sender, args);
+    }
+
+    if (args.length >= 2 && args[0].equalsIgnoreCase("modules")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleModulesCommand(sender, args);
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("tasks") && args[1].equalsIgnoreCase("status")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -665,6 +741,8 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
     sender.sendMessage("Usage: /" + label + " datahealth status");
+    sender.sendMessage("Usage: /" + label + " burstcache status|enable|disable");
+    sender.sendMessage("Usage: /" + label + " modules status|validate");
     sender.sendMessage("Usage: /" + label + " tasks status");
     sender.sendMessage("Usage: /" + label + " async status|enable|disable");
     sender.sendMessage("Usage: /" + label + " threadguard status|enable|disable");
@@ -716,6 +794,14 @@ public final class ZakumPlugin extends JavaPlugin {
     return scheduler;
   }
 
+  public BurstCacheService getBurstCacheService() {
+    return burstCache;
+  }
+
+  public ModuleStartupValidator getModuleStartupValidator() {
+    return moduleStartupValidator;
+  }
+
   public CompletableFuture<DataHealthSnapshot> collectDataHealth() {
     if (scheduler == null) {
       return CompletableFuture.completedFuture(DataHealthSnapshot.empty("scheduler_offline"));
@@ -754,6 +840,17 @@ public final class ZakumPlugin extends JavaPlugin {
 
       long threadGuardViolations = threadGuard == null ? 0L : threadGuard.snapshot().violations();
       long asyncRejected = scheduler.asyncSnapshot().rejected();
+      boolean moduleValidatorEnabled = false;
+      boolean moduleValidatorHealthy = false;
+      int moduleValidatorWarnings = 0;
+      int moduleValidatorCriticals = 0;
+      if (moduleStartupValidator != null) {
+        var modSnap = moduleStartupValidator.snapshot();
+        moduleValidatorEnabled = modSnap.configuredEnabled();
+        moduleValidatorHealthy = modSnap.healthy();
+        moduleValidatorWarnings = modSnap.warnings();
+        moduleValidatorCriticals = modSnap.criticals();
+      }
 
       if (metricsMonitor != null) {
         metricsMonitor.recordAction("datahealth_status");
@@ -776,6 +873,10 @@ public final class ZakumPlugin extends JavaPlugin {
         threadGuardOnline,
         threadGuardViolations,
         asyncRejected,
+        moduleValidatorEnabled,
+        moduleValidatorHealthy,
+        moduleValidatorWarnings,
+        moduleValidatorCriticals,
         ""
       );
     });
@@ -805,6 +906,10 @@ public final class ZakumPlugin extends JavaPlugin {
     lines.add("threadguard.online=" + snap.threadGuardOnline());
     lines.add("threadguard.violations=" + snap.threadGuardViolations());
     lines.add("async.rejected=" + snap.asyncRejected());
+    lines.add("modules.validator.enabled=" + snap.moduleValidatorEnabled());
+    lines.add("modules.validator.healthy=" + snap.moduleValidatorHealthy());
+    lines.add("modules.validator.warnings=" + snap.moduleValidatorWarnings());
+    lines.add("modules.validator.criticals=" + snap.moduleValidatorCriticals());
     if (snap.error() != null && !snap.error().isBlank()) {
       lines.add("error=" + snap.error());
     }
@@ -1297,6 +1402,49 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleBurstCacheCommand(CommandSender sender, String[] args) {
+    if (burstCache == null) {
+      sender.sendMessage("Burst cache service is offline.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum burstcache status|enable|disable");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    switch (sub) {
+      case "status" -> sendBurstCacheStatus(sender);
+      case "enable" -> {
+        burstCache.setRuntimeEnabled(true);
+        sender.sendMessage("Burst cache runtime enabled.");
+      }
+      case "disable" -> {
+        burstCache.setRuntimeEnabled(false);
+        sender.sendMessage("Burst cache runtime disabled.");
+      }
+      default -> sender.sendMessage("Usage: /zakum burstcache status|enable|disable");
+    }
+    return true;
+  }
+
+  private boolean handleModulesCommand(CommandSender sender, String[] args) {
+    if (moduleStartupValidator == null) {
+      sender.sendMessage("Module startup validator is offline.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum modules status|validate");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    switch (sub) {
+      case "status" -> sendModuleValidatorStatus(sender, false);
+      case "validate" -> sendModuleValidatorStatus(sender, true);
+      default -> sender.sendMessage("Usage: /zakum modules status|validate");
+    }
+    return true;
+  }
+
   private Player resolvePacketCullTarget(CommandSender sender, String[] args) {
     if (args.length >= 3) {
       Player target = Bukkit.getPlayerExact(args[2]);
@@ -1456,11 +1604,92 @@ public final class ZakumPlugin extends JavaPlugin {
       lines.add("stress.runner.active=false");
       lines.add("stress.running=false");
     }
+
+    if (moduleStartupValidator != null) {
+      var snap = moduleStartupValidator.snapshot();
+      appendTaskLines(lines, "modules.validator", snap.startupTaskId());
+      lines.add("modules.validator.enabled=" + snap.configuredEnabled());
+      lines.add("modules.validator.healthy=" + snap.healthy());
+    } else {
+      lines.add("modules.validator.taskId=-1");
+      lines.add("modules.validator.active=false");
+      lines.add("modules.validator.enabled=false");
+      lines.add("modules.validator.healthy=false");
+    }
     return lines;
   }
 
   private void sendTaskRegistryStatus(CommandSender sender) {
     for (String line : taskRegistryLines()) {
+      sender.sendMessage(line);
+    }
+  }
+
+  private void sendBurstCacheStatus(CommandSender sender) {
+    if (burstCache == null) {
+      sender.sendMessage("Burst cache service is offline.");
+      return;
+    }
+    var snap = burstCache.snapshot();
+    sender.sendMessage("Zakum Burst Cache");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("available=" + snap.available());
+    sender.sendMessage("redisUri=" + snap.redisUri());
+    sender.sendMessage("keyPrefix=" + snap.keyPrefix());
+    sender.sendMessage("defaultTtlSeconds=" + snap.defaultTtlSeconds());
+    sender.sendMessage("maximumLocalEntries=" + snap.maximumLocalEntries());
+    sender.sendMessage("gets=" + snap.gets());
+    sender.sendMessage("puts=" + snap.puts());
+    sender.sendMessage("increments=" + snap.increments());
+    sender.sendMessage("removes=" + snap.removes());
+    sender.sendMessage("redisHits=" + snap.redisHits());
+    sender.sendMessage("localHits=" + snap.localHits());
+    sender.sendMessage("redisFailures=" + snap.redisFailures());
+    sender.sendMessage("lastFailureAt=" + formatEpochMillis(snap.lastFailureAtMs()));
+    String err = snap.lastError();
+    sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+  }
+
+  public List<String> moduleValidatorLines(boolean forceValidate) {
+    ModuleStartupValidator validator = moduleStartupValidator;
+    if (validator == null) {
+      return List.of("Module startup validator is offline.");
+    }
+    ModuleStartupValidator.Snapshot snap = forceValidate ? validator.validateNow() : validator.snapshot();
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum Module Startup Validator");
+    lines.add("configuredEnabled=" + snap.configuredEnabled());
+    lines.add("strictMode=" + snap.strictMode());
+    lines.add("healthy=" + snap.healthy());
+    lines.add("runs=" + snap.runs());
+    lines.add("validatedAt=" + formatEpochMillis(snap.validatedAtMs()));
+    lines.add("modulesScanned=" + snap.modulesScanned());
+    lines.add("zakumFamilyModules=" + snap.zakumFamilyModules());
+    lines.add("requiredPlugins=" + snap.requiredPluginCount());
+    lines.add("requiredCapabilities=" + snap.requiredCapabilityCount());
+    lines.add("startupTaskId=" + snap.startupTaskId());
+    lines.add("warnings=" + snap.warnings());
+    lines.add("criticals=" + snap.criticals());
+    if (snap.issues() == null || snap.issues().isEmpty()) {
+      lines.add("issues=none");
+      return lines;
+    }
+    for (ModuleStartupValidator.Issue issue : snap.issues()) {
+      if (issue == null) continue;
+      lines.add(
+        issue.severity().name().toLowerCase(java.util.Locale.ROOT)
+          + "."
+          + issue.code()
+          + "="
+          + issue.message()
+      );
+    }
+    return lines;
+  }
+
+  private void sendModuleValidatorStatus(CommandSender sender, boolean forceValidate) {
+    for (String line : moduleValidatorLines(forceValidate)) {
       sender.sendMessage(line);
     }
   }
@@ -1493,6 +1722,10 @@ public final class ZakumPlugin extends JavaPlugin {
     boolean threadGuardOnline,
     long threadGuardViolations,
     long asyncRejected,
+    boolean moduleValidatorEnabled,
+    boolean moduleValidatorHealthy,
+    int moduleValidatorWarnings,
+    int moduleValidatorCriticals,
     String error
   ) {
     public static DataHealthSnapshot empty(String error) {
@@ -1513,6 +1746,10 @@ public final class ZakumPlugin extends JavaPlugin {
         false,
         0L,
         0L,
+        false,
+        false,
+        0,
+        0,
         error == null ? "" : error
       );
     }
@@ -1559,12 +1796,7 @@ public final class ZakumPlugin extends JavaPlugin {
       int lim = a.deferredReplay().claimLimit();
       pm.registerEvents(new DeferredActionReplayListener(this, api.server(), deferred, actionBus, lim), this);
     }
-    
-    // Stub for rest of emitters to save space in fix script, assuming existing file had them.
-    // If you need the full file content, we should write the whole thing.
-    // Given the prompt constraints, we will assume standard registration logic is preserved if we write the file fully.
-    // Since we are overwriting, we MUST include the logic.
-    
+
     if (!a.enabled()) return;
     var e = a.emitters();
     

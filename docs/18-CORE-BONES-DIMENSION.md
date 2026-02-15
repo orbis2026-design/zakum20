@@ -33,13 +33,13 @@ Total: **140 points**
 Estimated from current source and command surfaces:
 
 - Runtime safety kernel: **28 / 30**
-- Data/storage spine: **22 / 28**
-- Command/control spine: **20 / 24**
-- Observability + diagnostics: **20 / 22**
-- Scheduler and task lifecycle: **18 / 20**
+- Data/storage spine: **26 / 28**
+- Command/control spine: **23 / 24**
+- Observability + diagnostics: **22 / 22**
+- Scheduler and task lifecycle: **19 / 20**
 - Capability contract surface: **16 / 16**
 
-**Core Bones subtotal: 124 / 140 (89%)**
+**Core Bones subtotal: 134 / 140 (96%)**
 
 ## What Was Implemented In This Pass
 
@@ -55,15 +55,18 @@ Estimated from current source and command surfaces:
 - Added root `verifyApiBoundaries` task and wired it into `check` for Java modules.
 - Activated HTTP resilience policy in `HttpControlPlaneClient` using typed `http.resilience.*`.
 - Added ControlPlane runtime diagnostics command (`/zakum controlplane status`) in fallback and CommandAPI.
+- Added shared `BurstCacheService` capability with Redis + local fallback runtime.
+- Added burst-cache runtime diagnostics and toggles (`/zakum burstcache status|enable|disable`) in fallback and CommandAPI.
+- Added module startup/load-order validator with typed controls (`operations.startupValidator.*`).
+- Added module validator command surface (`/zakum modules status|validate`) in fallback and CommandAPI.
+- Added module validator health/task visibility in `/zakum datahealth status` and `/zakum tasks status`.
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 
-1. **10 pts** Redis-backed burst cache adapter for party/session/progression workloads
-2. **9 pts** 12h soak automation profile with telemetry assertions
-3. **8 pts** Module load-order and startup compatibility validator
-4. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
-5. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
-6. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
+1. **9 pts** 12h soak automation profile with telemetry assertions
+2. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
+3. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
+4. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
 
 ## End-of-Cycle Test Categories (Server Jar Validation)
 

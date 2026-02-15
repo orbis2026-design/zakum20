@@ -92,6 +92,8 @@ Progress updates after this audit:
 - Step 2: completed (DataStore optional service/capability registration is active).
 - Step 8: completed via `/zakum tasks status` (fallback + CommandAPI).
 - Step 9: completed baseline via `/zakum datahealth status` (fallback + CommandAPI).
+- Step 13: completed baseline via shared `BurstCacheService` (Redis + local fallback) and `/zakum burstcache status|enable|disable`.
+- Step 17: completed via module startup/load-order validator and `/zakum modules status|validate`.
 
 ## 7) Diff Mode (This Refactor Pass Only)
 

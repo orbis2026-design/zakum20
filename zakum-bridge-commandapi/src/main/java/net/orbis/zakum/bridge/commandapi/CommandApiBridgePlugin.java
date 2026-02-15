@@ -12,6 +12,7 @@ import dev.jorel.commandapi.executors.CommandExecutor;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.boosters.BoosterKind;
+import net.orbis.zakum.api.cache.BurstCacheService;
 import net.orbis.zakum.api.db.DatabaseState;
 import net.orbis.zakum.api.entitlements.EntitlementScope;
 import net.orbis.zakum.api.packets.PacketService;
@@ -106,9 +107,11 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(chatBufferCommand());
     root.withSubcommand(economyCommand());
     root.withSubcommand(packetCullCommand());
+    root.withSubcommand(burstCacheCommand());
     root.withSubcommand(asyncCommand());
     root.withSubcommand(threadGuardCommand());
     root.withSubcommand(dataHealthCommand());
+    root.withSubcommand(modulesCommand());
     root.withSubcommand(tasksCommand());
 
     root.register();
@@ -625,6 +628,66 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       );
   }
 
+  private CommandAPICommand burstCacheCommand() {
+    return new CommandAPICommand("burstcache")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          BurstCacheService cache = corePlugin.getBurstCacheService();
+          if (cache == null) {
+            sender.sendMessage("Burst cache service is offline.");
+            return;
+          }
+          var snap = cache.snapshot();
+          sender.sendMessage("Zakum Burst Cache");
+          sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+          sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+          sender.sendMessage("available=" + snap.available());
+          sender.sendMessage("redisUri=" + snap.redisUri());
+          sender.sendMessage("keyPrefix=" + snap.keyPrefix());
+          sender.sendMessage("defaultTtlSeconds=" + snap.defaultTtlSeconds());
+          sender.sendMessage("maximumLocalEntries=" + snap.maximumLocalEntries());
+          sender.sendMessage("gets=" + snap.gets());
+          sender.sendMessage("puts=" + snap.puts());
+          sender.sendMessage("increments=" + snap.increments());
+          sender.sendMessage("removes=" + snap.removes());
+          sender.sendMessage("redisHits=" + snap.redisHits());
+          sender.sendMessage("localHits=" + snap.localHits());
+          sender.sendMessage("redisFailures=" + snap.redisFailures());
+          sender.sendMessage("lastFailureAt=" + formatEpochMillis(snap.lastFailureAtMs()));
+          String err = snap.lastError();
+          sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+        })
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          BurstCacheService cache = corePlugin.getBurstCacheService();
+          if (cache == null) {
+            sender.sendMessage("Burst cache service is offline.");
+            return;
+          }
+          cache.setRuntimeEnabled(true);
+          sender.sendMessage("Burst cache runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          BurstCacheService cache = corePlugin.getBurstCacheService();
+          if (cache == null) {
+            sender.sendMessage("Burst cache service is offline.");
+            return;
+          }
+          cache.setRuntimeEnabled(false);
+          sender.sendMessage("Burst cache runtime disabled.");
+        })
+      );
+  }
+
   private CommandAPICommand threadGuardCommand() {
     return new CommandAPICommand("threadguard")
       .withSubcommand(new CommandAPICommand("status")
@@ -769,6 +832,28 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           ZakumPlugin corePlugin = requireCore(sender);
           if (corePlugin == null) return;
           for (String line : corePlugin.taskRegistryLines()) {
+            sender.sendMessage(line);
+          }
+        })
+      );
+  }
+
+  private CommandAPICommand modulesCommand() {
+    return new CommandAPICommand("modules")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          for (String line : corePlugin.moduleValidatorLines(false)) {
+            sender.sendMessage(line);
+          }
+        })
+      )
+      .withSubcommand(new CommandAPICommand("validate")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          for (String line : corePlugin.moduleValidatorLines(true)) {
             sender.sendMessage(line);
           }
         })

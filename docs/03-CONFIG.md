@@ -40,6 +40,7 @@ This snapshot is:
 - `operations.circuitBreaker.*`: TPS-based visual circuit breaker
 - `operations.threadGuard.*`: detect blocking I/O on the main thread
 - `operations.async.*`: bounded async backpressure (`maxInFlight`, `maxQueue`, caller-runs policy)
+- `operations.startupValidator.*`: module load-order and startup compatibility guard (`status|validate` command surface)
 - `operations.stress.*`: stress harness safety gates + scenario matrix
 
 ### datastore
@@ -69,6 +70,7 @@ This snapshot is:
 
 ### cache
 - default cache posture for future systems
+- `cache.burst.*`: shared Redis burst-cache capability (`enabled`, `redisUri`, `keyPrefix`, TTL, local fallback size)
 
 ### observability
 - `observability.metrics.enabled`:

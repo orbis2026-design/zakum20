@@ -4,6 +4,7 @@ import net.orbis.zakum.api.actions.ActionBus;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.boosters.BoosterService;
 import net.orbis.zakum.api.bridge.BridgeManager;
+import net.orbis.zakum.api.cache.BurstCacheService;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
 import net.orbis.zakum.api.entitlements.EntitlementService;
@@ -45,6 +46,8 @@ public final class ZakumCapabilities {
     Capability.of("zakum:scheduler", ZakumScheduler.class);
   public static final Capability<StorageService> STORAGE =
     Capability.of("zakum:storage", StorageService.class);
+  public static final Capability<BurstCacheService> BURST_CACHE =
+    Capability.of("zakum:burst_cache", BurstCacheService.class);
   public static final Capability<AnimationService> ANIMATIONS =
     Capability.of("zakum:animations", AnimationService.class);
   public static final Capability<ControlPlaneClient> CONTROL_PLANE =

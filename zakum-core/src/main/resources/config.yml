@@ -165,6 +165,17 @@ operations:
     maxQueue: 16384
     # If queue is saturated, allow caller-runs only for non-main threads.
     callerRunsOffMainThread: true
+  startupValidator:
+    # Validate suite module load-order and startup compatibility after boot.
+    enabled: true
+    # If true, disable Zakum when critical startup issues are detected.
+    strictMode: false
+    # Delay validation so dependent plugins have completed enable hooks.
+    initialDelayTicks: 40
+    # Optional hard requirements for this server profile.
+    requiredPlugins: []
+    # Optional capability requirements (e.g. PACKETS, ECONOMY, DATA_STORE).
+    requiredCapabilities: []
   stress:
     enabled: false
     # Total script executions per run.
@@ -262,6 +273,14 @@ cache:
     maximumSize: 100000
     expireAfterWriteSeconds: 60
     expireAfterAccessSeconds: 0
+  burst:
+    # Shared transient cache service for bursty cross-module workloads.
+    enabled: false
+    # Falls back to datastore.redisUri when blank.
+    redisUri: ""
+    keyPrefix: "zakum:burst"
+    defaultTtlSeconds: 60
+    maximumLocalEntries: 50000
 
 social:
   periodicRefresh:

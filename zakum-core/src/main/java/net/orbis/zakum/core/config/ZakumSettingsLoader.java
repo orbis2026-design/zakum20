@@ -212,8 +212,23 @@ public final class ZakumSettingsLoader {
     long max = clampL(cfg.getLong("cache.defaults.maximumSize", 100_000), 1000, 5_000_000);
     long eaw = clampL(cfg.getLong("cache.defaults.expireAfterWriteSeconds", 60), 0, 86_400);
     long eaa = clampL(cfg.getLong("cache.defaults.expireAfterAccessSeconds", 0), 0, 86_400);
+    boolean burstEnabled = bool(cfg, "cache.burst.enabled", false);
+    String burstRedisUri = str(cfg, "cache.burst.redisUri", "").trim();
+    String burstKeyPrefix = str(cfg, "cache.burst.keyPrefix", "zakum:burst").trim();
+    if (burstKeyPrefix.isBlank()) burstKeyPrefix = "zakum:burst";
+    long burstDefaultTtl = clampL(cfg.getLong("cache.burst.defaultTtlSeconds", 60), 1, 86_400);
+    long burstMaxLocal = clampL(cfg.getLong("cache.burst.maximumLocalEntries", 50_000), 100, 5_000_000);
 
-    return new ZakumSettings.Cache(new ZakumSettings.Cache.Defaults(max, eaw, eaa));
+    return new ZakumSettings.Cache(
+      new ZakumSettings.Cache.Defaults(max, eaw, eaa),
+      new ZakumSettings.Cache.Burst(
+        burstEnabled,
+        burstRedisUri,
+        burstKeyPrefix,
+        burstDefaultTtl,
+        burstMaxLocal
+      )
+    );
   }
 
   private static ZakumSettings.Social loadSocial(FileConfiguration cfg) {
@@ -323,6 +338,24 @@ public final class ZakumSettingsLoader {
     int asyncMaxQueue = clampI(cfg.getInt("operations.async.maxQueue", 16384), 0, 2_000_000);
     boolean callerRunsOffMain = bool(cfg, "operations.async.callerRunsOffMainThread", true);
 
+    boolean startupValidatorEnabled = bool(cfg, "operations.startupValidator.enabled", true);
+    boolean startupValidatorStrictMode = bool(cfg, "operations.startupValidator.strictMode", false);
+    int startupValidatorInitialDelayTicks = clampI(
+      cfg.getInt("operations.startupValidator.initialDelayTicks", 40),
+      1,
+      20 * 60
+    );
+    Set<String> requiredPlugins = new HashSet<>();
+    for (String raw : cfg.getStringList("operations.startupValidator.requiredPlugins")) {
+      if (raw == null || raw.isBlank()) continue;
+      requiredPlugins.add(raw.trim());
+    }
+    Set<String> requiredCapabilities = new HashSet<>();
+    for (String raw : cfg.getStringList("operations.startupValidator.requiredCapabilities")) {
+      if (raw == null || raw.isBlank()) continue;
+      requiredCapabilities.add(raw.trim());
+    }
+
     return new ZakumSettings.Operations(
       new ZakumSettings.Operations.CircuitBreaker(
         breakerEnabled,
@@ -360,6 +393,13 @@ public final class ZakumSettingsLoader {
         asyncMaxInFlight,
         asyncMaxQueue,
         callerRunsOffMain
+      ),
+      new ZakumSettings.Operations.StartupValidator(
+        startupValidatorEnabled,
+        startupValidatorStrictMode,
+        startupValidatorInitialDelayTicks,
+        requiredPlugins,
+        requiredCapabilities
       )
     );
   }
