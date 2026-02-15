@@ -286,12 +286,13 @@
       "priority": 60,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Prevent metric label cardinality explosion and clean per-player labels on quit/disable",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:20:59Z"
     },
     {
       "id": "perf-004",
@@ -317,12 +318,13 @@
       "priority": 60,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Guard command/packet hooks against spam with rate limits and max hooks per plugin",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:20:59Z"
     },
     {
       "id": "bridge-002",
@@ -461,12 +463,13 @@
       "priority": 60,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement health check endpoints for all critical services",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:20:59Z"
     },
     {
       "id": "monitoring-002",
