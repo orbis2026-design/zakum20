@@ -288,7 +288,11 @@ public final class ZakumPlugin extends JavaPlugin {
     if (dataStore != null) {
       visualModeService.bindDataStore(dataStore);
       sm.register(DataStore.class, dataStore, this, ServicePriority.Highest);
-      this.profileProvider = new ProfileProvider(dataStore);
+      this.profileProvider = new ProfileProvider(
+        dataStore,
+        resolveProfilePrefetchMaxEntries(),
+        resolveProfilePrefetchTtlSeconds()
+      );
       getServer().getPluginManager().registerEvents(profileProvider, this);
       this.playerJoinListener = new PlayerJoinListener(scheduler, dataStore, cloudTabRenderer, profileProvider);
       getServer().getPluginManager().registerEvents(playerJoinListener, this);
@@ -581,7 +585,16 @@ public final class ZakumPlugin extends JavaPlugin {
     try {
       MongoClient mongoClient = MongoClients.create(mongoUri);
       JedisPool jedisPool = new JedisPool(URI.create(redisUri));
-      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler, threadGuard, cfg.sessionKeyPrefix());
+      return new MongoDataStore(
+        mongoClient,
+        jedisPool,
+        mongoDatabase,
+        scheduler,
+        threadGuard,
+        cfg.sessionKeyPrefix(),
+        resolveSessionDataTtlSeconds(),
+        96
+      );
     } catch (Throwable ex) {
       getLogger().warning("Failed to initialize Mongo DataStore: " + ex.getMessage());
       return null;
@@ -617,6 +630,29 @@ public final class ZakumPlugin extends JavaPlugin {
       if (value != null && !value.isBlank()) return value.trim();
     }
     return "";
+  }
+
+  private long resolveProfilePrefetchMaxEntries() {
+    long configured = settings == null || settings.cache() == null
+      ? 10_000L
+      : settings.cache().defaults().maximumSize();
+    return Math.max(1_000L, Math.min(200_000L, configured));
+  }
+
+  private long resolveProfilePrefetchTtlSeconds() {
+    long configured = settings == null || settings.cache() == null
+      ? 120L
+      : settings.cache().defaults().expireAfterAccessSeconds();
+    if (configured <= 0L) configured = 120L;
+    return Math.max(15L, Math.min(3_600L, configured));
+  }
+
+  private long resolveSessionDataTtlSeconds() {
+    long configured = settings == null || settings.cache() == null
+      ? 1_800L
+      : settings.cache().defaults().expireAfterAccessSeconds();
+    if (configured <= 0L) configured = 1_800L;
+    return Math.max(60L, Math.min(86_400L, configured));
   }
 
   // --- Command Handling & Helpers omitted for brevity (kept standard) ---

@@ -10,6 +10,8 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
@@ -39,6 +41,9 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
   private final MetricsMonitor metrics;
   private final Logger logger;
   private final ThreadGuard threadGuard;
+  private final AtomicInteger redisFailureStreak;
+  private final AtomicLong redisBackoffUntilMs;
+  private final AtomicLong nextRedisErrorLogAtMs;
 
   public RedisGlobalEconomyService(
     JedisPool jedisPool,
@@ -58,14 +63,25 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     this.metrics = metrics;
     this.logger = logger;
     this.threadGuard = Objects.requireNonNull(threadGuard, "threadGuard");
+    this.redisFailureStreak = new AtomicInteger();
+    this.redisBackoffUntilMs = new AtomicLong(0L);
+    this.nextRedisErrorLogAtMs = new AtomicLong(0L);
   }
 
   @Override
   public boolean available() {
+    if (!canUseRedis()) return false;
     threadGuard.checkAsync("redis.ping");
     try (Jedis jedis = jedisPool.getResource()) {
-      return "PONG".equalsIgnoreCase(jedis.ping());
+      boolean ok = "PONG".equalsIgnoreCase(jedis.ping());
+      if (ok) {
+        markRedisSuccess();
+      } else {
+        markRedisFailure("ping", null);
+      }
+      return ok;
     } catch (Throwable ex) {
+      markRedisFailure("ping", ex);
       return false;
     }
   }
@@ -75,16 +91,18 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     if (playerId == null) return EconomyResult.fail("playerId is required");
     long units = toUnits(amount);
     if (units <= 0L) return EconomyResult.fail("amount must be > 0");
+    if (!canUseRedis()) return EconomyResult.fail("economy backend recovering");
 
     threadGuard.checkAsync("redis.economy.deposit");
     try (Jedis jedis = jedisPool.getResource()) {
       long next = jedis.hincrBy(balancesKey, playerId.toString(), units);
       double balance = fromUnits(next);
       publishBalance(jedis, playerId, balance);
+      markRedisSuccess();
       if (metrics != null) metrics.recordAction("economy_deposit");
       return EconomyResult.ok(balance);
     } catch (Throwable ex) {
-      logWarn("deposit", ex);
+      markRedisFailure("deposit", ex);
       return EconomyResult.fail("economy backend unavailable");
     }
   }
@@ -94,6 +112,7 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     if (playerId == null) return EconomyResult.fail("playerId is required");
     long units = toUnits(amount);
     if (units <= 0L) return EconomyResult.fail("amount must be > 0");
+    if (!canUseRedis()) return EconomyResult.fail("economy backend recovering");
 
     threadGuard.checkAsync("redis.economy.withdraw");
     try (Jedis jedis = jedisPool.getResource()) {
@@ -108,10 +127,11 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
       }
       double balance = fromUnits(nextUnits);
       publishBalance(jedis, playerId, balance);
+      markRedisSuccess();
       if (metrics != null) metrics.recordAction("economy_withdraw");
       return EconomyResult.ok(balance);
     } catch (Throwable ex) {
-      logWarn("withdraw", ex);
+      markRedisFailure("withdraw", ex);
       return EconomyResult.fail("economy backend unavailable");
     }
   }
@@ -119,14 +139,16 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
   @Override
   public double balance(UUID playerId) {
     if (playerId == null) return 0.0d;
+    if (!canUseRedis()) return 0.0d;
 
     threadGuard.checkAsync("redis.economy.balance");
     try (Jedis jedis = jedisPool.getResource()) {
       String raw = jedis.hget(balancesKey, playerId.toString());
+      markRedisSuccess();
       if (raw == null || raw.isBlank()) return 0.0d;
       return fromUnits(Long.parseLong(raw));
     } catch (Throwable ex) {
-      logWarn("balance", ex);
+      markRedisFailure("balance", ex);
       return 0.0d;
     }
   }
@@ -159,8 +181,49 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     return Long.parseLong(String.valueOf(value));
   }
 
-  private void logWarn(String operation, Throwable ex) {
-    if (logger == null) return;
-    logger.warning("Global economy " + operation + " failed: " + ex.getMessage());
+  private boolean canUseRedis() {
+    return System.currentTimeMillis() >= redisBackoffUntilMs.get();
+  }
+
+  private void markRedisSuccess() {
+    redisFailureStreak.set(0);
+    redisBackoffUntilMs.set(0L);
+  }
+
+  private void markRedisFailure(String operation, Throwable ex) {
+    int streak = redisFailureStreak.incrementAndGet();
+    long backoffMs = nextBackoffMs(streak);
+    long now = System.currentTimeMillis();
+    redisBackoffUntilMs.set(now + backoffMs);
+    if (metrics != null) {
+      metrics.recordAction("economy_redis_error");
+    }
+    if (logger != null && shouldLogError(now, backoffMs)) {
+      String detail = ex == null ? "unexpected_response" : String.valueOf(ex.getMessage());
+      logger.warning(
+        "Global economy " + operation + " failed: " + normalizeError(detail)
+          + " (streak=" + streak + ", backoffMs=" + backoffMs + ")"
+      );
+    }
+  }
+
+  private long nextBackoffMs(int failureStreak) {
+    int shift = Math.max(0, Math.min(10, failureStreak - 1));
+    long candidate = 250L << shift;
+    return Math.min(30_000L, candidate);
+  }
+
+  private boolean shouldLogError(long now, long backoffMs) {
+    long current = nextRedisErrorLogAtMs.get();
+    if (now < current) return false;
+    long next = now + Math.max(2_000L, Math.min(30_000L, backoffMs));
+    return nextRedisErrorLogAtMs.compareAndSet(current, next);
+  }
+
+  private String normalizeError(String text) {
+    if (text == null || text.isBlank()) return "unknown_error";
+    String clean = text.trim();
+    if (clean.length() <= 200) return clean;
+    return clean.substring(0, 200);
   }
 }
