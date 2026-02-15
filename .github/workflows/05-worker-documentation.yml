@@ -22,7 +22,7 @@ on:
     - cron: '0 0 * * 0'
   push:
     branches:
-      - main
+      - master
     paths:
       - 'zakum-api/**/*.java'
       - 'zakum-core/**/*.java'
@@ -255,14 +255,14 @@ jobs:
           gh pr create \
             --title "[Docs] Auto-generated documentation update" \
             --body "## Documentation Update\n\nAuto-generated documentation from source code and module inventory.\n\n### Changes\n- Updated module inventory\n- Regenerated guides\n- Updated documentation index\n\n---\n*This PR was created by the Zakum Documentation Worker*" \
-            --base main \
+            --base master \
             --head "$BRANCH_NAME" \
             --label "documentation,automation"
 
-      - name: Push directly to main
+      - name: Push directly to master
         if: steps.commit.outputs.committed == 'true' && github.event_name == 'push'
         run: |
-          git push origin main
+          git push origin master
 
       - name: Summary
         run: |

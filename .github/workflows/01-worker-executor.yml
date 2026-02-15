@@ -206,7 +206,7 @@ jobs:
           gh pr create \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
-            --base main \
+            --base master \
             --head "${{ steps.branch.outputs.name }}" \
             --label "automation,task-${{ steps.task.outputs.category }}" \
             > pr_url.txt || echo "Failed to create PR"
@@ -236,7 +236,7 @@ jobs:
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           
-          git checkout main
+          git checkout master
           git pull
           git add "$REGISTRY"
           git commit -m "chore: complete task ${{ steps.task.outputs.id }}" || true

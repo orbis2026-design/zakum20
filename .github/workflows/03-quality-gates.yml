@@ -3,12 +3,12 @@ name: "03 - Quality Gates"
 on:
   pull_request:
     branches:
-      - main
+      - master
       - 'automation/**'
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read
