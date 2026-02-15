@@ -153,13 +153,14 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "in-progress",
       "description": "Complete remaining 6 points of bridge baseline work with graceful degradation",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "startedAt": "2026-02-15T18:51:06Z"
     },
     {
       "id": "ace-001",
