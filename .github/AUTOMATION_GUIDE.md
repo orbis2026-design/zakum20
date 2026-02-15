@@ -537,7 +537,7 @@ To enable parallel task assignment (up to 3 tasks), edit `.github/workflows/00-m
 
 All task dispatches include automatic retry logic:
 - **Max retries:** 3 attempts per task
-- **Backoff delays:** 10s → 20s → 30s (linear/incremental)
+- **Backoff delays:** 10s → 20s → 30s (linear)
 - **Error detection:** Captures HTTP 400/422 and connection errors
 - **Logging:** All attempts and failures are logged
 - **State management:** Tasks only marked 'assigned' on successful dispatch

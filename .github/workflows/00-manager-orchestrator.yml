@@ -117,6 +117,9 @@ jobs:
         run: |
           TASKS='${{ steps.assign.outputs.tasks }}'
           
+          # Configuration: delay between tasks in multi-task mode (seconds)
+          INTER_TASK_DELAY=20
+          
           # Initialize temp file to track successfully dispatched tasks
           rm -f /tmp/successfully_dispatched_tasks.txt
           touch /tmp/successfully_dispatched_tasks.txt
@@ -176,11 +179,11 @@ jobs:
             TASK_NAME=$(echo "$task" | jq -r '.name')
             TASK_CATEGORY=$(echo "$task" | jq -r '.category')
             
-            # Add delay between tasks (20s) for multi-task mode stability
+            # Add delay between tasks for multi-task mode stability
             # Skip delay for the first task
             if [ $TASK_NUM -gt 0 ]; then
-              echo "⏳ Waiting 20s before triggering next worker (rate limit protection)..."
-              sleep 20
+              echo "⏳ Waiting ${INTER_TASK_DELAY}s before triggering next worker (rate limit protection)..."
+              sleep $INTER_TASK_DELAY
             fi
             TASK_NUM=$((TASK_NUM + 1))
             
