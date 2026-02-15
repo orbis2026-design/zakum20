@@ -135,12 +135,13 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "in-progress",
       "description": "Complete remaining 8 points of protocol and command substrate work",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "startedAt": "2026-02-15T18:45:20Z"
     },
     {
       "id": "bridge-001",
