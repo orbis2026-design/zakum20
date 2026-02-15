@@ -32,14 +32,14 @@ Total: **140 points**
 
 Estimated from current source and command surfaces:
 
-- Runtime safety kernel: **26 / 30**
-- Data/storage spine: **20 / 28**
-- Command/control spine: **18 / 24**
-- Observability + diagnostics: **17 / 22**
-- Scheduler and task lifecycle: **16 / 20**
-- Capability contract surface: **15 / 16**
+- Runtime safety kernel: **28 / 30**
+- Data/storage spine: **22 / 28**
+- Command/control spine: **20 / 24**
+- Observability + diagnostics: **20 / 22**
+- Scheduler and task lifecycle: **18 / 20**
+- Capability contract surface: **16 / 16**
 
-**Core Bones subtotal: 112 / 140 (80%)**
+**Core Bones subtotal: 124 / 140 (89%)**
 
 ## What Was Implemented In This Pass
 
@@ -51,16 +51,19 @@ Estimated from current source and command surfaces:
 - Added cross-surface data health diagnostics (`/zakum datahealth status` in fallback + CommandAPI).
 - Added long-lived task registry diagnostics (`/zakum tasks status` in fallback + CommandAPI).
 - Added scheduler task activity introspection and packet/stress task id exposure.
+- Added API compatibility smoke tests in `zakum-api` (`ApiCompatibilitySmokeTest`).
+- Added root `verifyApiBoundaries` task and wired it into `check` for Java modules.
+- Activated HTTP resilience policy in `HttpControlPlaneClient` using typed `http.resilience.*`.
+- Added ControlPlane runtime diagnostics command (`/zakum controlplane status`) in fallback and CommandAPI.
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 
-1. **12 pts** API compatibility smoke suite (binary/source guard for `zakum-api`)
-2. **11 pts** HTTP bridge resilience parity (retry/circuit policy on all bridge clients)
-3. **10 pts** Redis-backed burst cache adapter for party/session/progression workloads
-4. **9 pts** 12h soak automation profile with telemetry assertions
-5. **8 pts** Module load-order and startup compatibility validator
-6. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
-7. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
+1. **10 pts** Redis-backed burst cache adapter for party/session/progression workloads
+2. **9 pts** 12h soak automation profile with telemetry assertions
+3. **8 pts** Module load-order and startup compatibility validator
+4. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
+5. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
+6. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
 
 ## End-of-Cycle Test Categories (Server Jar Validation)
 
@@ -93,6 +96,7 @@ These are the major test buckets to run after packaging and deploying jars to a 
 Before server deployment, always run:
 
 - `./gradlew build --no-daemon`
+- `./gradlew :zakum-api:test verifyApiBoundaries --no-daemon`
 - targeted compile checks for touched modules
 - command path compile verification for fallback + CommandAPI surfaces
 - source scan for direct config reads bypassing typed settings in core paths

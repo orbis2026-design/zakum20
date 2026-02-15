@@ -100,6 +100,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(boostersCommand());
     root.withSubcommand(packetsCommand());
     root.withSubcommand(cloudCommand());
+    root.withSubcommand(controlPlaneCommand());
     root.withSubcommand(perfCommand());
     root.withSubcommand(stressCommand());
     root.withSubcommand(chatBufferCommand());
@@ -151,6 +152,19 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       )
       .withSubcommand(new CommandAPICommand("flush")
         .executes((CommandExecutor) (sender, args) -> cmdCloudFlush(sender))
+      );
+  }
+
+  private CommandAPICommand controlPlaneCommand() {
+    return new CommandAPICommand("controlplane")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          for (String line : corePlugin.controlPlaneStatusLines()) {
+            sender.sendMessage(line);
+          }
+        })
       );
   }
 

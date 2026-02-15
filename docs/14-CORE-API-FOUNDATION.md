@@ -28,8 +28,12 @@ Completed in this pass:
 - Wired core runtime lookup via `ServicesManagerCapabilityRegistry` in `zakum-core`.
 - Registered `CapabilityRegistry` as a Bukkit service.
 
-Remaining for milestone 1:
-- Add API compatibility checks in CI (binary + source compatibility gates).
+Compatibility gates now present:
+- `zakum-api` smoke tests (`ApiCompatibilitySmokeTest`) validate core API contracts.
+- Root `verifyApiBoundaries` task enforces `zakum-api`-only imports for feature modules.
+
+Remaining hardening:
+- Add binary compatibility gate tooling (e.g. API diff check) in CI.
 
 ## API compatibility policy (SemVer)
 

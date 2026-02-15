@@ -16,6 +16,8 @@ micrometer = "1.14.4"
 adventure = "4.18.0"
 mongodb = "5.1.0"
 jedis = "5.1.2"
+junit = "5.11.4"
+junit-platform = "1.11.4"
 
 packetevents = "2.5.0"
 commandapi = "11.1.0"
@@ -49,6 +51,9 @@ jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 packetevents-spigot = { group = "com.github.retrooper", name = "packetevents-spigot", version.ref = "packetevents" }
 commandapi-paper = { module = "dev.jorel:commandapi-paper-1.21.11", version.ref = "commandapi" }
 commandapi-bukkit = { module = "dev.jorel:commandapi-bukkit-1.21.11", version.ref = "commandapi" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

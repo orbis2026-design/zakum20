@@ -65,6 +65,7 @@ This snapshot is:
 ### http
 - shared defaults for any outbound HTTP client
 - optional resilience policies (circuit breaker + retry)
+- currently enforced by `HttpControlPlaneClient` (ControlPlane runtime)
 
 ### cache
 - default cache posture for future systems

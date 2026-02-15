@@ -21,6 +21,7 @@ Plugin: `ZakumBridgeCommandAPI`
 
 - `/zakum status`
 - `/zakum cloud status`
+- `/zakum controlplane status`
 - `/zakum perf status`
 - `/zakum stress start|stop|status`
 - `/zakum chatbuffer status|warmup`

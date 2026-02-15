@@ -561,6 +561,15 @@ public final class ZakumPlugin extends JavaPlugin {
       return true;
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("controlplane") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendControlPlaneStatus(sender);
+      return true;
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("perf") && args[1].equalsIgnoreCase("status")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -647,6 +656,7 @@ public final class ZakumPlugin extends JavaPlugin {
     }
 
     sender.sendMessage("Usage: /" + label + " cloud status|flush");
+    sender.sendMessage("Usage: /" + label + " controlplane status");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress start [iterations] [virtualPlayers]");
     sender.sendMessage("Usage: /" + label + " stress stop");
@@ -892,6 +902,49 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("ack.lastError=" + (ackErr == null || ackErr.isBlank() ? "none" : ackErr));
     String err = snap.lastError();
     sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+  }
+
+  public List<String> controlPlaneStatusLines() {
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum ControlPlane Status");
+    lines.add("configured.enabled=" + (settings != null && settings.controlPlane().enabled()));
+    lines.add("configured.baseUrl=" + (settings == null ? "" : settings.controlPlane().baseUrl()));
+    HttpControlPlaneClient client = resolveControlPlaneClient();
+    if (client == null) {
+      lines.add("client=offline");
+      return lines;
+    }
+
+    var snap = client.snapshot();
+    lines.add("client=online");
+    lines.add("baseUrl=" + client.baseUrl());
+    lines.add("resilience.enabled=" + snap.resilienceEnabled());
+    lines.add("resilience.circuitState=" + snap.circuitState());
+    lines.add("calls=" + snap.calls());
+    lines.add("successes=" + snap.successes());
+    lines.add("failures=" + snap.failures());
+    lines.add("retries=" + snap.retries());
+    lines.add("shortCircuits=" + snap.shortCircuits());
+    lines.add("lastStatus=" + snap.lastStatus());
+    lines.add("lastLatencyMs=" + snap.lastLatencyMs());
+    lines.add("lastFailureAt=" + formatEpochMillis(snap.lastFailureAtMs()));
+    String err = snap.lastError();
+    lines.add("lastError=" + (err == null || err.isBlank() ? "none" : err));
+    return lines;
+  }
+
+  private void sendControlPlaneStatus(CommandSender sender) {
+    for (String line : controlPlaneStatusLines()) {
+      sender.sendMessage(line);
+    }
+  }
+
+  private HttpControlPlaneClient resolveControlPlaneClient() {
+    if (api == null) return null;
+    return api.controlPlane()
+      .filter(HttpControlPlaneClient.class::isInstance)
+      .map(HttpControlPlaneClient.class::cast)
+      .orElse(null);
   }
 
   private void sendPerfStatus(CommandSender sender) {
