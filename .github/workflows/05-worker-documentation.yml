@@ -1,0 +1,265 @@
+name: "05 - Worker Documentation"
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Documentation task ID'
+        required: false
+        type: string
+      scope:
+        description: 'Documentation scope'
+        required: false
+        type: choice
+        options:
+          - all
+          - api
+          - modules
+          - guides
+        default: all
+  schedule:
+    # Run weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  push:
+    branches:
+      - main
+    paths:
+      - 'zakum-api/**/*.java'
+      - 'zakum-core/**/*.java'
+      - '*/src/main/java/**/*.java'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Generate API documentation
+        id: javadoc
+        if: github.event.inputs.scope == 'all' || github.event.inputs.scope == 'api' || github.event.inputs.scope == ''
+        run: |
+          echo "📚 Generating Javadoc..."
+          
+          # Generate Javadoc for API and Core modules
+          ./gradlew :zakum-api:javadoc :zakum-core:javadoc --no-daemon || true
+          
+          # Check if docs were generated
+          if [ -d "zakum-api/build/docs/javadoc" ]; then
+            echo "✅ API documentation generated"
+            echo "api_docs=generated" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ API documentation not generated"
+            echo "api_docs=skipped" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate module documentation
+        id: modules
+        if: github.event.inputs.scope == 'all' || github.event.inputs.scope == 'modules' || github.event.inputs.scope == ''
+        run: |
+          echo "📚 Generating module documentation..."
+          
+          mkdir -p docs/generated/modules
+          
+          # Create module inventory
+          cat > docs/generated/modules/README.md << 'EOF'
+          # Zakum Modules
+          
+          Auto-generated module inventory and documentation.
+          
+          Last updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Core Modules
+          
+          ### zakum-api
+          - **Purpose:** Public API and contracts
+          - **Location:** `zakum-api/`
+          - **Key Classes:** ZakumPluginBase, service interfaces
+          
+          ### zakum-core
+          - **Purpose:** Runtime implementation
+          - **Location:** `zakum-core/`
+          - **Dependencies:** zakum-api
+          
+          ### zakum-packets
+          - **Purpose:** Packet manipulation layer
+          - **Location:** `zakum-packets/`
+          - **Dependencies:** zakum-api, PacketEvents
+          
+          ## Feature Modules
+          
+          EOF
+          
+          # List all feature modules
+          for dir in zakum-* orbis-*; do
+            if [ -d "$dir" ] && [ -f "$dir/build.gradle.kts" ]; then
+              if [ "$dir" != "zakum-api" ] && [ "$dir" != "zakum-core" ] && [ "$dir" != "zakum-packets" ]; then
+                echo "### $dir" >> docs/generated/modules/README.md
+                
+                # Try to extract description from README if it exists
+                if [ -f "$dir/README.md" ]; then
+                  head -n 5 "$dir/README.md" | tail -n +2 >> docs/generated/modules/README.md
+                fi
+                
+                echo "" >> docs/generated/modules/README.md
+              fi
+            fi
+          done
+          
+          echo "✅ Module documentation generated"
+          echo "status=generated" >> $GITHUB_OUTPUT
+
+      - name: Generate usage guides
+        id: guides
+        if: github.event.inputs.scope == 'all' || github.event.inputs.scope == 'guides' || github.event.inputs.scope == ''
+        run: |
+          echo "📚 Generating usage guides..."
+          
+          mkdir -p docs/generated/guides
+          
+          # Create quick start guide
+          cat > docs/generated/guides/QUICK_START.md << 'EOF'
+          # Zakum Quick Start Guide
+          
+          Auto-generated quick start guide for Zakum platform development.
+          
+          ## Prerequisites
+          - Java 21
+          - Gradle 9.3.1+
+          - IntelliJ IDEA (recommended)
+          
+          ## Building
+          
+          ```bash
+          ./gradlew build
+          ```
+          
+          ## Creating a New Module
+          
+          ```bash
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-plugin-module.ps1 \
+            -ModuleId zakum-mymodule \
+            -PluginName OrbisMyModule
+          ```
+          
+          ## Running Verification Gates
+          
+          ```bash
+          ./gradlew verifyPlatformInfrastructure
+          ```
+          
+          ## Testing
+          
+          ```bash
+          ./gradlew test
+          ```
+          
+          ## More Information
+          
+          - [Plugin Dev Kit](../../23-PLUGIN-DEVKIT.md)
+          - [Core Primer](../../27-CORE-PRIMER.md)
+          - [Architecture Overview](../../00-OVERVIEW.md)
+          EOF
+          
+          echo "✅ Usage guides generated"
+          echo "status=generated" >> $GITHUB_OUTPUT
+
+      - name: Create documentation index
+        run: |
+          echo "📚 Creating documentation index..."
+          
+          mkdir -p docs/generated
+          
+          cat > docs/generated/INDEX.md << 'EOF'
+          # Zakum Documentation Index
+          
+          Auto-generated documentation index.
+          
+          Last updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Generated Documentation
+          
+          - [Module Inventory](modules/README.md)
+          - [Quick Start Guide](guides/QUICK_START.md)
+          
+          ## Core Documentation
+          
+          - [Overview](../00-OVERVIEW.md)
+          - [Modules](../01-MODULES.md)
+          - [Core Primer](../27-CORE-PRIMER.md)
+          - [Plugin Dev Kit](../23-PLUGIN-DEVKIT.md)
+          
+          ## Infrastructure
+          
+          - [Any-Plugin Infrastructure Directive](../22-ANY-PLUGIN-INFRASTRUCTURE-DIRECTIVE.md)
+          - [Plugin Ecosystem Consolidation](../22-PLUGIN-ECOSYSTEM-CONSOLIDATION.md)
+          
+          ## API Documentation
+          
+          - API Javadoc (generated in build/docs/javadoc)
+          
+          ---
+          *This index was auto-generated by the Zakum Documentation Worker*
+          EOF
+
+      - name: Commit documentation updates
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add docs/generated/
+          
+          if git diff --staged --quiet; then
+            echo "No documentation changes to commit"
+            echo "committed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "docs: auto-generate documentation"
+            echo "committed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.commit.outputs.committed == 'true' && github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH_NAME="docs/auto-generated-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          git push -u origin "$BRANCH_NAME"
+          
+          gh pr create \
+            --title "[Docs] Auto-generated documentation update" \
+            --body "## Documentation Update\n\nAuto-generated documentation from source code and module inventory.\n\n### Changes\n- Updated module inventory\n- Regenerated guides\n- Updated documentation index\n\n---\n*This PR was created by the Zakum Documentation Worker*" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --label "documentation,automation"
+
+      - name: Push directly to main
+        if: steps.commit.outputs.committed == 'true' && github.event_name == 'push'
+        run: |
+          git push origin main
+
+      - name: Summary
+        run: |
+          echo "## 📚 Documentation Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**API Docs:** ${{ steps.javadoc.outputs.api_docs || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Module Docs:** ${{ steps.modules.outputs.status || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Usage Guides:** ${{ steps.guides.outputs.status || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Committed:** ${{ steps.commit.outputs.committed == 'true' && '✅ Yes' || '⚠️ No changes' }}" >> $GITHUB_STEP_SUMMARY

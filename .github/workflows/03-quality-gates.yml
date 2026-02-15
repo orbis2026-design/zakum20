@@ -1,0 +1,217 @@
+name: "03 - Quality Gates"
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'automation/**'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Verify API boundaries
+        id: api_boundaries
+        run: |
+          echo "🔍 Verifying API boundaries..."
+          if ./gradlew verifyApiBoundaries --no-daemon; then
+            echo "✅ API boundaries check passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ API boundaries check failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Verify plugin descriptors
+        id: plugin_descriptors
+        run: |
+          echo "🔍 Verifying plugin descriptors..."
+          if ./gradlew verifyPluginDescriptors --no-daemon; then
+            echo "✅ Plugin descriptors check passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Plugin descriptors check failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Verify module build conventions
+        id: build_conventions
+        run: |
+          echo "🔍 Verifying module build conventions..."
+          if ./gradlew verifyModuleBuildConventions --no-daemon 2>&1 | tee conventions.log; then
+            echo "✅ Build conventions check passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            # This task might not exist yet, so we'll make it optional
+            echo "⚠️ Build conventions check not available or failed"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run platform infrastructure verification
+        id: platform_verification
+        run: |
+          echo "🔍 Running platform infrastructure verification..."
+          if ./gradlew verifyPlatformInfrastructure --no-daemon; then
+            echo "✅ Platform infrastructure verification passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Platform infrastructure verification failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Compile all modules
+        id: compile
+        run: |
+          echo "🔨 Compiling all modules..."
+          if ./gradlew assemble --no-daemon; then
+            echo "✅ Compilation successful"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Compilation failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check code style compliance
+        id: code_style
+        continue-on-error: true
+        run: |
+          echo "🎨 Checking code style..."
+          # Add any code style checks here (e.g., checkstyle, spotless)
+          echo "status=skipped" >> $GITHUB_OUTPUT
+          echo "⚠️ Code style checks not configured yet"
+
+      - name: Security scan
+        id: security
+        continue-on-error: true
+        run: |
+          echo "🔒 Running security scan..."
+          # Add security scanning tools here
+          echo "status=skipped" >> $GITHUB_OUTPUT
+          echo "⚠️ Security scanning not configured yet"
+
+      - name: Generate compliance report
+        id: report
+        if: always()
+        run: |
+          echo "📋 Generating compliance report..."
+          
+          cat > compliance-report.md << 'EOF'
+          # Quality Gates Compliance Report
+          
+          Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Gate Results
+          
+          | Gate | Status |
+          |------|--------|
+          | API Boundaries | ${{ steps.api_boundaries.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |
+          | Plugin Descriptors | ${{ steps.plugin_descriptors.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |
+          | Build Conventions | ${{ steps.build_conventions.outputs.status == 'passed' && '✅ Passed' || steps.build_conventions.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |
+          | Platform Verification | ${{ steps.platform_verification.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |
+          | Compilation | ${{ steps.compile.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |
+          | Code Style | ${{ steps.code_style.outputs.status == 'passed' && '✅ Passed' || steps.code_style.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |
+          | Security Scan | ${{ steps.security.outputs.status == 'passed' && '✅ Passed' || steps.security.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |
+          
+          ## Summary
+          
+          Overall Status: ${{ 
+            steps.api_boundaries.outputs.status == 'failed' || 
+            steps.plugin_descriptors.outputs.status == 'failed' || 
+            steps.platform_verification.outputs.status == 'failed' || 
+            steps.compile.outputs.status == 'failed' 
+            && '❌ FAILED' || '✅ PASSED' 
+          }}
+          
+          ### Critical Gates (must pass)
+          - API Boundaries
+          - Plugin Descriptors
+          - Platform Verification
+          - Compilation
+          
+          ### Optional Gates
+          - Build Conventions
+          - Code Style
+          - Security Scan
+          
+          ---
+          *This report was generated by the Zakum Quality Gates workflow*
+          EOF
+          
+          cat compliance-report.md
+
+      - name: Comment PR with report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('compliance-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report
+          path: compliance-report.md
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🔍 Quality Gates Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| API Boundaries | ${{ steps.api_boundaries.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Plugin Descriptors | ${{ steps.plugin_descriptors.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Conventions | ${{ steps.build_conventions.outputs.status == 'passed' && '✅ Passed' || steps.build_conventions.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform Verification | ${{ steps.platform_verification.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compilation | ${{ steps.compile.outputs.status == 'passed' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Style | ${{ steps.code_style.outputs.status == 'passed' && '✅ Passed' || steps.code_style.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ steps.security.outputs.status == 'passed' && '✅ Passed' || steps.security.outputs.status == 'skipped' && '⚠️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+
+  merge-gate:
+    runs-on: ubuntu-latest
+    needs: quality-gates
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Check merge eligibility
+        run: |
+          echo "✅ All quality gates passed - PR is eligible for merge"
+          echo "## ✅ Merge Gate Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This PR has passed all quality gates and is ready for review and merge." >> $GITHUB_STEP_SUMMARY

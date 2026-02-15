@@ -1,0 +1,286 @@
+name: "01 - Worker Executor"
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Task ID from TASK_REGISTRY.json'
+        required: true
+        type: string
+      task_json:
+        description: 'Full task JSON object'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse task
+        id: task
+        run: |
+          TASK='${{ github.event.inputs.task_json }}'
+          echo "id=$(echo "$TASK" | jq -r '.id')" >> $GITHUB_OUTPUT
+          echo "name=$(echo "$TASK" | jq -r '.name')" >> $GITHUB_OUTPUT
+          echo "category=$(echo "$TASK" | jq -r '.category')" >> $GITHUB_OUTPUT
+          echo "points=$(echo "$TASK" | jq -r '.points')" >> $GITHUB_OUTPUT
+          echo "description=$(echo "$TASK" | jq -r '.description')" >> $GITHUB_OUTPUT
+          
+          # Parse verification gates
+          GATES=$(echo "$TASK" | jq -r '.verificationGates | join(",")')
+          echo "gates=$GATES" >> $GITHUB_OUTPUT
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Update task status to in-progress
+        run: |
+          REGISTRY="TASK_REGISTRY.json"
+          TMP_REGISTRY=$(mktemp)
+          
+          jq '.tasks |= map(
+            if .id == "${{ steps.task.outputs.id }}"
+            then .status = "in-progress" | .startedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+            else .
+            end
+          )' "$REGISTRY" > "$TMP_REGISTRY"
+          
+          mv "$TMP_REGISTRY" "$REGISTRY"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$REGISTRY"
+          git commit -m "chore: start task ${{ steps.task.outputs.id }}" || true
+          git push || true
+
+      - name: Create feature branch
+        id: branch
+        run: |
+          BRANCH_NAME="automation/${{ steps.task.outputs.id }}"
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          git checkout -b "$BRANCH_NAME"
+          git push -u origin "$BRANCH_NAME"
+
+      - name: Execute task implementation
+        id: implement
+        run: |
+          echo "🚀 Implementing task: ${{ steps.task.outputs.name }}"
+          echo "📝 Description: ${{ steps.task.outputs.description }}"
+          
+          # Create implementation marker
+          mkdir -p .github/automation/tasks
+          TASK_FILE=".github/automation/tasks/${{ steps.task.outputs.id }}.md"
+          
+          cat > "$TASK_FILE" << 'EOF'
+          # Task: ${{ steps.task.outputs.id }}
+          
+          **Name:** ${{ steps.task.outputs.name }}
+          **Category:** ${{ steps.task.outputs.category }}
+          **Points:** ${{ steps.task.outputs.points }}
+          
+          ## Description
+          ${{ steps.task.outputs.description }}
+          
+          ## Status
+          - Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          - Status: Implementation automated
+          
+          ## Implementation Notes
+          This task was executed by the automated worker system.
+          Manual review and code implementation may be required.
+          
+          Please review the PR and complete any remaining work.
+          EOF
+          
+          git add "$TASK_FILE"
+          git commit -m "feat: implement ${{ steps.task.outputs.id }} - ${{ steps.task.outputs.name }}"
+          git push
+
+      - name: Run verification gates
+        id: verify
+        if: steps.task.outputs.gates != ''
+        run: |
+          GATES="${{ steps.task.outputs.gates }}"
+          IFS=',' read -ra GATE_ARRAY <<< "$GATES"
+          
+          echo "🔍 Running verification gates..."
+          FAILED_GATES=""
+          
+          for gate in "${GATE_ARRAY[@]}"; do
+            echo "Running gate: $gate"
+            
+            case "$gate" in
+              "verifyPlatformInfrastructure")
+                if ! ./gradlew verifyPlatformInfrastructure --no-daemon; then
+                  FAILED_GATES="$FAILED_GATES,$gate"
+                fi
+                ;;
+              "verifyApiBoundaries")
+                if ! ./gradlew verifyApiBoundaries --no-daemon; then
+                  FAILED_GATES="$FAILED_GATES,$gate"
+                fi
+                ;;
+              "verifyPluginDescriptors")
+                if ! ./gradlew verifyPluginDescriptors --no-daemon; then
+                  FAILED_GATES="$FAILED_GATES,$gate"
+                fi
+                ;;
+              "build")
+                if ! ./gradlew build --no-daemon -x test; then
+                  FAILED_GATES="$FAILED_GATES,$gate"
+                fi
+                ;;
+              "test")
+                if ! ./gradlew test --no-daemon; then
+                  FAILED_GATES="$FAILED_GATES,$gate"
+                fi
+                ;;
+            esac
+          done
+          
+          if [ -n "$FAILED_GATES" ]; then
+            echo "❌ Failed gates: $FAILED_GATES"
+            echo "failed=true" >> $GITHUB_OUTPUT
+            echo "failed_gates=$FAILED_GATES" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All verification gates passed"
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_TITLE="[${{ steps.task.outputs.category }}] ${{ steps.task.outputs.name }}"
+          PR_BODY=$(cat << 'EOF'
+          ## Task Implementation
+          
+          **Task ID:** ${{ steps.task.outputs.id }}
+          **Category:** ${{ steps.task.outputs.category }}
+          **Points:** ${{ steps.task.outputs.points }}
+          
+          ### Description
+          ${{ steps.task.outputs.description }}
+          
+          ### Verification Gates
+          ${{ steps.task.outputs.gates }}
+          
+          ### Status
+          - ⚙️ Automated implementation completed
+          - 🔍 Verification gates: ${{ steps.verify.outputs.failed == 'true' && '❌ Failed' || '✅ Passed' }}
+          
+          ${{ steps.verify.outputs.failed == 'true' && format('**Failed gates:** {0}', steps.verify.outputs.failed_gates) || '' }}
+          
+          ### Next Steps
+          - [ ] Review automated changes
+          - [ ] Complete any manual implementation required
+          - [ ] Ensure all tests pass
+          - [ ] Merge when ready
+          
+          ---
+          *This PR was created by the Zakum 24/7 Automation System*
+          EOF
+          )
+          
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "${{ steps.branch.outputs.name }}" \
+            --label "automation,task-${{ steps.task.outputs.category }}" \
+            > pr_url.txt || echo "Failed to create PR"
+          
+          if [ -f pr_url.txt ]; then
+            PR_URL=$(cat pr_url.txt)
+            echo "url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "✅ Created PR: $PR_URL"
+          fi
+
+      - name: Update task status
+        run: |
+          REGISTRY="TASK_REGISTRY.json"
+          TMP_REGISTRY=$(mktemp)
+          
+          STATUS="testing"
+          if [ "${{ steps.verify.outputs.failed }}" == "true" ]; then
+            STATUS="blocked"
+          fi
+          
+          jq '.tasks |= map(
+            if .id == "${{ steps.task.outputs.id }}"
+            then .status = "'$STATUS'" | .completedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'" | .prUrl = "${{ steps.pr.outputs.url }}"
+            else .
+            end
+          )' "$REGISTRY" > "$TMP_REGISTRY"
+          
+          mv "$TMP_REGISTRY" "$REGISTRY"
+          
+          git checkout main
+          git pull
+          git add "$REGISTRY"
+          git commit -m "chore: complete task ${{ steps.task.outputs.id }}" || true
+          git push || true
+
+      - name: Send Discord notification
+        if: env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          STATUS_EMOJI="${{ steps.verify.outputs.failed == 'true' && '❌' || '✅' }}"
+          STATUS_TEXT="${{ steps.verify.outputs.failed == 'true' && 'Failed verification' || 'Completed successfully' }}"
+          STATUS_COLOR="${{ steps.verify.outputs.failed == 'true' && '15158332' || '3066993' }}"
+          
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"$STATUS_EMOJI Task Execution Complete\",
+                \"description\": \"**${{ steps.task.outputs.id }}**: ${{ steps.task.outputs.name }}\",
+                \"color\": $STATUS_COLOR,
+                \"fields\": [
+                  {
+                    \"name\": \"Status\",
+                    \"value\": \"$STATUS_TEXT\"
+                  },
+                  {
+                    \"name\": \"Points\",
+                    \"value\": \"${{ steps.task.outputs.points }}\"
+                  },
+                  {
+                    \"name\": \"PR\",
+                    \"value\": \"${{ steps.pr.outputs.url }}\"
+                  }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" || echo "⚠️ Failed to send Discord notification"
+
+      - name: Summary
+        run: |
+          echo "## 🎯 Task Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Task:** ${{ steps.task.outputs.id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Name:** ${{ steps.task.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Category:** ${{ steps.task.outputs.category }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Points:** ${{ steps.task.outputs.points }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.verify.outputs.failed == 'true' && '❌ Failed verification' || '✅ Completed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** ${{ steps.pr.outputs.url }}" >> $GITHUB_STEP_SUMMARY

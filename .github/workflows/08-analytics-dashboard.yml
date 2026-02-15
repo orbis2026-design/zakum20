@@ -1,0 +1,300 @@
+name: "08 - Analytics Dashboard"
+
+on:
+  schedule:
+    # Run daily at 8 AM UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  generate-analytics:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Collect task metrics
+        id: tasks
+        run: |
+          echo "📊 Collecting task metrics..."
+          
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Task status counts
+          TOTAL=$(jq '.tasks | length' "$REGISTRY")
+          READY=$(jq '[.tasks[] | select(.status == "ready")] | length' "$REGISTRY")
+          ASSIGNED=$(jq '[.tasks[] | select(.status == "assigned")] | length' "$REGISTRY")
+          IN_PROGRESS=$(jq '[.tasks[] | select(.status == "in-progress")] | length' "$REGISTRY")
+          TESTING=$(jq '[.tasks[] | select(.status == "testing")] | length' "$REGISTRY")
+          COMPLETED=$(jq '[.tasks[] | select(.status == "completed")] | length' "$REGISTRY")
+          BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$REGISTRY")
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "ready=$READY" >> $GITHUB_OUTPUT
+          echo "assigned=$ASSIGNED" >> $GITHUB_OUTPUT
+          echo "in_progress=$IN_PROGRESS" >> $GITHUB_OUTPUT
+          echo "testing=$TESTING" >> $GITHUB_OUTPUT
+          echo "completed=$COMPLETED" >> $GITHUB_OUTPUT
+          echo "blocked=$BLOCKED" >> $GITHUB_OUTPUT
+          
+          # Calculate completion percentage
+          if [ "$TOTAL" -gt 0 ]; then
+            COMPLETION=$(echo "scale=1; $COMPLETED * 100 / $TOTAL" | bc)
+          else
+            COMPLETION=0
+          fi
+          echo "completion=$COMPLETION" >> $GITHUB_OUTPUT
+          
+          # Points metrics
+          POINTS_TOTAL=$(jq '[.tasks[] | .points] | add' "$REGISTRY")
+          POINTS_COMPLETED=$(jq '[.tasks[] | select(.status == "completed") | .points] | add // 0' "$REGISTRY")
+          echo "points_total=${POINTS_TOTAL:-0}" >> $GITHUB_OUTPUT
+          echo "points_completed=${POINTS_COMPLETED:-0}" >> $GITHUB_OUTPUT
+
+      - name: Collect budget metrics
+        id: budget
+        run: |
+          echo "💰 Collecting budget metrics..."
+          
+          # Find all budget files
+          BUDGET_FILES=$(find .github/automation -name "budget-*.json" 2>/dev/null | sort)
+          
+          TOTAL_SPENT=0
+          DAYS_TRACKED=0
+          
+          for file in $BUDGET_FILES; do
+            if [ -f "$file" ]; then
+              SPENT=$(jq -r '.spent' "$file" 2>/dev/null || echo "0")
+              TOTAL_SPENT=$(echo "$TOTAL_SPENT + $SPENT" | bc)
+              DAYS_TRACKED=$((DAYS_TRACKED + 1))
+            fi
+          done
+          
+          echo "total_spent=$TOTAL_SPENT" >> $GITHUB_OUTPUT
+          echo "days_tracked=$DAYS_TRACKED" >> $GITHUB_OUTPUT
+          
+          if [ "$DAYS_TRACKED" -gt 0 ]; then
+            AVG_DAILY=$(echo "scale=2; $TOTAL_SPENT / $DAYS_TRACKED" | bc)
+          else
+            AVG_DAILY=0
+          fi
+          echo "avg_daily=$AVG_DAILY" >> $GITHUB_OUTPUT
+
+      - name: Collect workflow metrics
+        id: workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "⚙️ Collecting workflow metrics..."
+          
+          # Get recent workflow runs
+          WORKFLOW_RUNS=$(gh api repos/${{ github.repository }}/actions/runs \
+            --jq '.workflow_runs | length' || echo "0")
+          
+          echo "recent_runs=$WORKFLOW_RUNS" >> $GITHUB_OUTPUT
+
+      - name: Collect repository metrics
+        id: repo
+        run: |
+          echo "📦 Collecting repository metrics..."
+          
+          # Count modules
+          MODULE_COUNT=$(find . -maxdepth 1 -type d -name "zakum-*" -o -name "orbis-*" | wc -l)
+          echo "module_count=$MODULE_COUNT" >> $GITHUB_OUTPUT
+          
+          # Count Java files
+          JAVA_FILES=$(find . -name "*.java" -not -path "*/build/*" | wc -l)
+          echo "java_files=$JAVA_FILES" >> $GITHUB_OUTPUT
+          
+          # Lines of code (rough estimate)
+          LOC=$(find . -name "*.java" -not -path "*/build/*" -exec cat {} \; | wc -l)
+          echo "lines_of_code=$LOC" >> $GITHUB_OUTPUT
+          
+          # Count commits (last 30 days)
+          COMMITS_30D=$(git log --since="30 days ago" --oneline | wc -l)
+          echo "commits_30d=$COMMITS_30D" >> $GITHUB_OUTPUT
+
+      - name: Generate dashboard
+        run: |
+          echo "📊 Generating analytics dashboard..."
+          
+          mkdir -p .github/automation/analytics
+          
+          cat > .github/automation/analytics/DASHBOARD.md << 'EOF'
+          # Zakum Automation Analytics Dashboard
+          
+          **Generated:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Task Execution Metrics
+          
+          ### Task Status Distribution
+          
+          | Status | Count | Percentage |
+          |--------|-------|------------|
+          | ✅ Completed | ${{ steps.tasks.outputs.completed }} | ${{ steps.tasks.outputs.completion }}% |
+          | 🔄 In Progress | ${{ steps.tasks.outputs.in_progress }} | - |
+          | 📋 Assigned | ${{ steps.tasks.outputs.assigned }} | - |
+          | 🧪 Testing | ${{ steps.tasks.outputs.testing }} | - |
+          | ⏸️ Ready | ${{ steps.tasks.outputs.ready }} | - |
+          | 🚫 Blocked | ${{ steps.tasks.outputs.blocked }} | - |
+          | **Total** | **${{ steps.tasks.outputs.total }}** | **100%** |
+          
+          ### Points Progress
+          
+          - **Completed Points:** ${{ steps.tasks.outputs.points_completed }}
+          - **Total Points:** ${{ steps.tasks.outputs.points_total }}
+          - **Progress:** $(echo "scale=1; ${{ steps.tasks.outputs.points_completed }} * 100 / ${{ steps.tasks.outputs.points_total }}" | bc)%
+          
+          ## Budget Metrics
+          
+          - **Total Spent:** \$${{ steps.budget.outputs.total_spent }}
+          - **Days Tracked:** ${{ steps.budget.outputs.days_tracked }}
+          - **Average Daily Spend:** \$${{ steps.budget.outputs.avg_daily }}
+          - **Daily Limit:** \$25.00
+          - **Remaining Today:** See current budget file
+          
+          ## Repository Metrics
+          
+          - **Module Count:** ${{ steps.repo.outputs.module_count }}
+          - **Java Files:** ${{ steps.repo.outputs.java_files }}
+          - **Lines of Code:** ${{ steps.repo.outputs.lines_of_code }}
+          - **Commits (30d):** ${{ steps.repo.outputs.commits_30d }}
+          
+          ## Workflow Activity
+          
+          - **Recent Workflow Runs:** ${{ steps.workflows.outputs.recent_runs }}
+          
+          ## Task Category Breakdown
+          
+          ```json
+          {
+            "waveA": {
+              "priority": 100,
+              "tasks": ["wave-a-001", "wave-a-002", "wave-a-003", "wave-a-004"]
+            },
+            "corePlatform": {
+              "priority": 80,
+              "tasks": ["core-001", "protocol-001", "bridge-001", "ace-001", "bridge-002", "bridge-003", "test-001", "test-002", "config-001", "security-001"]
+            },
+            "dataHardening": {
+              "priority": 60,
+              "tasks": ["data-001", "data-002", "ops-001", "perf-001", "perf-002", "perf-003", "perf-004", "perf-005", "monitoring-001", "monitoring-002"]
+            },
+            "features": {
+              "priority": 40,
+              "tasks": ["feature-001"]
+            },
+            "documentation": {
+              "priority": 20,
+              "tasks": ["cleanup-001", "cleanup-002", "doc-001", "doc-002"]
+            }
+          }
+          ```
+          
+          ## System Health
+          
+          - **Automation Status:** Active
+          - **Budget Control:** Enabled
+          - **Quality Gates:** Enforced
+          - **24/7 Operation:** Enabled
+          
+          ---
+          
+          ## Charts (Conceptual)
+          
+          ### Task Progress Over Time
+          - Line chart showing completed tasks per day
+          - Target: 2-3 tasks per day average
+          
+          ### Budget Utilization
+          - Bar chart showing daily spend
+          - Target: Stay under $25/day
+          
+          ### Category Distribution
+          - Pie chart showing task distribution by category
+          - Wave A: 13.8%
+          - Core Platform: 37.9%
+          - Data Hardening: 34.5%
+          - Features: 3.4%
+          - Documentation: 10.3%
+          
+          ---
+          *This dashboard is auto-generated by the Zakum Analytics Worker*
+          EOF
+          
+          cat .github/automation/analytics/DASHBOARD.md
+
+      - name: Generate metrics JSON
+        run: |
+          cat > .github/automation/analytics/metrics.json << EOF
+          {
+            "generated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "tasks": {
+              "total": ${{ steps.tasks.outputs.total }},
+              "ready": ${{ steps.tasks.outputs.ready }},
+              "assigned": ${{ steps.tasks.outputs.assigned }},
+              "in_progress": ${{ steps.tasks.outputs.in_progress }},
+              "testing": ${{ steps.tasks.outputs.testing }},
+              "completed": ${{ steps.tasks.outputs.completed }},
+              "blocked": ${{ steps.tasks.outputs.blocked }},
+              "completion_percentage": ${{ steps.tasks.outputs.completion }},
+              "points_total": ${{ steps.tasks.outputs.points_total }},
+              "points_completed": ${{ steps.tasks.outputs.points_completed }}
+            },
+            "budget": {
+              "total_spent": ${{ steps.budget.outputs.total_spent }},
+              "days_tracked": ${{ steps.budget.outputs.days_tracked }},
+              "average_daily": ${{ steps.budget.outputs.avg_daily }},
+              "daily_limit": 25.0
+            },
+            "repository": {
+              "module_count": ${{ steps.repo.outputs.module_count }},
+              "java_files": ${{ steps.repo.outputs.java_files }},
+              "lines_of_code": ${{ steps.repo.outputs.lines_of_code }},
+              "commits_30d": ${{ steps.repo.outputs.commits_30d }}
+            },
+            "workflows": {
+              "recent_runs": ${{ steps.workflows.outputs.recent_runs }}
+            }
+          }
+          EOF
+
+      - name: Commit analytics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .github/automation/analytics/
+          git commit -m "chore: update analytics dashboard" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Summary
+        run: |
+          echo "## 📊 Analytics Dashboard Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Task Progress" >> $GITHUB_STEP_SUMMARY
+          echo "- **Completed:** ${{ steps.tasks.outputs.completed }} / ${{ steps.tasks.outputs.total }} (${{ steps.tasks.outputs.completion }}%)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Points:** ${{ steps.tasks.outputs.points_completed }} / ${{ steps.tasks.outputs.points_total }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Budget" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Spent:** \$${{ steps.budget.outputs.total_spent }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Average Daily:** \$${{ steps.budget.outputs.avg_daily }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Repository" >> $GITHUB_STEP_SUMMARY
+          echo "- **Modules:** ${{ steps.repo.outputs.module_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Java Files:** ${{ steps.repo.outputs.java_files }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lines of Code:** ${{ steps.repo.outputs.lines_of_code }}" >> $GITHUB_STEP_SUMMARY

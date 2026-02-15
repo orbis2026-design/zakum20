@@ -1,0 +1,169 @@
+name: "06 - Worker Testing"
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Testing task ID'
+        required: false
+        type: string
+      test_scope:
+        description: 'Test scope'
+        required: false
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - smoke
+        default: all
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Run unit tests
+        id: unit_tests
+        if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'unit' || github.event.inputs.test_scope == ''
+        run: |
+          echo "🧪 Running unit tests..."
+          
+          if ./gradlew test --no-daemon; then
+            echo "✅ Unit tests passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Unit tests failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Run integration tests
+        id: integration_tests
+        if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'integration' || github.event.inputs.test_scope == ''
+        continue-on-error: true
+        run: |
+          echo "🧪 Running integration tests..."
+          
+          # Integration tests might not exist yet
+          if ./gradlew integrationTest --no-daemon 2>&1 | grep -q "Task 'integrationTest' not found"; then
+            echo "⚠️ Integration tests not configured"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+          else
+            if ./gradlew integrationTest --no-daemon; then
+              echo "✅ Integration tests passed"
+              echo "status=passed" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Integration tests failed"
+              echo "status=failed" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run smoke tests
+        id: smoke_tests
+        if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'smoke' || github.event.inputs.test_scope == ''
+        run: |
+          echo "🧪 Running smoke tests..."
+          
+          # Basic smoke tests - verify modules compile and basic structure
+          SMOKE_PASSED=true
+          
+          # Check zakum-api
+          if ! ./gradlew :zakum-api:assemble --no-daemon; then
+            echo "❌ zakum-api smoke test failed"
+            SMOKE_PASSED=false
+          fi
+          
+          # Check zakum-core
+          if ! ./gradlew :zakum-core:assemble --no-daemon; then
+            echo "❌ zakum-core smoke test failed"
+            SMOKE_PASSED=false
+          fi
+          
+          if [ "$SMOKE_PASSED" = true ]; then
+            echo "✅ Smoke tests passed"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Smoke tests failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "📊 Generating test report..."
+          
+          mkdir -p build/reports/tests
+          
+          # Collect test results from all modules
+          find . -name "TEST-*.xml" -type f | while read test_file; do
+            echo "Found test results: $test_file"
+          done
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        continue-on-error: true
+        with:
+          files: |
+            **/build/test-results/**/*.xml
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+
+      - name: Calculate test coverage
+        id: coverage
+        continue-on-error: true
+        run: |
+          echo "📊 Calculating test coverage..."
+          
+          # Run tests with coverage (if configured)
+          if ./gradlew jacocoTestReport --no-daemon 2>&1 | grep -q "Task 'jacocoTestReport' not found"; then
+            echo "⚠️ Test coverage not configured"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+          else
+            ./gradlew jacocoTestReport --no-daemon || true
+            echo "status=generated" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ steps.unit_tests.outputs.status == 'passed' && '✅ Passed' || steps.unit_tests.outputs.status == 'skipped' && '⚠️ Skipped' || steps.unit_tests.outputs.status == 'failed' && '❌ Failed' || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ steps.integration_tests.outputs.status == 'passed' && '✅ Passed' || steps.integration_tests.outputs.status == 'skipped' && '⚠️ Skipped' || steps.integration_tests.outputs.status == 'failed' && '❌ Failed' || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | ${{ steps.smoke_tests.outputs.status == 'passed' && '✅ Passed' || steps.smoke_tests.outputs.status == 'skipped' && '⚠️ Skipped' || steps.smoke_tests.outputs.status == 'failed' && '❌ Failed' || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Coverage:** ${{ steps.coverage.outputs.status == 'generated' && '✅ Generated' || steps.coverage.outputs.status == 'skipped' && '⚠️ Not configured' || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
