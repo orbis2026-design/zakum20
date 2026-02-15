@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "current_month": "2026-02",
+  "total_spent": 0.0009893999999999999,
+  "executions": 1,
+  "prs_generated": 1,
+  "tokens_used": {
+    "claude_input": 16,
+    "claude_output": 60,
+    "openai_input": 60,
+    "openai_output": 54
+  },
+  "milestones_reached": [],
+  "last_reset": "2026-02-15T17:06:46.942197",
+  "history": []
+}
