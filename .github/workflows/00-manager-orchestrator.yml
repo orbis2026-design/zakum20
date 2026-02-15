@@ -158,7 +158,7 @@ jobs:
               retry_count=$((retry_count + 1))
               
               if [ $retry_count -lt $max_retries ]; then
-                # Exponential backoff: 10s, 20s, 30s
+                # Linear backoff: 10s, 20s, 30s
                 local delay=$((retry_count * 10))
                 echo "⏳ Waiting ${delay}s before retry..."
                 sleep $delay
@@ -205,16 +205,20 @@ jobs:
               # 06-worker-testing.yml only accepts task_id (not task_json)
               if trigger_workflow_with_retry "$WORKFLOW" "$TASK_ID" ""; then
                 echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+                echo "--- Task $TASK_ID processing complete ---"
+              else
+                echo "--- Task $TASK_ID dispatch failed after retries ---"
               fi
             else
               # Other workflows accept task_id and task_json
               TASK_JSON=$(echo "$task" | jq -c .)
               if trigger_workflow_with_retry "$WORKFLOW" "$TASK_ID" "$TASK_JSON"; then
                 echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+                echo "--- Task $TASK_ID processing complete ---"
+              else
+                echo "--- Task $TASK_ID dispatch failed after retries ---"
               fi
             fi
-            
-            echo "---"
           done < <(echo "$TASKS" | jq -c '.[]')
 
       - name: Send Discord notification

@@ -337,7 +337,7 @@ Archived to: `.github/automation/archive/`
 ### Tasks Stuck in 'assigned' Status
 
 **Note:** With the new single-task mode and retry logic (v1.1.0+), tasks stuck in 'assigned' status should be rare. The orchestrator now:
-- Retries failed dispatches up to 3 times with exponential backoff
+- Retries failed dispatches up to 3 times with linear backoff
 - Only marks tasks as 'assigned' when dispatch succeeds
 - Leaves failed tasks in 'ready' state for next cycle
 
@@ -391,7 +391,7 @@ Tasks may still become stuck if there are persistent issues:
 
 ### Workflow Dispatch Errors (HTTP 400/422)
 
-**Note:** With the new retry logic (v1.1.0+), transient dispatch errors are automatically handled with 3 retry attempts and exponential backoff.
+**Note:** With the new retry logic (v1.1.0+), transient dispatch errors are automatically handled with 3 retry attempts and linear backoff.
 
 Persistent HTTP 422 errors typically indicate workflow configuration issues:
 
@@ -403,7 +403,7 @@ Persistent HTTP 422 errors typically indicate workflow configuration issues:
 **For HTTP 400 errors (rate limiting):**
 - Single-task mode prevents parallel dispatch rate limits
 - 20-second delays between tasks in multi-task mode
-- Automatic retry with exponential backoff handles transient limits
+- Automatic retry with linear backoff handles transient limits
 
 **General debugging:**
 1. Check workflow definition in `.github/workflows/`
@@ -505,7 +505,7 @@ The orchestrator is configured to assign and trigger **one task at a time** to e
 
 **How it works:**
 - Orchestrator selects and triggers only 1 task per hourly run
-- Retry logic with exponential backoff (3 attempts: 10s, 20s, 30s delays)
+- Retry logic with linear backoff (3 attempts: 10s, 20s, 30s delays)
 - Task only marked as 'assigned' when dispatch succeeds
 - If dispatch fails, task remains in 'ready' state for next cycle
 
@@ -520,7 +520,7 @@ The orchestrator is configured to assign and trigger **one task at a time** to e
 To enable parallel task assignment (up to 3 tasks), edit `.github/workflows/00-manager-orchestrator.yml`:
 
 ```yaml
-# Line ~82: Change from single-task to multi-task mode
+# Line ~89: Change from single-task to multi-task mode
 # Find: if (.tasks | length) < 1 then
 # Replace with: if (.tasks | length) < 3 then
 ```
@@ -537,7 +537,7 @@ To enable parallel task assignment (up to 3 tasks), edit `.github/workflows/00-m
 
 All task dispatches include automatic retry logic:
 - **Max retries:** 3 attempts per task
-- **Backoff delays:** 10s → 20s → 30s (exponential)
+- **Backoff delays:** 10s → 20s → 30s (linear/incremental)
 - **Error detection:** Captures HTTP 400/422 and connection errors
 - **Logging:** All attempts and failures are logged
 - **State management:** Tasks only marked 'assigned' on successful dispatch
@@ -710,7 +710,7 @@ Recommended settings:
 
 - **1.1.0** (2026-02-15) - Stability and reliability improvements
   - **Single-task mode:** Changed from 3 parallel tasks to 1 task per cycle (default)
-  - **Retry logic:** Added automatic retry with exponential backoff (3 attempts: 10s, 20s, 30s)
+  - **Retry logic:** Added automatic retry with linear backoff (3 attempts: 10s, 20s, 30s)
   - **Rate limit protection:** 20-second delays between tasks in multi-task mode
   - **Error handling:** Tasks only marked 'assigned' on successful dispatch
   - **Logging:** Enhanced logging of dispatch attempts and failures
