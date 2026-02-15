@@ -12,8 +12,8 @@
 | 🔄 In Progress | 1 | - |
 | 📋 Assigned | 6 | - |
 | 🧪 Testing | 0 | - |
-| ⏸️ Ready | 22 | - |
-| 🚫 Blocked | 0 | - |
+| ⏸️ Ready | 19 | - |
+| 🚫 Blocked | 3 | - |
 | **Total** | **29** | **100%** |
 
 ### Points Progress
@@ -35,7 +35,7 @@
 - **Module Count:** 23
 - **Java Files:** 291
 - **Lines of Code:** 34257
-- **Commits (30d):** 69
+- **Commits (30d):** 82
 
 ## Workflow Activity
 

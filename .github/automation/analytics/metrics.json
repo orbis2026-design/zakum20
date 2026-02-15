@@ -1,13 +1,13 @@
 {
-  "generated": "2026-02-15T18:58:09Z",
+  "generated": "2026-02-15T19:06:14Z",
   "tasks": {
     "total": 29,
-    "ready": 22,
+    "ready": 19,
     "assigned": 6,
     "in_progress": 1,
     "testing": 0,
     "completed": 0,
-    "blocked": 0,
+    "blocked": 3,
     "completion_percentage": 0,
     "points_total": 159,
     "points_completed": 0
@@ -22,7 +22,7 @@
     "module_count": 23,
     "java_files": 291,
     "lines_of_code": 34257,
-    "commits_30d": 69
+    "commits_30d": 82
   },
   "workflows": {
     "recent_runs": 30
