@@ -71,12 +71,14 @@ Our system uses a two-stage approach:
 ├─────────────────────────────────────────────────┤
 │ Input:  2,500 tokens × $0.15/1M   = $0.000375 │
 │ Output: 4,000 tokens × $0.60/1M   = $0.0024   │
-│ Total:                               $0.0245   │
+│ Total:                               $0.002775 │
 └─────────────────────────────────────────────────┘
 
-Combined Total per Execution:         $0.053
+Combined Total per Execution:         $0.0313
 With Buffer (rounded):                $0.055
 ```
+
+**Note:** The conservative estimate of $0.055 includes a safety buffer for variable token usage.
 
 ### Alternative Approaches
 
