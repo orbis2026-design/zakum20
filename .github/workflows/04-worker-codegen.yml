@@ -121,6 +121,7 @@ jobs:
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git checkout -b "$BRANCH_NAME"
           git add .
           git commit -m "feat: generate $MODULE_ID module ($PLUGIN_NAME)" || echo "No changes to commit"

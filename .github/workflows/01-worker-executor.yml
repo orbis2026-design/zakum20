@@ -65,6 +65,7 @@ jobs:
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add "$REGISTRY"
           git commit -m "chore: start task ${{ steps.task.outputs.id }}" || true
           git push || true
@@ -75,6 +76,7 @@ jobs:
           BRANCH_NAME="automation/${{ steps.task.outputs.id }}"
           echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git checkout -b "$BRANCH_NAME"
           git push -u origin "$BRANCH_NAME"
 
@@ -110,6 +112,7 @@ jobs:
           Real implementation logic would be added here based on task requirements.
           EOF
           
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add "$TASK_FILE"
           git commit -m "feat: implement ${{ steps.task.outputs.id }}" || echo "No changes to commit"
           git push || echo "No changes to push"
@@ -236,6 +239,7 @@ jobs:
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git checkout master
           git pull
           git add "$REGISTRY"
