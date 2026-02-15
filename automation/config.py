@@ -38,8 +38,9 @@ ESTIMATED_COST_PER_EXECUTION = (
 MAX_MONTHLY_EXECUTIONS = int(MONTHLY_BUDGET / ESTIMATED_COST_PER_EXECUTION)
 EXECUTION_INTERVAL_HOURS = 2.6  # Every 2.6 hours for optimal budget usage
 
-# Budget tracking file
-BUDGET_FILE = "token_budget.json"
+# Budget tracking file (in parent directory)
+import os
+BUDGET_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_budget.json")
 
 # Discord webhook (to be set via environment variable)
 DISCORD_WEBHOOK_URL = None  # Set via DISCORD_WEBHOOK_URL env var
