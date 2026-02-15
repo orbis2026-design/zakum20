@@ -64,7 +64,7 @@ class BudgetTracker:
                 "openai_output": 0
             },
             "milestones_reached": [],
-            "last_reset": datetime.now().isoformat(),
+            "last_reset": datetime.now().isoformat(),  # Initialization timestamp
             "history": []
         }
     

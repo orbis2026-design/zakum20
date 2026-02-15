@@ -88,9 +88,9 @@ def demo_milestone_simulation(target_milestone=5.0):
     print(f"Gap: ${target_milestone - initial_spent:.2f}")
     print()
     
-    # Calculate approximate executions needed
-    avg_cost = 0.0313  # Approximate cost per execution
-    needed = int((target_milestone - initial_spent) / avg_cost) + 2
+    # Calculate approximate executions needed using config value
+    from config import ESTIMATED_COST_PER_EXECUTION
+    needed = int((target_milestone - initial_spent) / ESTIMATED_COST_PER_EXECUTION) + 2
     print(f"Estimated executions needed: {needed}")
     print()
     

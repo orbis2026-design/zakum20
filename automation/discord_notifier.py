@@ -273,6 +273,8 @@ class DiscordNotifier:
     
     def _create_progress_bar(self, percent: float, length: int = 20) -> str:
         """Create a text-based progress bar."""
+        # Ensure percent is bounded to 0-100
+        percent = max(0.0, min(100.0, percent))
         filled = int((percent / 100) * length)
         empty = length - filled
         return f"[{'█' * filled}{'░' * empty}]"

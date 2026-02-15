@@ -43,10 +43,15 @@ jobs:
         id: budget_check
         run: |
           cd automation
-          python orchestrator.py
           
-          # Parse output to check if we can proceed
-          if grep -q "Budget exhausted" orchestrator_output.txt 2>/dev/null; then
+          # Run orchestrator and capture output
+          python orchestrator.py > /tmp/orchestrator_output.txt 2>&1 || true
+          
+          # Display output for debugging
+          cat /tmp/orchestrator_output.txt
+          
+          # Check if budget is exhausted
+          if grep -q "Budget exhausted\|cannot execute" /tmp/orchestrator_output.txt; then
             echo "can_proceed=false" >> $GITHUB_OUTPUT
             echo "Budget exhausted. Stopping workflow."
             exit 0
