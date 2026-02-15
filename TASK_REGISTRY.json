@@ -254,12 +254,13 @@
       "priority": 60,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Enforce strict async boundaries and region-safe world mutation",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:10:13Z"
     },
     {
       "id": "perf-002",
@@ -269,12 +270,13 @@
       "priority": 60,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Bound all queues/caches/maps with TTL, max-size, and explicit unload cleanup",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:10:13Z"
     },
     {
       "id": "perf-003",
@@ -299,12 +301,13 @@
       "priority": 60,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Make reload idempotent with task ownership registry and guaranteed cancellation",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T19:10:13Z"
     },
     {
       "id": "perf-005",
