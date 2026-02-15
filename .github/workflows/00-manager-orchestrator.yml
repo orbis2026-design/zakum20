@@ -156,13 +156,7 @@ jobs:
           BUDGET_REMAINING='${{ steps.budget.outputs.remaining }}'
           
           # Build task list for Discord
-          TASK_LIST=""
-          while IFS= read -r task; do
-            TASK_ID=$(echo "$task" | jq -r '.id')
-            TASK_NAME=$(echo "$task" | jq -r '.name')
-            TASK_POINTS=$(echo "$task" | jq -r '.points')
-            TASK_LIST="$TASK_LIST\n• **$TASK_ID** ($TASK_POINTS pts): $TASK_NAME"
-          done < <(echo "$TASKS" | jq -c '.[]')
+          TASK_LIST=$(echo "$TASKS" | jq -r '.[] | "• **\(.id)** (\(.points) pts): \(.name)"' | awk '{printf "%s\\n", $0}')
           
           # Send Discord webhook
           curl -X POST "$DISCORD_WEBHOOK_URL" \
