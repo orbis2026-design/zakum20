@@ -528,14 +528,16 @@ public final class ZakumPlugin extends JavaPlugin {
   }
 
   private void startGrimBridge() {
-    if (!getConfig().getBoolean("anticheat.grim.enabled", false)) return;
+    ZakumSettings.Anticheat.Grim grim = settings == null || settings.anticheat() == null
+      ? null
+      : settings.anticheat().grim();
+    if (grim == null || !grim.enabled()) return;
     if (Bukkit.getPluginManager().getPlugin("GrimAC") == null && Bukkit.getPluginManager().getPlugin("Grim") == null) {
       getLogger().warning("Grim bridge enabled but GrimAC is not installed.");
       return;
     }
 
-    List<String> script = GrimFlagBridge.normalizeScript(getConfig().getStringList("anticheat.grim.aceScript"));
-    this.grimFlagBridge = new GrimFlagBridge(api, this, script, getLogger(), metricsMonitor);
+    this.grimFlagBridge = new GrimFlagBridge(api, this, grim, getLogger(), metricsMonitor);
     grimFlagBridge.register();
   }
 
@@ -775,6 +777,14 @@ public final class ZakumPlugin extends JavaPlugin {
       return handleThreadGuardCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("grim")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleGrimCommand(sender, args);
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status|flush");
     sender.sendMessage("Usage: /" + label + " controlplane status");
     sender.sendMessage("Usage: /" + label + " perf status");
@@ -794,6 +804,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " tasks status");
     sender.sendMessage("Usage: /" + label + " async status|enable|disable");
     sender.sendMessage("Usage: /" + label + " threadguard status|enable|disable");
+    sender.sendMessage("Usage: /" + label + " grim status|enable|disable");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
   }
@@ -816,6 +827,10 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public SoakAutomationProfile getSoakProfile() {
     return soakProfile;
+  }
+
+  public GrimFlagBridge getGrimFlagBridge() {
+    return grimFlagBridge;
   }
 
   public AceDiagnosticsTracker getAceDiagnostics() {
@@ -931,6 +946,19 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleDataProbesFail = report.fail();
         moduleDataProbesSkipped = report.skipped();
       }
+      boolean grimConfiguredEnabled = settings != null
+        && settings.anticheat() != null
+        && settings.anticheat().grim() != null
+        && settings.anticheat().grim().enabled();
+      boolean grimRuntimeEnabled = false;
+      long grimFlagsExecuted = 0L;
+      long grimExecutionFailures = 0L;
+      if (grimFlagBridge != null) {
+        var grim = grimFlagBridge.snapshot();
+        grimRuntimeEnabled = grim.runtimeEnabled();
+        grimFlagsExecuted = grim.flagsExecuted();
+        grimExecutionFailures = grim.executionFailures();
+      }
       boolean soakConfiguredEnabled = settings != null && settings.operations() != null && settings.operations().soak().enabled();
       boolean soakRunning = false;
       int soakAssertionFailures = 0;
@@ -974,6 +1002,10 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleDataProbesPass,
         moduleDataProbesFail,
         moduleDataProbesSkipped,
+        grimConfiguredEnabled,
+        grimRuntimeEnabled,
+        grimFlagsExecuted,
+        grimExecutionFailures,
         soakConfiguredEnabled,
         soakRunning,
         soakAssertionFailures,
@@ -1019,6 +1051,10 @@ public final class ZakumPlugin extends JavaPlugin {
     lines.add("modules.dataProbes.pass=" + snap.moduleDataProbesPass());
     lines.add("modules.dataProbes.fail=" + snap.moduleDataProbesFail());
     lines.add("modules.dataProbes.skipped=" + snap.moduleDataProbesSkipped());
+    lines.add("grim.configured=" + snap.grimConfiguredEnabled());
+    lines.add("grim.runtimeEnabled=" + snap.grimRuntimeEnabled());
+    lines.add("grim.flagsExecuted=" + snap.grimFlagsExecuted());
+    lines.add("grim.executionFailures=" + snap.grimExecutionFailures());
     lines.add("soak.configured=" + snap.soakConfiguredEnabled());
     lines.add("soak.running=" + snap.soakRunning());
     lines.add("soak.assertionFailures=" + snap.soakAssertionFailures());
@@ -1723,6 +1759,31 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleGrimCommand(CommandSender sender, String[] args) {
+    if (grimFlagBridge == null) {
+      sender.sendMessage("Grim bridge is not available.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum grim status|enable|disable");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    switch (sub) {
+      case "status" -> sendGrimStatus(sender);
+      case "enable" -> {
+        grimFlagBridge.setRuntimeEnabled(true);
+        sender.sendMessage("Grim bridge runtime enabled.");
+      }
+      case "disable" -> {
+        grimFlagBridge.setRuntimeEnabled(false);
+        sender.sendMessage("Grim bridge runtime disabled.");
+      }
+      default -> sender.sendMessage("Usage: /zakum grim status|enable|disable");
+    }
+    return true;
+  }
+
   private boolean handleAsyncCommand(CommandSender sender, String[] args) {
     if (scheduler == null) {
       sender.sendMessage("Scheduler is offline.");
@@ -1862,6 +1923,34 @@ public final class ZakumPlugin extends JavaPlugin {
     if (snap.topOperations() != null && !snap.topOperations().isEmpty()) {
       sender.sendMessage("topOperations=" + snap.topOperations());
     }
+  }
+
+  private void sendGrimStatus(CommandSender sender) {
+    if (grimFlagBridge == null) {
+      sender.sendMessage("Grim bridge is offline.");
+      return;
+    }
+    var snap = grimFlagBridge.snapshot();
+    sender.sendMessage("Zakum Grim Bridge");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("listenerActive=" + snap.listenerActive());
+    sender.sendMessage("eventClass=" + (snap.eventClass() == null || snap.eventClass().isBlank() ? "none" : snap.eventClass()));
+    sender.sendMessage("scriptLines=" + snap.scriptLines());
+    sender.sendMessage("cooldownMsPerCheck=" + snap.cooldownMsPerCheck());
+    sender.sendMessage("maxFlagsPerMinutePerPlayer=" + snap.maxFlagsPerMinutePerPlayer());
+    sender.sendMessage("includeVerboseMetadata=" + snap.includeVerboseMetadata());
+    sender.sendMessage("flagsObserved=" + snap.flagsObserved());
+    sender.sendMessage("flagsExecuted=" + snap.flagsExecuted());
+    sender.sendMessage("cooldownSkips=" + snap.cooldownSkips());
+    sender.sendMessage("rateLimitedSkips=" + snap.rateLimitedSkips());
+    sender.sendMessage("runtimeDisabledSkips=" + snap.runtimeDisabledSkips());
+    sender.sendMessage("missingPlayerSkips=" + snap.missingPlayerSkips());
+    sender.sendMessage("executionFailures=" + snap.executionFailures());
+    sender.sendMessage("lastFlagAt=" + formatEpochMillis(snap.lastFlagAtMs()));
+    sender.sendMessage("lastExecutionAt=" + formatEpochMillis(snap.lastExecutionAtMs()));
+    String err = snap.lastError();
+    sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
   }
 
   private void sendAsyncStatus(CommandSender sender) {
@@ -2162,6 +2251,10 @@ public final class ZakumPlugin extends JavaPlugin {
     int moduleDataProbesPass,
     int moduleDataProbesFail,
     int moduleDataProbesSkipped,
+    boolean grimConfiguredEnabled,
+    boolean grimRuntimeEnabled,
+    long grimFlagsExecuted,
+    long grimExecutionFailures,
     boolean soakConfiguredEnabled,
     boolean soakRunning,
     int soakAssertionFailures,
@@ -2198,6 +2291,10 @@ public final class ZakumPlugin extends JavaPlugin {
         0,
         0,
         0,
+        false,
+        false,
+        0L,
+        0L,
         false,
         false,
         0,

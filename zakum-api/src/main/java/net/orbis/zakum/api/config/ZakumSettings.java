@@ -17,6 +17,7 @@ public record ZakumSettings(
   Server server,
   Database database,
   ControlPlane controlPlane,
+  Anticheat anticheat,
   Cloud cloud,
   Http http,
   Cache cache,
@@ -69,6 +70,24 @@ public record ZakumSettings(
     String baseUrl,
     String apiKey
   ) {}
+
+  public record Anticheat(
+    Grim grim
+  ) {
+    public record Grim(
+      boolean enabled,
+      long cooldownMsPerCheck,
+      int maxFlagsPerMinutePerPlayer,
+      boolean includeVerboseMetadata,
+      java.util.List<String> aceScript
+    ) {
+      public Grim {
+        cooldownMsPerCheck = Math.max(0L, cooldownMsPerCheck);
+        maxFlagsPerMinutePerPlayer = Math.max(0, maxFlagsPerMinutePerPlayer);
+        aceScript = aceScript == null ? java.util.List.of() : java.util.List.copyOf(aceScript);
+      }
+    }
+  }
 
   public record Cloud(
     boolean enabled,

@@ -9,6 +9,7 @@ Key sections (top-level):
 - `server.id` (required): per-server scoping identity (battlepass, warps, etc.)
 - `database.*`: MySQL/Hikari + failover
 - `controlPlane.*`: optional Orbis Cloud Bot API endpoint + key
+- `anticheat.grim.*`: Grim flag -> ACE bridge controls and safeguards
 - `entitlements.cache.*`: cache sizing/TTL for premium checks
 - `boosters.*`: booster behavior (handled by BoosterService)
 - `actions.*`: action emitters + movement sampling + deferred replay
@@ -30,6 +31,7 @@ Related docs:
 - `docs/06-DATABASE.md`
 - `docs/07-OBSERVABILITY.md`
 - `docs/08-PACKETS.md`
+- `docs/grim-ace-bridge.md`
 
 
 ---

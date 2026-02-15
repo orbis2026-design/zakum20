@@ -26,6 +26,7 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 9. **78/100** Structured ACE parse/execute error taxonomy - complete
 10. **76/100** Cross-module data health subchecks (schema/version/read-write probes) - complete
 11. **74/100** Cloud HTTP parity hardening across remaining bridges - complete
+12. **72/100** GrimAC -> ACE bridge hardening (rate/cooldown safeguards + command telemetry) - complete
 
 ## Execution Rule (Directive Alignment)
 

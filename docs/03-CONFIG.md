@@ -28,6 +28,13 @@ This snapshot is:
 - `cloud.dedupe.*`: replay safety and optional persistence
 - `cloud.ack.*`: ACK batching and retry policy
 
+### anticheat
+- `anticheat.grim.enabled`: enables Grim flag -> ACE bridge
+- `anticheat.grim.cooldownMsPerCheck`: per-player/per-check suppression window
+- `anticheat.grim.maxFlagsPerMinutePerPlayer`: per-player hard rate cap (`0` disables)
+- `anticheat.grim.includeVerboseMetadata`: include verbose/reason tokens in ACE metadata
+- `anticheat.grim.aceScript`: ACE script executed on accepted flag events
+
 ### entitlements
 - cache size and TTL
 

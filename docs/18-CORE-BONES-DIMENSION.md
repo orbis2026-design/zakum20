@@ -70,6 +70,7 @@ Estimated from current source and command surfaces:
 - Added module probe command surface (`/zakum datahealth modules`) in fallback and CommandAPI.
 - Added module probe summary counters into `/zakum datahealth status`.
 - Added cloud HTTP resilience parity with ControlPlane (`http.*` retry/circuit policy + status telemetry).
+- Added hardened Grim bridge controls (`anticheat.grim.*`) with cooldown/rate safeguards and `/zakum grim status|enable|disable`.
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 

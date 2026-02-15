@@ -60,6 +60,11 @@ cloud:
 anticheat:
   grim:
     enabled: false
+    # Suppress duplicate bursts from the same check + player.
+    cooldownMsPerCheck: 750
+    # Hard cap to prevent ACE spam under sustained flag storms (0 disables cap).
+    maxFlagsPerMinutePerPlayer: 120
+    includeVerboseMetadata: true
     aceScript:
       - "[MESSAGE] <red>Anticheat flag: <gold>%check%</gold>"
       - "[SOUND] BLOCK_NOTE_BLOCK_BASS {volume=0.8 pitch=0.8}"

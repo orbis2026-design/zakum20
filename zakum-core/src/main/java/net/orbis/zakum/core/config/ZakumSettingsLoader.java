@@ -31,6 +31,7 @@ public final class ZakumSettingsLoader {
       str(cfg, "controlPlane.baseUrl", "").trim(),
       str(cfg, "controlPlane.apiKey", "")
     );
+    var anticheat = loadAnticheat(cfg);
     var cloud = loadCloud(cfg, serverId, cp);
 
     var http = loadHttp(cfg);
@@ -52,6 +53,7 @@ public final class ZakumSettingsLoader {
       new ZakumSettings.Server(serverId),
       db,
       cp,
+      anticheat,
       cloud,
       http,
       cache,
@@ -171,6 +173,24 @@ public final class ZakumSettingsLoader {
       ackMaxAttempts,
       inflightTtlSeconds,
       maxFailureAttempts
+    );
+  }
+
+  private static ZakumSettings.Anticheat loadAnticheat(FileConfiguration cfg) {
+    boolean grimEnabled = bool(cfg, "anticheat.grim.enabled", false);
+    long grimCooldownMs = clampL(cfg.getLong("anticheat.grim.cooldownMsPerCheck", 750L), 0L, 60_000L);
+    int grimMaxFlagsPerMinute = clampI(cfg.getInt("anticheat.grim.maxFlagsPerMinutePerPlayer", 120), 0, 10_000);
+    boolean grimIncludeVerboseMetadata = bool(cfg, "anticheat.grim.includeVerboseMetadata", true);
+    java.util.List<String> grimScript = listOfStrings(cfg.getList("anticheat.grim.aceScript"));
+
+    return new ZakumSettings.Anticheat(
+      new ZakumSettings.Anticheat.Grim(
+        grimEnabled,
+        grimCooldownMs,
+        grimMaxFlagsPerMinute,
+        grimIncludeVerboseMetadata,
+        grimScript
+      )
     );
   }
 

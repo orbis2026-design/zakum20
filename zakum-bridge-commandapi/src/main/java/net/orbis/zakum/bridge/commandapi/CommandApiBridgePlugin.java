@@ -18,6 +18,7 @@ import net.orbis.zakum.api.entitlements.EntitlementScope;
 import net.orbis.zakum.api.packets.PacketService;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.ZakumPlugin;
+import net.orbis.zakum.core.anticheat.GrimFlagBridge;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.ops.StressHarnessV2;
@@ -113,6 +114,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(burstCacheCommand());
     root.withSubcommand(asyncCommand());
     root.withSubcommand(threadGuardCommand());
+    root.withSubcommand(grimCommand());
     root.withSubcommand(dataHealthCommand());
     root.withSubcommand(modulesCommand());
     root.withSubcommand(tasksCommand());
@@ -888,6 +890,68 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           }
           guard.setRuntimeEnabled(false);
           sender.sendMessage("Thread guard runtime disabled.");
+        })
+      );
+  }
+
+  private CommandAPICommand grimCommand() {
+    return new CommandAPICommand("grim")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          GrimFlagBridge grim = corePlugin.getGrimFlagBridge();
+          if (grim == null) {
+            sender.sendMessage("Grim bridge is offline.");
+            return;
+          }
+          var snap = grim.snapshot();
+          sender.sendMessage("Zakum Grim Bridge");
+          sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+          sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+          sender.sendMessage("listenerActive=" + snap.listenerActive());
+          sender.sendMessage("eventClass=" + (snap.eventClass() == null || snap.eventClass().isBlank() ? "none" : snap.eventClass()));
+          sender.sendMessage("scriptLines=" + snap.scriptLines());
+          sender.sendMessage("cooldownMsPerCheck=" + snap.cooldownMsPerCheck());
+          sender.sendMessage("maxFlagsPerMinutePerPlayer=" + snap.maxFlagsPerMinutePerPlayer());
+          sender.sendMessage("includeVerboseMetadata=" + snap.includeVerboseMetadata());
+          sender.sendMessage("flagsObserved=" + snap.flagsObserved());
+          sender.sendMessage("flagsExecuted=" + snap.flagsExecuted());
+          sender.sendMessage("cooldownSkips=" + snap.cooldownSkips());
+          sender.sendMessage("rateLimitedSkips=" + snap.rateLimitedSkips());
+          sender.sendMessage("runtimeDisabledSkips=" + snap.runtimeDisabledSkips());
+          sender.sendMessage("missingPlayerSkips=" + snap.missingPlayerSkips());
+          sender.sendMessage("executionFailures=" + snap.executionFailures());
+          sender.sendMessage("lastFlagAt=" + formatEpochMillis(snap.lastFlagAtMs()));
+          sender.sendMessage("lastExecutionAt=" + formatEpochMillis(snap.lastExecutionAtMs()));
+          String err = snap.lastError();
+          sender.sendMessage("lastError=" + (err == null || err.isBlank() ? "none" : err));
+        })
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          GrimFlagBridge grim = corePlugin.getGrimFlagBridge();
+          if (grim == null) {
+            sender.sendMessage("Grim bridge is offline.");
+            return;
+          }
+          grim.setRuntimeEnabled(true);
+          sender.sendMessage("Grim bridge runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          GrimFlagBridge grim = corePlugin.getGrimFlagBridge();
+          if (grim == null) {
+            sender.sendMessage("Grim bridge is offline.");
+            return;
+          }
+          grim.setRuntimeEnabled(false);
+          sender.sendMessage("Grim bridge runtime disabled.");
         })
       );
   }
