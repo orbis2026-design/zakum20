@@ -1,0 +1,117 @@
+name: AI Feedback Collection
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  collect-feedback:
+    # Only run if PR was merged and created by AI bot
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'ai-gen/')
+    
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Python dependencies
+        run: |
+          cd tools/ai-orchestrator
+          pip install -r requirements.txt
+      
+      - name: Extract task ID from branch
+        id: extract_task
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TASK_ID="${BRANCH#ai-gen/}"
+          echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+          echo "Extracted task ID: $TASK_ID"
+      
+      - name: Collect feedback data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          cd tools/ai-orchestrator
+          
+          # Create feedback JSON
+          cat > feedback/${{ steps.extract_task.outputs.task_id }}.json << EOF
+          {
+            "task_id": "${{ steps.extract_task.outputs.task_id }}",
+            "pr_number": ${{ github.event.pull_request.number }},
+            "pr_url": "${{ github.event.pull_request.html_url }}",
+            "pr_title": "${{ github.event.pull_request.title }}",
+            "merged_at": "${{ github.event.pull_request.merged_at }}",
+            "merged_by": "${{ github.event.pull_request.merged_by.login }}",
+            "commits": ${{ github.event.pull_request.commits }},
+            "additions": ${{ github.event.pull_request.additions }},
+            "deletions": ${{ github.event.pull_request.deletions }},
+            "changed_files": ${{ github.event.pull_request.changed_files }},
+            "branch": "${{ github.event.pull_request.head.ref }}"
+          }
+          EOF
+          
+          echo "Feedback collected for task: ${{ steps.extract_task.outputs.task_id }}"
+      
+      - name: Update task status to completed
+        run: |
+          cd tools/ai-orchestrator
+          python -c "
+          from parse_docs import TaskParser
+          parser = TaskParser('../../docs/PLUGIN-TASKS.md')
+          parser.update_task_status('${{ steps.extract_task.outputs.task_id }}', 'completed')
+          print('Task status updated to completed')
+          "
+      
+      - name: Commit feedback
+        run: |
+          git config --global user.name "AI Development Bot"
+          git config --global user.email "ai-dev-bot@orbis2026.net"
+          
+          git add tools/ai-orchestrator/feedback/
+          git add docs/PLUGIN-TASKS.md
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "AI Feedback: Collected data for ${{ steps.extract_task.outputs.task_id }}"
+            git push
+          fi
+      
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          cd tools/ai-orchestrator
+          python -c "
+          from discord_notifier import DiscordNotifier
+          import os
+          
+          if os.getenv('DISCORD_WEBHOOK_URL'):
+              notifier = DiscordNotifier()
+              notifier.notify_pr_merged(
+                  task_id='${{ steps.extract_task.outputs.task_id }}',
+                  task_title='${{ github.event.pull_request.title }}',
+                  pr_url='${{ github.event.pull_request.html_url }}',
+                  merge_info={
+                      'merged_by': '${{ github.event.pull_request.merged_by.login }}',
+                      'commits': ${{ github.event.pull_request.commits }}
+                  }
+              )
+              print('Discord notification sent')
+          "

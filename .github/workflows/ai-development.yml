@@ -1,0 +1,104 @@
+name: AI Development Automation
+
+on:
+  # Run hourly
+  schedule:
+    - cron: '0 * * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      max_tasks:
+        description: 'Maximum number of tasks to process'
+        required: false
+        default: '1'
+      task_id:
+        description: 'Specific task ID to process (optional)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run mode (no PRs created)'
+        required: false
+        default: 'false'
+
+jobs:
+  ai-development:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      - name: Install Python dependencies
+        run: |
+          cd tools/ai-orchestrator
+          pip install -r requirements.txt
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "AI Development Bot"
+          git config --global user.email "ai-dev-bot@orbis2026.net"
+      
+      - name: Run AI Orchestrator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd tools/ai-orchestrator
+          
+          # Build command
+          CMD="python orchestrator.py --project-root ../.."
+          
+          # Add max tasks
+          MAX_TASKS="${{ github.event.inputs.max_tasks || '1' }}"
+          CMD="$CMD --max-tasks $MAX_TASKS"
+          
+          # Add task ID if specified
+          if [ -n "${{ github.event.inputs.task_id }}" ]; then
+            CMD="$CMD --task-id ${{ github.event.inputs.task_id }}"
+          fi
+          
+          # Add dry-run flag if specified
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          echo "Running: $CMD"
+          eval $CMD
+      
+      - name: Upload feedback artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-orchestrator-feedback
+          path: tools/ai-orchestrator/feedback/
+          retention-days: 30

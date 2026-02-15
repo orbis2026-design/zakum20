@@ -1,0 +1,52 @@
+# AI Orchestrator Configuration Template
+# Copy this to config.local.yaml and fill in your values
+
+# API Configuration
+claude:
+  api_key: "${ANTHROPIC_API_KEY}"
+  model: "claude-3-5-sonnet-20241022"
+  max_tokens: 4096
+
+chatgpt:
+  api_key: "${OPENAI_API_KEY}"
+  model: "gpt-4-turbo-preview"
+  max_tokens: 4096
+
+# Discord Webhook
+discord:
+  webhook_url: "${DISCORD_WEBHOOK_URL}"
+  enabled: true
+
+# GitHub Configuration
+github:
+  token: "${GITHUB_TOKEN}"
+  repository: "orbis2026-design/zakum20"
+  base_branch: "main"
+
+# Documentation Paths
+docs:
+  tasks_file: "docs/PLUGIN-TASKS.md"
+  feedback_dir: "tools/ai-orchestrator/feedback"
+
+# Validation Settings
+validation:
+  compile_timeout: 300  # seconds
+  gradle_wrapper: "./gradlew"
+  required_checks:
+    - "compileJava"
+    - "verifyPlatformInfrastructure"
+
+# Task Processing
+processing:
+  max_concurrent_tasks: 1
+  priority_order:
+    - "high"
+    - "medium"
+    - "low"
+
+# Java/Plugin Configuration
+project:
+  java_version: "21"
+  paper_version: "1.21.11-R0.1-SNAPSHOT"
+  folia_compatible: true
+  spigot_compatible: true
