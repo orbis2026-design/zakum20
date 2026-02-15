@@ -266,6 +266,10 @@ operations:
     enabled: true
     maxRecentEntries: 200
     maxLineLength: 200
+  dataHealthProbes:
+    # Cross-module schema/read-write SQL probes.
+    enabled: true
+    includeWriteProbe: true
 
 http:
   # Default client used by Zakum (controlPlane, future bridges).

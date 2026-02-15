@@ -24,7 +24,7 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 7. **82/100** Module startup/load-order validator - complete
 8. **80/100** 12h soak automation profile with assertions - complete
 9. **78/100** Structured ACE parse/execute error taxonomy - complete
-10. **76/100** Cross-module data health subchecks (schema/version/read-write probes) - pending
+10. **76/100** Cross-module data health subchecks (schema/version/read-write probes) - complete
 11. **74/100** Cloud HTTP parity hardening across remaining bridges - pending
 
 ## Execution Rule (Directive Alignment)
@@ -35,4 +35,4 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 
 ## Next Priority Slice
 
-`Cross-module data health subchecks` is now the highest-scoring pending initiative.
+`Cloud HTTP parity hardening across remaining bridges` is now the highest-scoring pending initiative.

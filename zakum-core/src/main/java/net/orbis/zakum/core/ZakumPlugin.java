@@ -46,6 +46,7 @@ import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.ops.StressHarnessV2;
 import net.orbis.zakum.core.ops.ModuleStartupValidator;
+import net.orbis.zakum.core.ops.ModuleDataHealthProber;
 import net.orbis.zakum.core.ops.SoakAutomationProfile;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
@@ -134,6 +135,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private VisualCircuitBreaker visualCircuitBreaker;
   private StressHarnessV2 stressHarness;
   private ModuleStartupValidator moduleStartupValidator;
+  private ModuleDataHealthProber moduleDataHealthProber;
   private SoakAutomationProfile soakProfile;
 
   private MovementSampler movementSampler;
@@ -319,6 +321,12 @@ public final class ZakumPlugin extends JavaPlugin {
       metricsMonitor,
       getLogger()
     );
+    this.moduleDataHealthProber = new ModuleDataHealthProber(
+      api,
+      settings.operations().dataHealthProbes(),
+      metricsMonitor,
+      getLogger()
+    );
     startCloudPolling();
     startGrimBridge();
     this.moduleStartupValidator = new ModuleStartupValidator(
@@ -421,6 +429,7 @@ public final class ZakumPlugin extends JavaPlugin {
       try { soakProfile.close(); } catch (Throwable ignored) {}
       soakProfile = null;
     }
+    moduleDataHealthProber = null;
     aceDiagnostics = null;
     if (moduleStartupValidator != null) {
       moduleStartupValidator.stop();
@@ -717,13 +726,12 @@ public final class ZakumPlugin extends JavaPlugin {
       return handlePacketCullCommand(sender, args);
     }
 
-    if (args.length >= 2 && args[0].equalsIgnoreCase("datahealth") && args[1].equalsIgnoreCase("status")) {
+    if (args.length >= 2 && args[0].equalsIgnoreCase("datahealth")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
         return true;
       }
-      sendDataHealthStatus(sender);
-      return true;
+      return handleDataHealthCommand(sender, args);
     }
 
     if (args.length >= 2 && args[0].equalsIgnoreCase("burstcache")) {
@@ -780,7 +788,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
-    sender.sendMessage("Usage: /" + label + " datahealth status");
+    sender.sendMessage("Usage: /" + label + " datahealth status|modules");
     sender.sendMessage("Usage: /" + label + " burstcache status|enable|disable");
     sender.sendMessage("Usage: /" + label + " modules status|validate");
     sender.sendMessage("Usage: /" + label + " tasks status");
@@ -912,6 +920,17 @@ public final class ZakumPlugin extends JavaPlugin {
         aceUnknownEffects = ace.unknownEffects();
         aceUnknownTargeters = ace.unknownTargeters();
       }
+      boolean moduleDataProbesEnabled = false;
+      int moduleDataProbesPass = 0;
+      int moduleDataProbesFail = 0;
+      int moduleDataProbesSkipped = 0;
+      if (moduleDataHealthProber != null) {
+        var report = moduleDataHealthProber.run();
+        moduleDataProbesEnabled = report.enabled();
+        moduleDataProbesPass = report.pass();
+        moduleDataProbesFail = report.fail();
+        moduleDataProbesSkipped = report.skipped();
+      }
       boolean soakConfiguredEnabled = settings != null && settings.operations() != null && settings.operations().soak().enabled();
       boolean soakRunning = false;
       int soakAssertionFailures = 0;
@@ -951,6 +970,10 @@ public final class ZakumPlugin extends JavaPlugin {
         aceExecutionFailures,
         aceUnknownEffects,
         aceUnknownTargeters,
+        moduleDataProbesEnabled,
+        moduleDataProbesPass,
+        moduleDataProbesFail,
+        moduleDataProbesSkipped,
         soakConfiguredEnabled,
         soakRunning,
         soakAssertionFailures,
@@ -992,6 +1015,10 @@ public final class ZakumPlugin extends JavaPlugin {
     lines.add("ace.diag.executionFailures=" + snap.aceExecutionFailures());
     lines.add("ace.diag.unknownEffects=" + snap.aceUnknownEffects());
     lines.add("ace.diag.unknownTargeters=" + snap.aceUnknownTargeters());
+    lines.add("modules.dataProbes.enabled=" + snap.moduleDataProbesEnabled());
+    lines.add("modules.dataProbes.pass=" + snap.moduleDataProbesPass());
+    lines.add("modules.dataProbes.fail=" + snap.moduleDataProbesFail());
+    lines.add("modules.dataProbes.skipped=" + snap.moduleDataProbesSkipped());
     lines.add("soak.configured=" + snap.soakConfiguredEnabled());
     lines.add("soak.running=" + snap.soakRunning());
     lines.add("soak.assertionFailures=" + snap.soakAssertionFailures());
@@ -1305,6 +1332,24 @@ public final class ZakumPlugin extends JavaPlugin {
     }
 
     sender.sendMessage("Usage: /zakum ace status|errors [limit]|clear|enable|disable");
+    return true;
+  }
+
+  private boolean handleDataHealthCommand(CommandSender sender, String[] args) {
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum datahealth status|modules");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("status")) {
+      sendDataHealthStatus(sender);
+      return true;
+    }
+    if (sub.equals("modules")) {
+      sendModuleDataHealthStatus(sender);
+      return true;
+    }
+    sender.sendMessage("Usage: /zakum datahealth status|modules");
     return true;
   }
 
@@ -1853,6 +1898,75 @@ public final class ZakumPlugin extends JavaPlugin {
     });
   }
 
+  public CompletableFuture<ModuleDataHealthProber.Report> collectModuleDataHealthReport() {
+    if (scheduler == null) {
+      return CompletableFuture.completedFuture(ModuleDataHealthProber.Report.offline(System.currentTimeMillis(), "scheduler_offline"));
+    }
+    return scheduler.supplyAsync(() -> {
+      if (moduleDataHealthProber == null) {
+        return ModuleDataHealthProber.Report.disabled(System.currentTimeMillis());
+      }
+      return moduleDataHealthProber.run();
+    });
+  }
+
+  public List<String> moduleDataHealthLines(ModuleDataHealthProber.Report report) {
+    if (report == null) {
+      return List.of("Module data health unavailable.");
+    }
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum Module Data Health");
+    lines.add("enabled=" + report.enabled());
+    lines.add("includeWriteProbe=" + report.includeWriteProbe());
+    lines.add("databaseOnline=" + report.databaseOnline());
+    lines.add("total=" + report.total());
+    lines.add("pass=" + report.pass());
+    lines.add("fail=" + report.fail());
+    lines.add("skipped=" + report.skipped());
+    lines.add("generatedAt=" + formatEpochMillis(report.generatedAtMs()));
+    lines.add("durationMs=" + report.durationMs());
+    if (report.error() != null && !report.error().isBlank()) {
+      lines.add("error=" + report.error());
+    }
+    if (report.results() == null || report.results().isEmpty()) {
+      lines.add("probes=none");
+      return lines;
+    }
+    for (ModuleDataHealthProber.ProbeResult result : report.results()) {
+      if (result == null) continue;
+      String key = result.key();
+      lines.add("probe." + key + ".state=" + result.state());
+      if (result.requiredPlugin() != null && !result.requiredPlugin().isBlank()) {
+        lines.add("probe." + key + ".plugin=" + result.requiredPlugin());
+      }
+      lines.add("probe." + key + ".latencyMs=" + result.latencyMs());
+      if (result.detail() != null && !result.detail().isBlank()) {
+        lines.add("probe." + key + ".detail=" + result.detail());
+      }
+    }
+    return lines;
+  }
+
+  private void sendModuleDataHealthStatus(CommandSender sender) {
+    sender.sendMessage("Collecting module data health...");
+    collectModuleDataHealthReport().whenComplete((report, ex) -> {
+      Runnable send = () -> {
+        if (ex != null) {
+          sender.sendMessage("Module data health failed: " + ex.getMessage());
+          return;
+        }
+        for (String line : moduleDataHealthLines(report)) {
+          sender.sendMessage(line);
+        }
+      };
+      if (scheduler != null) {
+        scheduler.runGlobal(send);
+      } else {
+        send.run();
+      }
+    });
+  }
+
   public List<String> taskRegistryLines() {
     if (scheduler == null) {
       return List.of("Task registry unavailable: scheduler offline.");
@@ -2032,6 +2146,10 @@ public final class ZakumPlugin extends JavaPlugin {
     long aceExecutionFailures,
     long aceUnknownEffects,
     long aceUnknownTargeters,
+    boolean moduleDataProbesEnabled,
+    int moduleDataProbesPass,
+    int moduleDataProbesFail,
+    int moduleDataProbesSkipped,
     boolean soakConfiguredEnabled,
     boolean soakRunning,
     int soakAssertionFailures,
@@ -2064,6 +2182,10 @@ public final class ZakumPlugin extends JavaPlugin {
         0L,
         0L,
         0L,
+        false,
+        0,
+        0,
+        0,
         false,
         false,
         0,

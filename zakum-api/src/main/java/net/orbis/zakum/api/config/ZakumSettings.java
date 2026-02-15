@@ -188,6 +188,7 @@ public record ZakumSettings(
     Stress stress,
     Soak soak,
     AceDiagnostics aceDiagnostics,
+    DataHealthProbes dataHealthProbes,
     ThreadGuard threadGuard,
     Async async,
     StartupValidator startupValidator
@@ -275,6 +276,11 @@ public record ZakumSettings(
       boolean enabled,
       int maxRecentEntries,
       int maxLineLength
+    ) {}
+
+    public record DataHealthProbes(
+      boolean enabled,
+      boolean includeWriteProbe
     ) {}
 
     public record ThreadGuard(

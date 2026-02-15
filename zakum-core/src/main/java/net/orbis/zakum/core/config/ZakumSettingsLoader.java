@@ -348,6 +348,8 @@ public final class ZakumSettingsLoader {
     boolean aceDiagEnabled = bool(cfg, "operations.aceDiagnostics.enabled", true);
     int aceDiagMaxRecentEntries = clampI(cfg.getInt("operations.aceDiagnostics.maxRecentEntries", 200), 10, 10_000);
     int aceDiagMaxLineLength = clampI(cfg.getInt("operations.aceDiagnostics.maxLineLength", 200), 40, 2000);
+    boolean dataHealthProbesEnabled = bool(cfg, "operations.dataHealthProbes.enabled", true);
+    boolean dataHealthProbesIncludeWrite = bool(cfg, "operations.dataHealthProbes.includeWriteProbe", true);
 
     boolean guardEnabled = bool(cfg, "operations.threadGuard.enabled", true);
     boolean failOnViolation = bool(cfg, "operations.threadGuard.failOnViolation", false);
@@ -422,6 +424,10 @@ public final class ZakumSettingsLoader {
         aceDiagEnabled,
         aceDiagMaxRecentEntries,
         aceDiagMaxLineLength
+      ),
+      new ZakumSettings.Operations.DataHealthProbes(
+        dataHealthProbesEnabled,
+        dataHealthProbesIncludeWrite
       ),
       new ZakumSettings.Operations.ThreadGuard(
         guardEnabled,

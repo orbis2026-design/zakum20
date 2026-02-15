@@ -15,6 +15,7 @@ Key sections (top-level):
 - `operations.startupValidator.*`: module startup/load-order validator controls
 - `operations.soak.*`: long-run soak profile automation + assertion thresholds
 - `operations.aceDiagnostics.*`: ACE parser/execution diagnostics taxonomy controls
+- `operations.dataHealthProbes.*`: cross-module schema/read/write SQL probes
 - `datastore.*`: optional Mongo/Redis profile+session capability
 - `economy.global.*`: optional Redis global economy capability
 - `cache.burst.*`: shared transient burst-cache service (Redis + local fallback)

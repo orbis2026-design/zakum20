@@ -44,6 +44,7 @@ This snapshot is:
 - `operations.stress.*`: stress harness safety gates + scenario matrix
 - `operations.soak.*`: 12h soak automation profile (telemetry assertions, auto stress bootstrap, report labeling)
 - `operations.aceDiagnostics.*`: ACE parse/execute error taxonomy diagnostics buffer and limits
+- `operations.dataHealthProbes.*`: module SQL schema/read/write probe controls
 
 ### datastore
 - `datastore.enabled`: toggles Mongo/Redis profile + session capability bootstrap

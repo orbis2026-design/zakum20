@@ -33,7 +33,7 @@ Plugin: `ZakumBridgeCommandAPI`
 - `/zakum modules status|validate`
 - `/zakum async status|enable|disable`
 - `/zakum threadguard status|enable|disable`
-- `/zakum datahealth status`
+- `/zakum datahealth status|modules`
 - `/zakum tasks status`
 - `/zakum packets status`
 - `/zakum entitlements check|grant|revoke|invalidate ...`

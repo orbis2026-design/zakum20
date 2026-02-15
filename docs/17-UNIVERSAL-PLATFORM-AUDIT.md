@@ -96,6 +96,7 @@ Progress updates after this audit:
 - Step 17: completed via module startup/load-order validator and `/zakum modules status|validate`.
 - Step 19: completed baseline via soak automation profile and `/zakum soak start|stop|status`.
 - Step 15: completed via ACE parse/execute error taxonomy and `/zakum ace status|errors|clear`.
+- Step 9: completed expanded cross-module SQL probes via `/zakum datahealth modules`.
 
 ## 7) Diff Mode (This Refactor Pass Only)
 

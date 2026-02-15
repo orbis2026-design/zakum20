@@ -33,13 +33,13 @@ Total: **140 points**
 Estimated from current source and command surfaces:
 
 - Runtime safety kernel: **30 / 30**
-- Data/storage spine: **26 / 28**
+- Data/storage spine: **27 / 28**
 - Command/control spine: **24 / 24**
 - Observability + diagnostics: **22 / 22**
 - Scheduler and task lifecycle: **20 / 20**
 - Capability contract surface: **16 / 16**
 
-**Core Bones subtotal: 138 / 140 (99%)**
+**Core Bones subtotal: 139 / 140 (99%)**
 
 ## What Was Implemented In This Pass
 
@@ -66,11 +66,13 @@ Estimated from current source and command surfaces:
 - Added structured ACE error taxonomy diagnostics (`operations.aceDiagnostics.*`) and bounded recent error buffer.
 - Added ACE diagnostics command surface (`/zakum ace status|errors|clear|enable|disable`) in fallback and CommandAPI.
 - Added ACE diagnostics health counters into `/zakum datahealth status`.
+- Added cross-module SQL health probes (`operations.dataHealthProbes.*`) with schema + read/write checks.
+- Added module probe command surface (`/zakum datahealth modules`) in fallback and CommandAPI.
+- Added module probe summary counters into `/zakum datahealth status`.
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 
-1. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
-2. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
+1. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
 
 ## End-of-Cycle Test Categories (Server Jar Validation)
 

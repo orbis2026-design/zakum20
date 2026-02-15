@@ -960,6 +960,25 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
             api.getScheduler().runGlobal(send);
           });
         })
+      )
+      .withSubcommand(new CommandAPICommand("modules")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          sender.sendMessage("Collecting module data health...");
+          corePlugin.collectModuleDataHealthReport().whenComplete((report, ex) -> {
+            Runnable send = () -> {
+              if (ex != null) {
+                sender.sendMessage("Module data health failed: " + ex.getMessage());
+                return;
+              }
+              for (String line : corePlugin.moduleDataHealthLines(report)) {
+                sender.sendMessage(line);
+              }
+            };
+            api.getScheduler().runGlobal(send);
+          });
+        })
       );
   }
 
