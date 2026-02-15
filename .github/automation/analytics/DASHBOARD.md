@@ -10,9 +10,9 @@
 |--------|-------|------------|
 | ✅ Completed | 0 | 0% |
 | 🔄 In Progress | 1 | - |
-| 📋 Assigned | 0 | - |
+| 📋 Assigned | 3 | - |
 | 🧪 Testing | 0 | - |
-| ⏸️ Ready | 28 | - |
+| ⏸️ Ready | 25 | - |
 | 🚫 Blocked | 0 | - |
 | **Total** | **29** | **100%** |
 
@@ -35,11 +35,11 @@
 - **Module Count:** 23
 - **Java Files:** 291
 - **Lines of Code:** 34257
-- **Commits (30d):** 58
+- **Commits (30d):** 62
 
 ## Workflow Activity
 
-- **Recent Workflow Runs:** 13
+- **Recent Workflow Runs:** 24
 
 ## Task Category Breakdown
 
