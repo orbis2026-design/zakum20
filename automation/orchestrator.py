@@ -39,7 +39,7 @@ class BudgetTracker:
                 data = json.load(f)
             
             # Check if we need to reset for new month
-            current_month = datetime.now().strftime("%Y-%m")
+            current_month = datetime.now(timezone.utc).strftime("%Y-%m")
             if data.get('current_month') != current_month:
                 print(f"New month detected. Resetting budget from {data.get('current_month')} to {current_month}")
                 return self._reset_for_new_month(data)
@@ -53,7 +53,7 @@ class BudgetTracker:
         """Create new budget data structure."""
         return {
             "version": "1.0",
-            "current_month": datetime.now().strftime("%Y-%m"),
+            "current_month": datetime.now(timezone.utc).strftime("%Y-%m"),
             "total_spent": 0.0,
             "executions": 0,
             "prs_generated": 0,
