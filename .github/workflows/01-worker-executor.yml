@@ -52,8 +52,16 @@ jobs:
       - name: Update task status to in-progress
         run: |
           REGISTRY="TASK_REGISTRY.json"
-          TMP_REGISTRY=$(mktemp)
           
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+          
+          # Pull latest changes first
+          git pull origin master || echo "Pull failed, continuing..."
+          
+          TMP_REGISTRY=$(mktemp)
           jq '.tasks |= map(
             if .id == "${{ steps.task.outputs.id }}"
             then .status = "in-progress" | .startedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
@@ -63,12 +71,31 @@ jobs:
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase false  # Use merge strategy for divergent branches
           git add "$REGISTRY"
-          git commit -m "chore: start task ${{ steps.task.outputs.id }}" || true
-          git push || true
+          
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: start task ${{ steps.task.outputs.id }}"
+            
+            # Retry push logic
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if git push origin master; then
+                echo "✅ Successfully pushed changes"
+                break
+              else
+                echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+                if git pull origin master --no-edit; then
+                  RETRY_COUNT=$((RETRY_COUNT + 1))
+                else
+                  echo "❌ Pull failed"
+                  break
+                fi
+              fi
+            done
+          fi
 
       - name: Create feature branch
         id: branch
@@ -112,10 +139,14 @@ jobs:
           Real implementation logic would be added here based on task requirements.
           EOF
           
-          git config pull.rebase false  # Use merge strategy for divergent branches
+          git config pull.rebase false
           git add "$TASK_FILE"
-          git commit -m "feat: implement ${{ steps.task.outputs.id }}" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "feat: implement ${{ steps.task.outputs.id }}"
+            git push || echo "Push failed, but continuing..."
+          fi
           
           echo "✅ Task implementation marker created"
 
@@ -223,13 +254,22 @@ jobs:
       - name: Update task status
         run: |
           REGISTRY="TASK_REGISTRY.json"
-          TMP_REGISTRY=$(mktemp)
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+          
+          # Switch to master and pull latest
+          git checkout master
+          git pull origin master || echo "Pull failed, continuing..."
           
           STATUS="testing"
           if [ "${{ steps.verify.outputs.failed }}" == "true" ]; then
             STATUS="blocked"
           fi
           
+          TMP_REGISTRY=$(mktemp)
           jq '.tasks |= map(
             if .id == "${{ steps.task.outputs.id }}"
             then .status = "'$STATUS'" | .completedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'" | .prUrl = "${{ steps.pr.outputs.url }}"
@@ -239,12 +279,31 @@ jobs:
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           
-          git config pull.rebase false  # Use merge strategy for divergent branches
-          git checkout master
-          git pull
           git add "$REGISTRY"
-          git commit -m "chore: complete task ${{ steps.task.outputs.id }}" || true
-          git push || true
+          
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: complete task ${{ steps.task.outputs.id }}"
+            
+            # Retry push logic
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if git push origin master; then
+                echo "✅ Successfully pushed changes"
+                break
+              else
+                echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+                if git pull origin master --no-edit; then
+                  RETRY_COUNT=$((RETRY_COUNT + 1))
+                else
+                  echo "❌ Pull failed"
+                  break
+                fi
+              fi
+            done
+          fi
 
       - name: Send Discord notification
         if: env.DISCORD_WEBHOOK_URL != ''
