@@ -18,6 +18,7 @@ final class JdbcImpl implements Jdbc {
 
   @Override
   public int update(String sqlText, Object... params) {
+    sql.guard().checkAsync("sql.update");
     DataSource ds = sql.dataSource();
 
     try (var c = ds.getConnection();
@@ -33,6 +34,7 @@ final class JdbcImpl implements Jdbc {
 
   @Override
   public <T> List<T> query(String sqlText, RowMapper<T> mapper, Object... params) {
+    sql.guard().checkAsync("sql.query");
     DataSource ds = sql.dataSource();
 
     try (var c = ds.getConnection();

@@ -147,6 +147,13 @@ operations:
     resumeAboveTps: 18.8
     sampleTicks: 40
     stableSamplesToClose: 6
+  threadGuard:
+    # Detect blocking I/O on the primary thread (SQL/Redis/Mongo).
+    enabled: true
+    # Throw instead of warn when violations are detected.
+    failOnViolation: false
+    # Log at most N violations per minute (0 disables logging).
+    maxReportsPerMinute: 12
   stress:
     enabled: false
     # Total script executions per run.

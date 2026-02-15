@@ -3,6 +3,7 @@ package net.orbis.zakum.core.economy;
 import net.orbis.zakum.api.vault.EconomyResult;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.metrics.MetricsMonitor;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -37,6 +38,7 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
   private final long scale;
   private final MetricsMonitor metrics;
   private final Logger logger;
+  private final ThreadGuard threadGuard;
 
   public RedisGlobalEconomyService(
     JedisPool jedisPool,
@@ -44,7 +46,8 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     int scale,
     String updatesChannel,
     MetricsMonitor metrics,
-    Logger logger
+    Logger logger,
+    ThreadGuard threadGuard
   ) {
     this.jedisPool = Objects.requireNonNull(jedisPool, "jedisPool");
     String prefix = Objects.requireNonNullElse(keyPrefix, "zakum:economy").trim();
@@ -54,10 +57,12 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     this.scale = Math.max(1, scale);
     this.metrics = metrics;
     this.logger = logger;
+    this.threadGuard = Objects.requireNonNull(threadGuard, "threadGuard");
   }
 
   @Override
   public boolean available() {
+    threadGuard.checkAsync("redis.ping");
     try (Jedis jedis = jedisPool.getResource()) {
       return "PONG".equalsIgnoreCase(jedis.ping());
     } catch (Throwable ex) {
@@ -71,6 +76,7 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     long units = toUnits(amount);
     if (units <= 0L) return EconomyResult.fail("amount must be > 0");
 
+    threadGuard.checkAsync("redis.economy.deposit");
     try (Jedis jedis = jedisPool.getResource()) {
       long next = jedis.hincrBy(balancesKey, playerId.toString(), units);
       double balance = fromUnits(next);
@@ -89,6 +95,7 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     long units = toUnits(amount);
     if (units <= 0L) return EconomyResult.fail("amount must be > 0");
 
+    threadGuard.checkAsync("redis.economy.withdraw");
     try (Jedis jedis = jedisPool.getResource()) {
       Object raw = jedis.eval(WITHDRAW_SCRIPT, List.of(balancesKey), List.of(playerId.toString(), String.valueOf(units)));
       if (!(raw instanceof List<?> result) || result.size() < 2) {
@@ -113,6 +120,7 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
   public double balance(UUID playerId) {
     if (playerId == null) return 0.0d;
 
+    threadGuard.checkAsync("redis.economy.balance");
     try (Jedis jedis = jedisPool.getResource()) {
       String raw = jedis.hget(balancesKey, playerId.toString());
       if (raw == null || raw.isBlank()) return 0.0d;
@@ -156,4 +164,3 @@ public final class RedisGlobalEconomyService implements EconomyService, AutoClos
     logger.warning("Global economy " + operation + " failed: " + ex.getMessage());
   }
 }
-

@@ -72,10 +72,11 @@ public final class CaffeineSocialService implements SocialService {
     if (playerId == null || snapshot == null) return;
     cache.put(playerId, snapshot);
     if (dataStore == null) return;
-
-    dataStore.setSessionData(playerId, FRIENDS_KEY, join(snapshot.friends()));
-    dataStore.setSessionData(playerId, ALLIES_KEY, join(snapshot.allies()));
-    dataStore.setSessionData(playerId, RIVALS_KEY, join(snapshot.rivals()));
+    scheduler.runAsync(() -> {
+      dataStore.setSessionData(playerId, FRIENDS_KEY, join(snapshot.friends()));
+      dataStore.setSessionData(playerId, ALLIES_KEY, join(snapshot.allies()));
+      dataStore.setSessionData(playerId, RIVALS_KEY, join(snapshot.rivals()));
+    });
   }
 
   @Override

@@ -313,6 +313,10 @@ public final class ZakumSettingsLoader {
     java.util.List<ZakumSettings.Operations.StressScenario> scenarios = loadStressScenarios(cfg);
     var report = loadStressReport(cfg);
 
+    boolean guardEnabled = bool(cfg, "operations.threadGuard.enabled", true);
+    boolean failOnViolation = bool(cfg, "operations.threadGuard.failOnViolation", false);
+    int maxReports = clampI(cfg.getInt("operations.threadGuard.maxReportsPerMinute", 12), 0, 600);
+
     return new ZakumSettings.Operations(
       new ZakumSettings.Operations.CircuitBreaker(
         breakerEnabled,
@@ -339,6 +343,11 @@ public final class ZakumSettingsLoader {
         allowVisuals,
         scenarios,
         report
+      ),
+      new ZakumSettings.Operations.ThreadGuard(
+        guardEnabled,
+        failOnViolation,
+        maxReports
       )
     );
   }

@@ -59,6 +59,7 @@ public final class StandardEffects {
     registerTitle(engine);
     registerSound(engine);
     registerParticle(engine);
+    registerDisplayItem(engine);
     registerGiveMoney(engine);
     registerGiveSouls(engine);
     registerGiveXp(engine);
@@ -260,6 +261,39 @@ public final class StandardEffects {
         runAtEntity(target, () -> target.getWorld().spawnParticle(particle, target.getLocation(), count, dx, dy, dz, speed));
       }
     });
+  }
+
+  private static void registerDisplayItem(AceEngine engine) {
+    AceEngine.EffectAction display = (ctx, targets, params) -> {
+      if (isVisualSuppressed(params)) return;
+      String raw = raw(params);
+      String materialRaw = firstNonBlank(params.get("material"), params.get("item"), firstToken(raw));
+      if (materialRaw == null || materialRaw.isBlank()) return;
+
+      Material material;
+      try {
+        material = Material.valueOf(materialRaw.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return;
+      }
+
+      int amount = Math.max(1, Math.min(64, intParam(params, "amount", 1)));
+      ItemStack stack = new ItemStack(material, amount);
+      double yOffset = doubleParam(params, "y_offset", 0.25d);
+
+      var animations = ZakumApi.get().getAnimations();
+      if (animations == null) return;
+
+      for (Entity target : targets) {
+        if (!(target instanceof Player viewer)) continue;
+        Location loc = resolveDisplayLocation(params, viewer, yOffset);
+        if (loc == null || loc.getWorld() == null) continue;
+        runAtEntity(viewer, () -> animations.spawnDisplay(viewer, loc, stack));
+      }
+    };
+
+    engine.registerEffect("DISPLAY_ITEM", display);
+    engine.registerEffect("PACKET_DISPLAY", display);
   }
 
   private static void registerGiveMoney(AceEngine engine) {
@@ -886,6 +920,24 @@ public final class StandardEffects {
     } catch (Exception ex) {
       return null;
     }
+  }
+
+  private static Location resolveDisplayLocation(Map<String, String> params, Entity target, double yOffset) {
+    if (target == null || target.getWorld() == null) return null;
+
+    String worldName = params.get("world");
+    double x = doubleParam(params, "x", Double.NaN);
+    double y = doubleParam(params, "y", Double.NaN);
+    double z = doubleParam(params, "z", Double.NaN);
+    if (!Double.isNaN(x) && !Double.isNaN(y) && !Double.isNaN(z)) {
+      var world = worldName == null ? target.getWorld() : Bukkit.getWorld(worldName);
+      if (world == null) return null;
+      return new Location(world, x, y, z);
+    }
+
+    Location base = target.getLocation();
+    if (base == null) return null;
+    return base.clone().add(0.0d, yOffset, 0.0d);
   }
 
   private static Location resolveHologramLocation(Map<String, String> params, Entity target) {

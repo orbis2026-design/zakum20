@@ -10,6 +10,7 @@ import net.orbis.zakum.api.db.DatabaseState;
 import net.orbis.zakum.api.db.Jdbc;
 import net.orbis.zakum.api.db.ZakumDatabase;
 import io.micrometer.core.instrument.MeterRegistry;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import org.bukkit.plugin.Plugin;
 import org.flywaydb.core.Flyway;
 
@@ -38,6 +39,7 @@ public final class SqlManager implements ZakumDatabase {
   private final MeterRegistry metrics;
   @SuppressWarnings("unused")
   private final Clock clock;
+  private final ThreadGuard threadGuard;
 
   private final AtomicReference<DatabaseState> state = new AtomicReference<>(DatabaseState.OFFLINE);
 
@@ -57,7 +59,7 @@ public final class SqlManager implements ZakumDatabase {
   private final Object reconnectLock = new Object();
   private volatile long nextRetryNanos = 0;
 
-  public SqlManager(Plugin plugin, Executor async, Clock clock, ZakumSettings settings, MeterRegistry metrics) {
+  public SqlManager(Plugin plugin, Executor async, Clock clock, ZakumSettings settings, MeterRegistry metrics, ThreadGuard threadGuard) {
     this.plugin = plugin;
 
     this.log = plugin.getLogger();
@@ -65,6 +67,7 @@ public final class SqlManager implements ZakumDatabase {
     this.clock = clock;
     this.settings = Objects.requireNonNull(settings, "settings");
     this.metrics = metrics; // nullable
+    this.threadGuard = Objects.requireNonNull(threadGuard, "threadGuard");
   }
 
   public void start() {
@@ -201,6 +204,7 @@ public final class SqlManager implements ZakumDatabase {
 
   @Override
   public DataSource dataSource() {
+    threadGuard.checkAsync("sql.dataSource");
     var current = ds;
     if (current == null) throw new IllegalStateException("DB is offline");
     return current;
@@ -209,6 +213,10 @@ public final class SqlManager implements ZakumDatabase {
   @Override
   public Jdbc jdbc() {
     return jdbc;
+  }
+
+  ThreadGuard guard() {
+    return threadGuard;
   }
 
   public PoolStats poolStats() {

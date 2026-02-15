@@ -20,6 +20,9 @@ Observability
 - metrics action: animation_lod_text_display
 - metrics action: animation_lod_actionbar (fallback only)
 
+ACE example
+- `[DISPLAY_ITEM] DIAMOND {y_offset=0.3}`
+
 Operational notes
 - Requires PacketEvents plugin to be present for packet-based TextDisplay.
 - Label text is derived from the item type name (lowercased, underscores replaced).

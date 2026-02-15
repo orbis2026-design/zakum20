@@ -5,12 +5,19 @@ import com.mongodb.client.MongoClients;
 import net.orbis.zakum.api.ServerIdentity;
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.ZakumApiProvider;
+import net.orbis.zakum.api.action.AceEngine;
+import net.orbis.zakum.api.bridge.BridgeManager;
 import net.orbis.zakum.api.chat.ChatPacketBuffer;
 import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.actions.DeferredActionService;
 import net.orbis.zakum.api.capability.CapabilityRegistry;
+import net.orbis.zakum.api.concurrent.ZakumScheduler;
+import net.orbis.zakum.api.packet.AnimationService;
+import net.orbis.zakum.api.progression.ProgressionService;
 import net.orbis.zakum.api.social.SocialService;
 import net.orbis.zakum.api.storage.DataStore;
+import net.orbis.zakum.api.storage.StorageService;
+import net.orbis.zakum.api.ui.GuiBridge;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.core.action.ZakumAceEngine;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
@@ -35,10 +42,10 @@ import net.orbis.zakum.core.moderation.ToxicityModerationService;
 import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.ops.StressHarnessV2;
-import net.orbis.zakum.core.packet.AnimationService;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import net.orbis.zakum.core.perf.VisualCircuitBreaker;
 import net.orbis.zakum.core.profile.PlayerJoinListener;
 import net.orbis.zakum.core.profile.ProfileProvider;
@@ -87,7 +94,14 @@ public final class ZakumPlugin extends JavaPlugin {
   private SqlEntitlementService entitlements;
   private SqlBoosterService boosters;
   private CapabilityRegistry capabilityRegistry;
+  private AceEngine aceEngine;
+  private StorageService storageService;
   private ZakumSchedulerImpl scheduler;
+  private AnimationService animationService;
+  private BridgeManager bridgeManager;
+  private ProgressionService progressionService;
+  private GuiBridge guiBridge;
+  private ThreadGuard threadGuard;
   private MongoDataStore dataStore;
   private PlayerJoinListener playerJoinListener;
   private ProfileProvider profileProvider;
@@ -135,7 +149,8 @@ public final class ZakumPlugin extends JavaPlugin {
     this.metrics.start();
     this.metricsMonitor = new MetricsMonitor(metrics.registry());
 
-    this.sql = new SqlManager(this, async, clock, settings, metrics.registry());
+    this.threadGuard = new ThreadGuard(settings.operations().threadGuard(), getLogger(), metricsMonitor);
+    this.sql = new SqlManager(this, async, clock, settings, metrics.registry(), threadGuard);
     this.sql.start();
 
     var controlPlane = HttpControlPlaneClient.fromSettings(settings, async);
@@ -166,11 +181,17 @@ public final class ZakumPlugin extends JavaPlugin {
       visualModeService
     );
     this.packetCullingKernel.start();
-    var aceEngine = new ZakumAceEngine(metricsMonitor);
-    var storageService = new StorageServiceImpl(sql);
-    var animations = new AnimationService(this, scheduler, settings.visuals(), metricsMonitor, visualModeService);
-    var bridgeManager = new SimpleBridgeManager();
-    var progression = new ProgressionServiceImpl();
+    this.aceEngine = new ZakumAceEngine(metricsMonitor);
+    this.storageService = new StorageServiceImpl(sql);
+    this.animationService = new net.orbis.zakum.core.packet.AnimationService(
+      this,
+      scheduler,
+      settings.visuals(),
+      metricsMonitor,
+      visualModeService
+    );
+    this.bridgeManager = new SimpleBridgeManager();
+    this.progressionService = new ProgressionServiceImpl();
     var assets = new InMemoryAssetManager();
     assets.init();
     this.bedrockDetector = new BedrockClientDetector(settings.chat().bedrock(), getLogger());
@@ -193,7 +214,7 @@ public final class ZakumPlugin extends JavaPlugin {
     if (localizationCfg.enabled() && localizationCfg.warmupOnStart()) {
       scheduler.runAsync(chatPacketBuffer::warmup);
     }
-    var gui = new ServiceBackedGuiBridge(new NoopGuiBridge());
+    this.guiBridge = new ServiceBackedGuiBridge(new NoopGuiBridge());
 
     this.api = new ZakumApiImpl(
       this,
@@ -208,11 +229,11 @@ public final class ZakumPlugin extends JavaPlugin {
       aceEngine,
       scheduler,
       storageService,
-      animations,
+      animationService,
       bridgeManager,
-      progression,
+      progressionService,
       assets,
-      gui,
+      guiBridge,
       settings,
       capabilityRegistry
     );
@@ -229,6 +250,13 @@ public final class ZakumPlugin extends JavaPlugin {
     sm.register(net.orbis.zakum.api.entitlements.EntitlementService.class, entitlements, this, ServicePriority.Highest);
     sm.register(net.orbis.zakum.api.boosters.BoosterService.class, boosters, this, ServicePriority.Highest);
     sm.register(DeferredActionService.class, deferred, this, ServicePriority.Highest);
+    sm.register(AceEngine.class, aceEngine, this, ServicePriority.Highest);
+    sm.register(ZakumScheduler.class, scheduler, this, ServicePriority.Highest);
+    sm.register(StorageService.class, storageService, this, ServicePriority.Highest);
+    sm.register(AnimationService.class, animationService, this, ServicePriority.Highest);
+    sm.register(BridgeManager.class, bridgeManager, this, ServicePriority.Highest);
+    sm.register(ProgressionService.class, progressionService, this, ServicePriority.Highest);
+    sm.register(GuiBridge.class, guiBridge, this, ServicePriority.Highest);
     sm.register(CapabilityRegistry.class, capabilityRegistry, this, ServicePriority.Highest);
     sm.register(ChatPacketBuffer.class, chatPacketBuffer, this, ServicePriority.Highest);
     sm.register(PlayerVisualModeService.class, visualModeService, this, ServicePriority.Highest);
@@ -277,6 +305,13 @@ public final class ZakumPlugin extends JavaPlugin {
     if (entitlements != null) sm.unregister(net.orbis.zakum.api.entitlements.EntitlementService.class, entitlements);
     if (boosters != null) sm.unregister(net.orbis.zakum.api.boosters.BoosterService.class, boosters);
     if (deferred != null) sm.unregister(DeferredActionService.class, deferred);
+    if (aceEngine != null) sm.unregister(AceEngine.class, aceEngine);
+    if (scheduler != null) sm.unregister(ZakumScheduler.class, scheduler);
+    if (storageService != null) sm.unregister(StorageService.class, storageService);
+    if (animationService != null) sm.unregister(AnimationService.class, animationService);
+    if (bridgeManager != null) sm.unregister(BridgeManager.class, bridgeManager);
+    if (progressionService != null) sm.unregister(ProgressionService.class, progressionService);
+    if (guiBridge != null) sm.unregister(GuiBridge.class, guiBridge);
     if (capabilityRegistry != null) sm.unregister(CapabilityRegistry.class, capabilityRegistry);
     if (dataStore != null) sm.unregister(DataStore.class, dataStore);
     if (socialService != null) sm.unregister(SocialService.class, socialService);
@@ -364,6 +399,13 @@ public final class ZakumPlugin extends JavaPlugin {
     boosters = null;
     deferred = null;
     capabilityRegistry = null;
+    aceEngine = null;
+    storageService = null;
+    animationService = null;
+    bridgeManager = null;
+    progressionService = null;
+    guiBridge = null;
+    threadGuard = null;
     scheduler = null;
     socialService = null;
   }
@@ -448,7 +490,8 @@ public final class ZakumPlugin extends JavaPlugin {
         global.scale(),
         global.updatesChannel(),
         metricsMonitor,
-        getLogger()
+        getLogger(),
+        threadGuard
       );
     } catch (Throwable ex) {
       getLogger().warning("Failed to initialize global economy: " + ex.getMessage());
@@ -470,7 +513,7 @@ public final class ZakumPlugin extends JavaPlugin {
     try {
       MongoClient mongoClient = MongoClients.create(mongoUri);
       JedisPool jedisPool = new JedisPool(URI.create(redisUri));
-      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler);
+      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler, threadGuard);
     } catch (Throwable ex) {
       getLogger().warning("Failed to initialize Mongo DataStore: " + ex.getMessage());
       return null;
@@ -561,6 +604,14 @@ public final class ZakumPlugin extends JavaPlugin {
       return handlePacketCullCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("threadguard")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleThreadGuardCommand(sender, args);
+    }
+
     sender.sendMessage("Usage: /" + label + " cloud status|flush");
     sender.sendMessage("Usage: /" + label + " perf status");
     sender.sendMessage("Usage: /" + label + " stress start [iterations] [virtualPlayers]");
@@ -569,6 +620,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
+    sender.sendMessage("Usage: /" + label + " threadguard status|enable|disable");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
   }
@@ -599,6 +651,10 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public PacketCullingKernel getPacketCullingKernel() {
     return packetCullingKernel;
+  }
+
+  public ThreadGuard getThreadGuard() {
+    return threadGuard;
   }
 
   public PlayerVisualModeService getVisualModeService() {
@@ -1002,6 +1058,31 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleThreadGuardCommand(CommandSender sender, String[] args) {
+    if (threadGuard == null) {
+      sender.sendMessage("Thread guard is not available.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum threadguard status|enable|disable");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    switch (sub) {
+      case "status" -> sendThreadGuardStatus(sender);
+      case "enable" -> {
+        threadGuard.setRuntimeEnabled(true);
+        sender.sendMessage("Thread guard runtime enabled.");
+      }
+      case "disable" -> {
+        threadGuard.setRuntimeEnabled(false);
+        sender.sendMessage("Thread guard runtime disabled.");
+      }
+      default -> sender.sendMessage("Usage: /zakum threadguard status|enable|disable");
+    }
+    return true;
+  }
+
   private Player resolvePacketCullTarget(CommandSender sender, String[] args) {
     if (args.length >= 3) {
       Player target = Bukkit.getPlayerExact(args[2]);
@@ -1051,6 +1132,26 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("packetsObserved=" + snap.packetsObserved());
     sender.sendMessage("packetsDropped=" + snap.packetsDropped());
     sender.sendMessage("dropRate=" + String.format(java.util.Locale.ROOT, "%.2f%%", snap.dropRate() * 100.0d));
+  }
+
+  private void sendThreadGuardStatus(CommandSender sender) {
+    if (threadGuard == null) {
+      sender.sendMessage("Thread guard is offline.");
+      return;
+    }
+    var snap = threadGuard.snapshot();
+    sender.sendMessage("Zakum Thread Guard");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("enabled=" + snap.enabled());
+    sender.sendMessage("failOnViolation=" + snap.failOnViolation());
+    sender.sendMessage("maxReportsPerMinute=" + snap.maxReportsPerMinute());
+    sender.sendMessage("violations=" + snap.violations());
+    sender.sendMessage("lastViolation=" + (snap.lastViolation() == null || snap.lastViolation().isBlank() ? "none" : snap.lastViolation()));
+    sender.sendMessage("lastViolationAt=" + formatEpochMillis(snap.lastViolationAtMs()));
+    if (snap.topOperations() != null && !snap.topOperations().isEmpty()) {
+      sender.sendMessage("topOperations=" + snap.topOperations());
+    }
   }
 
   private static String formatEpochMillis(long epochMillis) {

@@ -36,6 +36,11 @@ This snapshot is:
 - movement sampler cadence and max jump threshold
 - deferred replay (claim limit, enable/disable)
 
+### operations
+- `operations.circuitBreaker.*`: TPS-based visual circuit breaker
+- `operations.threadGuard.*`: detect blocking I/O on the main thread
+- `operations.stress.*`: stress harness safety gates + scenario matrix
+
 ### packets
 - `packets.enabled`: master toggle for packet layer
 - `packets.backend`: `NONE` | `PACKETEVENTS`

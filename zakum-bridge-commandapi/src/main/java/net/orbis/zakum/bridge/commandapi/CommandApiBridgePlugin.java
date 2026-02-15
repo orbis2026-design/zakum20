@@ -22,6 +22,7 @@ import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.ops.StressHarnessV2;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
+import net.orbis.zakum.core.perf.ThreadGuard;
 import net.orbis.zakum.core.perf.VisualCircuitBreaker;
 import net.orbis.zakum.core.social.ChatBufferCache;
 import net.orbis.zakum.core.social.LocalizedChatPacketBuffer;
@@ -103,6 +104,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(chatBufferCommand());
     root.withSubcommand(economyCommand());
     root.withSubcommand(packetCullCommand());
+    root.withSubcommand(threadGuardCommand());
 
     root.register();
     registerPerfModeCommand();
@@ -601,6 +603,60 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           sender.sendMessage("configuredEnabled=" + configuredEnabled);
           sender.sendMessage("runtimeEnabled=" + runtimeEnabled);
           sender.sendMessage("wouldDrop=" + wouldDrop);
+        })
+      );
+  }
+
+  private CommandAPICommand threadGuardCommand() {
+    return new CommandAPICommand("threadguard")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ThreadGuard guard = corePlugin.getThreadGuard();
+          if (guard == null) {
+            sender.sendMessage("Thread guard is offline.");
+            return;
+          }
+          var snap = guard.snapshot();
+          sender.sendMessage("Zakum Thread Guard");
+          sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+          sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+          sender.sendMessage("enabled=" + snap.enabled());
+          sender.sendMessage("failOnViolation=" + snap.failOnViolation());
+          sender.sendMessage("maxReportsPerMinute=" + snap.maxReportsPerMinute());
+          sender.sendMessage("violations=" + snap.violations());
+          sender.sendMessage("lastViolation=" + (snap.lastViolation() == null || snap.lastViolation().isBlank() ? "none" : snap.lastViolation()));
+          sender.sendMessage("lastViolationAt=" + formatEpochMillis(snap.lastViolationAtMs()));
+          if (snap.topOperations() != null && !snap.topOperations().isEmpty()) {
+            sender.sendMessage("topOperations=" + snap.topOperations());
+          }
+        })
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ThreadGuard guard = corePlugin.getThreadGuard();
+          if (guard == null) {
+            sender.sendMessage("Thread guard is offline.");
+            return;
+          }
+          guard.setRuntimeEnabled(true);
+          sender.sendMessage("Thread guard runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ThreadGuard guard = corePlugin.getThreadGuard();
+          if (guard == null) {
+            sender.sendMessage("Thread guard is offline.");
+            return;
+          }
+          guard.setRuntimeEnabled(false);
+          sender.sendMessage("Thread guard runtime disabled.");
         })
       );
   }

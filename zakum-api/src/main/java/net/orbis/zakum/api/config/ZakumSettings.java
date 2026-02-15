@@ -175,7 +175,8 @@ public record ZakumSettings(
 
   public record Operations(
     CircuitBreaker circuitBreaker,
-    Stress stress
+    Stress stress,
+    ThreadGuard threadGuard
   ) {
     public record CircuitBreaker(
       boolean enabled,
@@ -233,6 +234,12 @@ public record ZakumSettings(
         folder = folder == null ? "" : folder.trim();
       }
     }
+
+    public record ThreadGuard(
+      boolean enabled,
+      boolean failOnViolation,
+      int maxReportsPerMinute
+    ) {}
   }
 
   public record Economy(
