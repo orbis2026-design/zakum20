@@ -1,0 +1,13 @@
+{
+  "upfront_budget": 30.00,
+  "daily_budget": 0.50,
+  "spent_upfront": 0.00,
+  "spent_today": 0.00,
+  "total_spent": 0.00,
+  "tokens_used": 0,
+  "prs_generated": 0,
+  "phase": "initial_sprint",
+  "sprint_start_date": "2026-02-15T16:50:40.244Z",
+  "last_reset_date": "2026-02-15T16:50:40.244Z",
+  "tasks_completed": 0
+}

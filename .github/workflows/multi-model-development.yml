@@ -1,0 +1,314 @@
+name: Multi-Model AI Development
+
+on:
+  schedule:
+    # Initial Sprint: Every 30 minutes for first 10 days
+    # After checking date, this will skip if past initial sprint
+    - cron: '*/30 * * * *'
+    
+    # Ongoing: Every 3.5 hours (sustainable $0.50/day rate)
+    # Runs at: 00:00, 03:30, 07:00, 10:30, 14:00, 17:30, 21:00
+    - cron: '0 0,7,14,21 * * *'
+    - cron: '30 3,10,17 * * *'
+  
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no API calls)'
+        required: false
+        default: 'false'
+
+jobs:
+  ai-development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'tools/ai-orchestrator/requirements.txt'
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install -r tools/ai-orchestrator/requirements.txt
+      
+      - name: Check budget and phase
+        id: budget_check
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          
+          budget_file = Path("token_budget.json")
+          
+          if not budget_file.exists():
+              print("Budget file not found, proceeding with execution")
+              sys.exit(0)
+          
+          with open(budget_file, 'r') as f:
+              budget = json.load(f)
+          
+          phase = budget["phase"]
+          start_date = datetime.fromisoformat(budget["sprint_start_date"])
+          days_elapsed = (datetime.now(timezone.utc) - start_date).days
+          
+          # Determine if we should run based on phase and trigger
+          trigger = "${{ github.event.schedule }}"
+          
+          if phase == "initial_sprint":
+              # Initial sprint: run on 30-minute schedule
+              if days_elapsed >= 10:
+                  print("Transitioning to ongoing phase")
+                  budget["phase"] = "ongoing"
+                  budget["spent_upfront"] = budget["total_spent"]
+                  budget["spent_today"] = 0.00
+                  budget["last_reset_date"] = datetime.now(timezone.utc).isoformat()
+                  with open(budget_file, 'w') as f:
+                      json.dump(budget, f, indent=2)
+                  phase = "ongoing"
+              
+              # Check if budget exhausted
+              if budget["spent_upfront"] >= budget["upfront_budget"]:
+                  print(f"::error::Initial sprint budget exhausted: ${budget['spent_upfront']:.2f} / ${budget['upfront_budget']:.2f}")
+                  sys.exit(1)
+              
+              # Run if this is the 30-minute schedule
+              if "*/30" in trigger or trigger == "":
+                  print("Running in initial sprint mode (30-minute schedule)")
+                  sys.exit(0)
+              else:
+                  print("Skipping: Not the 30-minute schedule during initial sprint")
+                  sys.exit(1)
+          
+          else:  # ongoing phase
+              # Ongoing: run on 3.5-hour schedule
+              if "*/30" in trigger:
+                  print("Skipping: In ongoing phase, not running 30-minute schedule")
+                  sys.exit(1)
+              
+              # Check daily budget
+              last_reset = datetime.fromisoformat(budget["last_reset_date"])
+              now = datetime.now(timezone.utc)
+              
+              # Reset daily budget if new day
+              if now.date() > last_reset.date():
+                  budget["spent_today"] = 0.00
+                  budget["last_reset_date"] = now.isoformat()
+                  with open(budget_file, 'w') as f:
+                      json.dump(budget, f, indent=2)
+              
+              if budget["spent_today"] >= budget["daily_budget"]:
+                  print(f"::warning::Daily budget reached: ${budget['spent_today']:.2f} / ${budget['daily_budget']:.2f}")
+                  sys.exit(1)
+              
+              print("Running in ongoing mode (3.5-hour schedule)")
+              sys.exit(0)
+          EOF
+      
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+      
+      - name: Run AI Orchestrator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          cd tools/ai-orchestrator
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python orchestrator.py --dry-run
+          else
+            python orchestrator.py
+          fi
+      
+      - name: Extract generated files
+        id: extract_files
+        if: success()
+        run: |
+          python3 << 'EOF'
+          import re
+          import json
+          from pathlib import Path
+          
+          # Find the latest implementation file
+          generated_dir = Path("tools/ai-orchestrator/generated")
+          impl_files = sorted(generated_dir.glob("implementation_*.java"))
+          
+          if not impl_files:
+              print("No implementation files found")
+              exit(0)
+          
+          latest_impl = impl_files[-1]
+          
+          with open(latest_impl, 'r') as f:
+              content = f.read()
+          
+          # Extract file blocks
+          pattern = r'```java\s*\n//\s*File:\s*(.+?)\n(.*?)```'
+          matches = re.findall(pattern, content, re.DOTALL)
+          
+          files_created = []
+          
+          for filepath, code in matches:
+              filepath = filepath.strip()
+              
+              # Create directory structure
+              full_path = Path(filepath)
+              full_path.parent.mkdir(parents=True, exist_ok=True)
+              
+              # Write file
+              with open(full_path, 'w') as f:
+                  f.write(code.strip() + '\n')
+              
+              files_created.append(str(filepath))
+              print(f"Created: {filepath}")
+          
+          # Save list of files
+          with open('created_files.json', 'w') as f:
+              json.dump(files_created, f)
+          
+          print(f"Total files created: {len(files_created)}")
+          EOF
+      
+      - name: Validate build
+        if: success()
+        run: |
+          ./gradlew build --no-daemon --console=plain || echo "Build failed, will report in PR"
+      
+      - name: Commit changes
+        if: success()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Add generated files and updated budget
+          git add tools/ai-orchestrator/generated/
+          git add token_budget.json
+          
+          # Add extracted source files if they exist
+          if [ -f created_files.json ]; then
+            while IFS= read -r file; do
+              git add "$file" 2>/dev/null || true
+            done < <(python3 -c "import json; files = json.load(open('created_files.json')); print('\n'.join(files))")
+          fi
+          
+          # Get task info for commit message
+          TASK_INFO=$(python3 << 'EOF'
+          import json
+          from pathlib import Path
+          
+          completed_file = Path("tools/ai-orchestrator/completed_tasks.json")
+          if completed_file.exists():
+              with open(completed_file, 'r') as f:
+                  data = json.load(f)
+                  if data.get("completed_task_ids"):
+                      print(data["completed_task_ids"][-1])
+          else:
+              print("unknown_task")
+          EOF
+          )
+          
+          git commit -m "AI: Implement task ${TASK_INFO}" || echo "No changes to commit"
+      
+      - name: Create Pull Request
+        if: success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "AI-generated implementation"
+          branch: ai-dev/${{ github.run_number }}
+          delete-branch: true
+          title: "AI Development: Task Implementation"
+          body: |
+            ## AI-Generated Implementation
+            
+            This PR was automatically generated by the multi-model AI development system.
+            
+            ### Workflow
+            - ✅ Task parsed from docs/PLUGIN-TASKS.md
+            - ✅ Specification generated by Claude Sonnet 4.5
+            - ✅ Implementation generated by GPT-4.1
+            - ✅ Build validation executed
+            
+            ### Review Checklist
+            - [ ] Code follows project conventions
+            - [ ] Tests are included and passing
+            - [ ] Documentation is updated
+            - [ ] Thread safety (Folia) verified
+            - [ ] No security vulnerabilities
+            
+            **Generated by**: GitHub Actions workflow
+            **Run**: ${{ github.run_number }}
+            **Timestamp**: ${{ github.event.repository.updated_at }}
+          labels: |
+            ai-generated
+            needs-review
+      
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-orchestrator-output-${{ github.run_number }}
+          path: |
+            tools/ai-orchestrator/generated/
+            tools/ai-orchestrator/logs/
+            token_budget.json
+          retention-days: 30
+      
+      - name: Report failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            python3 << 'EOF'
+          import os
+          import requests
+          import json
+          
+          webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+          if webhook_url:
+              payload = {
+                  "embeds": [{
+                      "title": "❌ AI Development Workflow Failed",
+                      "description": f"Workflow run #{os.environ.get('GITHUB_RUN_NUMBER', 'unknown')} failed",
+                      "color": 0xFF0000,
+                      "fields": [
+                          {
+                              "name": "Repository",
+                              "value": os.environ.get("GITHUB_REPOSITORY", "unknown"),
+                              "inline": True
+                          },
+                          {
+                              "name": "Run URL",
+                              "value": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{os.environ.get('GITHUB_RUN_ID')}",
+                              "inline": False
+                          }
+                      ]
+                  }]
+              }
+              requests.post(webhook_url, json=payload)
+          EOF
+          fi

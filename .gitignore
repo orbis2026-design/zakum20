@@ -5,3 +5,19 @@
 .vscode/
 .DS_Store
 Thumbs.db
+
+# AI Orchestrator generated files and logs
+tools/ai-orchestrator/generated/
+tools/ai-orchestrator/logs/
+tools/ai-orchestrator/*.log
+tools/ai-orchestrator/__pycache__/
+tools/ai-orchestrator/*.pyc
+tools/ai-orchestrator/parsed_tasks.json
+tools/ai-orchestrator/test_*.json
+created_files.json
+
+# Python virtual environments
+venv/
+.venv/
+env/
+.env
