@@ -1,0 +1,9 @@
+{
+  "total_spent": 0.00,
+  "total_prs_generated": 0,
+  "total_tokens_used": 0,
+  "authorization_blocks": [],
+  "next_authorization_gate": 25.00,
+  "workflow_status": "PAUSED",
+  "last_updated": "2026-02-15T00:00:00Z"
+}

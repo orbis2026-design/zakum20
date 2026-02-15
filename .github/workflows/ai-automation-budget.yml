@@ -1,0 +1,159 @@
+name: AI Automation with Budget Tracking
+
+# DISABLED BY DEFAULT - Manual trigger only
+# This workflow is paused initially and requires manual authorization
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'check'
+        type: choice
+        options:
+          - check
+          - authorize
+          - run
+  # NO schedule - must be manually triggered
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  budget-check:
+    name: Check Budget Status
+    runs-on: ubuntu-latest
+    outputs:
+      can_execute: ${{ steps.check.outputs.can_execute }}
+      status_message: ${{ steps.check.outputs.status_message }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r automation/requirements.txt
+      
+      - name: Check budget status
+        id: check
+        run: |
+          cd automation
+          if python orchestrator.py; then
+            echo "can_execute=true" >> $GITHUB_OUTPUT
+            echo "status_message=Budget OK - can execute" >> $GITHUB_OUTPUT
+          else
+            echo "can_execute=false" >> $GITHUB_OUTPUT
+            echo "status_message=Authorization gate reached" >> $GITHUB_OUTPUT
+          fi
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  authorize:
+    name: Authorize Next Block
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'authorize'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r automation/requirements.txt
+      
+      - name: Authorize next block
+        run: |
+          cd automation
+          python orchestrator.py --authorize
+      
+      - name: Commit budget update
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add cumulative_budget.json
+          git diff --staged --quiet || git commit -m "chore: authorize next \$25 spending block"
+          git push
+  
+  execute:
+    name: Execute AI Automation
+    runs-on: ubuntu-latest
+    needs: budget-check
+    if: |
+      github.event.inputs.action == 'run' && 
+      needs.budget-check.outputs.can_execute == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r automation/requirements.txt
+      
+      - name: Execute AI automation
+        run: |
+          echo "🤖 Executing AI automation..."
+          echo "This is where your AI automation logic would run"
+          echo "Using Claude Sonnet 4.5 + GPT-4o Mini"
+          
+          # Placeholder for actual automation
+          # In a real implementation, this would:
+          # 1. Run AI analysis/code generation
+          # 2. Track token usage
+          # 3. Calculate costs
+          # 4. Update budget
+          # 5. Check for milestones
+          # 6. Send notifications
+          
+          # Example: Simulate a PR generation
+          # python automation/generate_pr.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      
+      - name: Update budget
+        run: |
+          # This would be called by your automation scripts
+          # to update the cumulative budget after execution
+          echo "Budget tracking handled by automation scripts"
+      
+      - name: Commit budget changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add cumulative_budget.json
+          git diff --staged --quiet || git commit -m "chore: update budget after execution"
+          git push
+
+  status:
+    name: Report Status
+    runs-on: ubuntu-latest
+    needs: [budget-check, execute]
+    if: always()
+    
+    steps:
+      - name: Report status
+        run: |
+          echo "Budget Status: ${{ needs.budget-check.outputs.status_message }}"
+          if [ "${{ needs.budget-check.outputs.can_execute }}" = "false" ]; then
+            echo "⛔ Authorization gate reached"
+            echo "To continue, select 'authorize' action and run workflow again"
+          fi
