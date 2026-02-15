@@ -192,7 +192,7 @@ jobs:
           jq --argjson task_ids "$TASK_IDS" \
              --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
              '.tasks |= map(
-               if ($task_ids | index(.id)) then
+               if IN($task_ids[]; .id) then
                  .status = "assigned" | .assignedAt = $timestamp
                else
                  .
