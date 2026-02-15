@@ -24,7 +24,11 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement create/load/unload/tp/delete safeguards for world management",
-      "verificationGates": ["verifyPlatformInfrastructure", "build", "test"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure",
+        "build",
+        "test"
+      ]
     },
     {
       "id": "wave-a-002",
@@ -36,7 +40,11 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement entity-backed hologram spawn/despawn diff runtime",
-      "verificationGates": ["verifyPlatformInfrastructure", "build", "test"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure",
+        "build",
+        "test"
+      ]
     },
     {
       "id": "wave-a-003",
@@ -46,9 +54,14 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "ready",
+      "status": "in-progress",
       "description": "Implement key balances and transactional open flow",
-      "verificationGates": ["verifyPlatformInfrastructure", "build", "test"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure",
+        "build",
+        "test"
+      ],
+      "startedAt": "2026-02-15T18:38:25Z"
     },
     {
       "id": "wave-a-004",
@@ -57,10 +70,16 @@
       "points": 8,
       "priority": 100,
       "estimatedMinutes": 120,
-      "dependencies": ["wave-a-001", "wave-a-002", "wave-a-003"],
+      "dependencies": [
+        "wave-a-001",
+        "wave-a-002",
+        "wave-a-003"
+      ],
       "status": "ready",
       "description": "Add module-level test coverage for Wave A services and config parsers",
-      "verificationGates": ["test"]
+      "verificationGates": [
+        "test"
+      ]
     },
     {
       "id": "core-001",
@@ -72,7 +91,11 @@
       "dependencies": [],
       "status": "ready",
       "description": "Complete remaining 4 points of core runtime/API backbone work",
-      "verificationGates": ["verifyApiBoundaries", "build", "test"]
+      "verificationGates": [
+        "verifyApiBoundaries",
+        "build",
+        "test"
+      ]
     },
     {
       "id": "data-001",
@@ -84,7 +107,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement SQL failure/recovery and bounded connection lifecycle with Hikari",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "data-002",
@@ -96,7 +122,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement Redis failure/recovery and bounded cache lifecycle with TTL",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "protocol-001",
@@ -108,7 +137,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Complete remaining 8 points of protocol and command substrate work",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "bridge-001",
@@ -120,7 +152,11 @@
       "dependencies": [],
       "status": "ready",
       "description": "Complete remaining 6 points of bridge baseline work with graceful degradation",
-      "verificationGates": ["verifyPlatformInfrastructure", "build", "test"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure",
+        "build",
+        "test"
+      ]
     },
     {
       "id": "ace-001",
@@ -132,7 +168,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Complete ACE effect coverage, parser hardening, diagnostics bounds",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "feature-001",
@@ -144,7 +183,11 @@
       "dependencies": [],
       "status": "ready",
       "description": "Complete remaining 4 points of feature foundation modules",
-      "verificationGates": ["verifyPlatformInfrastructure", "build", "test"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure",
+        "build",
+        "test"
+      ]
     },
     {
       "id": "ops-001",
@@ -153,10 +196,15 @@
       "points": 6,
       "priority": 60,
       "estimatedMinutes": 240,
-      "dependencies": ["data-001", "data-002"],
+      "dependencies": [
+        "data-001",
+        "data-002"
+      ],
       "status": "ready",
       "description": "Implement 12h+ soak profiles with memory/task/queue assertions and leak alarms",
-      "verificationGates": ["build"]
+      "verificationGates": [
+        "build"
+      ]
     },
     {
       "id": "cleanup-001",
@@ -168,7 +216,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Remove stale code, docs, dead flags, and duplicate command paths",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "cleanup-002",
@@ -177,7 +228,9 @@
       "points": 5,
       "priority": 20,
       "estimatedMinutes": 60,
-      "dependencies": ["cleanup-001"],
+      "dependencies": [
+        "cleanup-001"
+      ],
       "status": "ready",
       "description": "Update DEVELOPMENT-GUIDE.md and README.md for current module reality",
       "verificationGates": []
@@ -192,7 +245,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Enforce strict async boundaries and region-safe world mutation",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "perf-002",
@@ -204,7 +260,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Bound all queues/caches/maps with TTL, max-size, and explicit unload cleanup",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "perf-003",
@@ -216,7 +275,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Prevent metric label cardinality explosion and clean per-player labels on quit/disable",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "perf-004",
@@ -228,7 +290,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Make reload idempotent with task ownership registry and guaranteed cancellation",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "perf-005",
@@ -240,7 +305,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Guard command/packet hooks against spam with rate limits and max hooks per plugin",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "bridge-002",
@@ -249,10 +317,15 @@
       "points": 5,
       "priority": 80,
       "estimatedMinutes": 90,
-      "dependencies": ["bridge-001"],
+      "dependencies": [
+        "bridge-001"
+      ],
       "status": "ready",
       "description": "Implement retry logic and circuit breaker pattern for bridge reliability",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "bridge-003",
@@ -261,10 +334,14 @@
       "points": 5,
       "priority": 80,
       "estimatedMinutes": 90,
-      "dependencies": ["bridge-001"],
+      "dependencies": [
+        "bridge-001"
+      ],
       "status": "ready",
       "description": "Add version compatibility test matrix for all bridge modules",
-      "verificationGates": ["test"]
+      "verificationGates": [
+        "test"
+      ]
     },
     {
       "id": "test-001",
@@ -276,7 +353,9 @@
       "dependencies": [],
       "status": "ready",
       "description": "Expand API smoke test coverage for bootstrap SDK contract",
-      "verificationGates": ["test"]
+      "verificationGates": [
+        "test"
+      ]
     },
     {
       "id": "test-002",
@@ -288,7 +367,9 @@
       "dependencies": [],
       "status": "ready",
       "description": "Create integration test suite for cross-module interactions",
-      "verificationGates": ["test"]
+      "verificationGates": [
+        "test"
+      ]
     },
     {
       "id": "doc-001",
@@ -309,7 +390,9 @@
       "points": 3,
       "priority": 20,
       "estimatedMinutes": 45,
-      "dependencies": ["bridge-001"],
+      "dependencies": [
+        "bridge-001"
+      ],
       "status": "ready",
       "description": "Create usage guides for all bridge modules",
       "verificationGates": []
@@ -324,7 +407,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement config validation framework with schema enforcement",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "security-001",
@@ -336,7 +422,9 @@
       "dependencies": [],
       "status": "ready",
       "description": "Audit and standardize permission system across all modules",
-      "verificationGates": ["verifyPlatformInfrastructure"]
+      "verificationGates": [
+        "verifyPlatformInfrastructure"
+      ]
     },
     {
       "id": "monitoring-001",
@@ -348,7 +436,10 @@
       "dependencies": [],
       "status": "ready",
       "description": "Implement health check endpoints for all critical services",
-      "verificationGates": ["build", "test"]
+      "verificationGates": [
+        "build",
+        "test"
+      ]
     },
     {
       "id": "monitoring-002",
@@ -357,17 +448,33 @@
       "points": 4,
       "priority": 60,
       "estimatedMinutes": 90,
-      "dependencies": ["monitoring-001"],
+      "dependencies": [
+        "monitoring-001"
+      ],
       "status": "ready",
       "description": "Create performance metrics dashboard with key indicators",
       "verificationGates": []
     }
   ],
   "workflow": {
-    "states": ["ready", "assigned", "in-progress", "testing", "review", "completed", "blocked"],
+    "states": [
+      "ready",
+      "assigned",
+      "in-progress",
+      "testing",
+      "review",
+      "completed",
+      "blocked"
+    ],
     "autoAssignmentRules": {
       "maxConcurrentTasks": 3,
-      "priorityOrder": ["waveA", "corePlatform", "dataHardening", "features", "documentation"]
+      "priorityOrder": [
+        "waveA",
+        "corePlatform",
+        "dataHardening",
+        "features",
+        "documentation"
+      ]
     }
   }
 }
