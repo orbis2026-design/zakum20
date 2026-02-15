@@ -21,6 +21,7 @@ import net.orbis.zakum.core.ZakumPlugin;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.ops.StressHarnessV2;
+import net.orbis.zakum.core.ops.SoakAutomationProfile;
 import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
@@ -104,6 +105,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(controlPlaneCommand());
     root.withSubcommand(perfCommand());
     root.withSubcommand(stressCommand());
+    root.withSubcommand(soakCommand());
     root.withSubcommand(chatBufferCommand());
     root.withSubcommand(economyCommand());
     root.withSubcommand(packetCullCommand());
@@ -322,6 +324,78 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
             StressHarnessV2.ReportResult result = harness.writeReport(label);
             api.getScheduler().runGlobal(() -> sender.sendMessage(result.message()));
           });
+        })
+      );
+  }
+
+  private CommandAPICommand soakCommand() {
+    return new CommandAPICommand("soak")
+      .withSubcommand(new CommandAPICommand("start")
+        .withOptionalArguments(new IntegerArgument("durationMinutes", 1, 24 * 60))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          SoakAutomationProfile soak = corePlugin.getSoakProfile();
+          if (soak == null) {
+            sender.sendMessage("Soak profile is not available.");
+            return;
+          }
+          Integer duration = (Integer) args.getOptional("durationMinutes").orElse(null);
+          sender.sendMessage(soak.start(duration).message());
+        })
+      )
+      .withSubcommand(new CommandAPICommand("stop")
+        .withOptionalArguments(new StringArgument("reason"))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          SoakAutomationProfile soak = corePlugin.getSoakProfile();
+          if (soak == null) {
+            sender.sendMessage("Soak profile is not available.");
+            return;
+          }
+          String reason = (String) args.getOptional("reason").orElse("manual");
+          sender.sendMessage(soak.stop(reason).message());
+        })
+      )
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          SoakAutomationProfile soak = corePlugin.getSoakProfile();
+          if (soak == null) {
+            sender.sendMessage("Soak profile is not available.");
+            return;
+          }
+          var snap = soak.snapshot();
+          sender.sendMessage("Zakum Soak Profile");
+          sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+          sender.sendMessage("running=" + snap.running());
+          sender.sendMessage("runId=" + snap.runId());
+          sender.sendMessage("taskId=" + snap.taskId());
+          sender.sendMessage("startedAt=" + formatEpochMillis(snap.startedAtMs()));
+          sender.sendMessage("stopAt=" + formatEpochMillis(snap.stopAtMs()));
+          sender.sendMessage("lastSampleAt=" + formatEpochMillis(snap.lastSampleAtMs()));
+          sender.sendMessage("durationMinutes=" + snap.durationMinutes());
+          sender.sendMessage("sampleIntervalSeconds=" + snap.sampleIntervalSeconds());
+          sender.sendMessage("minTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.minTps()));
+          sender.sendMessage("lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+          sender.sendMessage("samples=" + snap.sampleCount());
+          sender.sendMessage("lowTpsConsecutive=" + snap.lowTpsConsecutive());
+          sender.sendMessage("assertionFailures=" + snap.assertionFailures());
+          sender.sendMessage("abortOnAssertionFailure=" + snap.abortOnAssertionFailure());
+          sender.sendMessage("maxConsecutiveLowTpsSamples=" + snap.maxConsecutiveLowTpsSamples());
+          sender.sendMessage("maxThreadGuardViolationDelta=" + snap.maxThreadGuardViolationDelta());
+          sender.sendMessage("maxAsyncRejectedDelta=" + snap.maxAsyncRejectedDelta());
+          sender.sendMessage("maxStressErrorDelta=" + snap.maxStressErrorDelta());
+          sender.sendMessage("autoStressStarted=" + snap.autoStressStarted());
+          sender.sendMessage("threadGuardDelta=" + snap.deltaThreadGuardViolations());
+          sender.sendMessage("asyncRejectedDelta=" + snap.deltaAsyncRejected());
+          sender.sendMessage("stressErrorDelta=" + snap.deltaStressErrors());
+          String assertion = snap.lastAssertion();
+          sender.sendMessage("lastAssertion=" + (assertion == null || assertion.isBlank() ? "none" : assertion));
+          String reason = snap.lastStopReason();
+          sender.sendMessage("lastStopReason=" + (reason == null || reason.isBlank() ? "none" : reason));
         })
       );
   }

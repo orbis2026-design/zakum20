@@ -244,6 +244,23 @@ operations:
           - "[GIVE_MONEY] amount=1"
           - "[RTP] @SELF {min=64 max=384}"
           - "[ACTION_BAR_KEY] key=battlepass_points_gain points=1"
+  soak:
+    # 12h automation profile for long-run telemetry validation.
+    enabled: false
+    durationMinutes: 720
+    sampleIntervalSeconds: 60
+    minTps: 18.0
+    maxConsecutiveLowTpsSamples: 5
+    maxThreadGuardViolationDelta: 0
+    maxAsyncRejectedDelta: 0
+    maxStressErrorDelta: 1000
+    abortOnAssertionFailure: true
+    autoStartStress: true
+    # 0 = use stress.defaultIterations / stress.virtualPlayers.
+    stressIterations: 0
+    stressVirtualPlayers: 0
+    autoWriteStressReport: true
+    reportLabelPrefix: "soak"
 
 http:
   # Default client used by Zakum (controlPlane, future bridges).

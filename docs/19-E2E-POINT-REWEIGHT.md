@@ -22,7 +22,7 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 5. **88/100** HTTP resilience parity for all bridges/control-plane clients - complete (ControlPlane path)
 6. **84/100** Redis burst cache adapter for shared transient workloads - complete
 7. **82/100** Module startup/load-order validator - complete
-8. **80/100** 12h soak automation profile with assertions - pending
+8. **80/100** 12h soak automation profile with assertions - complete
 9. **78/100** Structured ACE parse/execute error taxonomy - pending
 
 ## Execution Rule (Directive Alignment)
@@ -33,4 +33,4 @@ Scores are normalized to a 100-point rank, then mapped to queue priority.
 
 ## Next Priority Slice
 
-`12h soak automation profile with assertions` is now the highest-scoring pending initiative.
+`Structured ACE parse/execute error taxonomy` is now the highest-scoring pending initiative.

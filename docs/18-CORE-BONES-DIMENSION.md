@@ -32,14 +32,14 @@ Total: **140 points**
 
 Estimated from current source and command surfaces:
 
-- Runtime safety kernel: **28 / 30**
+- Runtime safety kernel: **29 / 30**
 - Data/storage spine: **26 / 28**
-- Command/control spine: **23 / 24**
+- Command/control spine: **24 / 24**
 - Observability + diagnostics: **22 / 22**
-- Scheduler and task lifecycle: **19 / 20**
+- Scheduler and task lifecycle: **20 / 20**
 - Capability contract surface: **16 / 16**
 
-**Core Bones subtotal: 134 / 140 (96%)**
+**Core Bones subtotal: 137 / 140 (98%)**
 
 ## What Was Implemented In This Pass
 
@@ -60,13 +60,15 @@ Estimated from current source and command surfaces:
 - Added module startup/load-order validator with typed controls (`operations.startupValidator.*`).
 - Added module validator command surface (`/zakum modules status|validate`) in fallback and CommandAPI.
 - Added module validator health/task visibility in `/zakum datahealth status` and `/zakum tasks status`.
+- Added long-run soak automation profile with telemetry assertions (`operations.soak.*`).
+- Added soak command/control surface (`/zakum soak start|stop|status`) in fallback and CommandAPI.
+- Added soak task + assertion visibility in `/zakum tasks status` and `/zakum datahealth status`.
 
 ## Remaining High-Value Core Bones Backlog (Point Weighted)
 
-1. **9 pts** 12h soak automation profile with telemetry assertions
-2. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
-3. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
-4. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
+1. **8 pts** Structured ACE parse/execute error taxonomy and command diagnostics
+2. **7 pts** Cross-module data health subchecks (schema/version/read-write probes)
+3. **7 pts** Cloud HTTP parity hardening (retry/circuit alignment with ControlPlane path)
 
 ## End-of-Cycle Test Categories (Server Jar Validation)
 

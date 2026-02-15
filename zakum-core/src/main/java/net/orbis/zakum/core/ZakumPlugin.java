@@ -45,6 +45,7 @@ import net.orbis.zakum.core.net.HttpControlPlaneClient;
 import net.orbis.zakum.core.obs.MetricsService;
 import net.orbis.zakum.core.ops.StressHarnessV2;
 import net.orbis.zakum.core.ops.ModuleStartupValidator;
+import net.orbis.zakum.core.ops.SoakAutomationProfile;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeListener;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
@@ -131,6 +132,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private VisualCircuitBreaker visualCircuitBreaker;
   private StressHarnessV2 stressHarness;
   private ModuleStartupValidator moduleStartupValidator;
+  private SoakAutomationProfile soakProfile;
 
   private MovementSampler movementSampler;
 
@@ -304,6 +306,16 @@ public final class ZakumPlugin extends JavaPlugin {
 
     ZakumApiProvider.set(api);
     this.stressHarness = new StressHarnessV2(this, api, settings.operations().stress(), metricsMonitor, getLogger());
+    this.soakProfile = new SoakAutomationProfile(
+      this,
+      scheduler,
+      scheduler,
+      threadGuard,
+      stressHarness,
+      settings.operations().soak(),
+      metricsMonitor,
+      getLogger()
+    );
     startCloudPolling();
     startGrimBridge();
     this.moduleStartupValidator = new ModuleStartupValidator(
@@ -401,6 +413,10 @@ public final class ZakumPlugin extends JavaPlugin {
     if (stressHarness != null) {
       try { stressHarness.close(); } catch (Throwable ignored) {}
       stressHarness = null;
+    }
+    if (soakProfile != null) {
+      try { soakProfile.close(); } catch (Throwable ignored) {}
+      soakProfile = null;
     }
     if (moduleStartupValidator != null) {
       moduleStartupValidator.stop();
@@ -647,6 +663,14 @@ public final class ZakumPlugin extends JavaPlugin {
       return handleStressCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("soak")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleSoakCommand(sender, args);
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("chatbuffer") && args[1].equalsIgnoreCase("status")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -737,6 +761,9 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " stress start [iterations] [virtualPlayers]");
     sender.sendMessage("Usage: /" + label + " stress stop");
     sender.sendMessage("Usage: /" + label + " stress status");
+    sender.sendMessage("Usage: /" + label + " soak start [durationMinutes]");
+    sender.sendMessage("Usage: /" + label + " soak stop [reason]");
+    sender.sendMessage("Usage: /" + label + " soak status");
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
@@ -764,6 +791,10 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public StressHarnessV2 getStressHarness() {
     return stressHarness;
+  }
+
+  public SoakAutomationProfile getSoakProfile() {
+    return soakProfile;
   }
 
   public ChatBufferCache getChatBufferCache() {
@@ -851,6 +882,14 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleValidatorWarnings = modSnap.warnings();
         moduleValidatorCriticals = modSnap.criticals();
       }
+      boolean soakConfiguredEnabled = settings != null && settings.operations() != null && settings.operations().soak().enabled();
+      boolean soakRunning = false;
+      int soakAssertionFailures = 0;
+      if (soakProfile != null) {
+        var soakSnap = soakProfile.snapshot();
+        soakRunning = soakSnap.running();
+        soakAssertionFailures = soakSnap.assertionFailures();
+      }
 
       if (metricsMonitor != null) {
         metricsMonitor.recordAction("datahealth_status");
@@ -877,6 +916,9 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleValidatorHealthy,
         moduleValidatorWarnings,
         moduleValidatorCriticals,
+        soakConfiguredEnabled,
+        soakRunning,
+        soakAssertionFailures,
         ""
       );
     });
@@ -910,6 +952,9 @@ public final class ZakumPlugin extends JavaPlugin {
     lines.add("modules.validator.healthy=" + snap.moduleValidatorHealthy());
     lines.add("modules.validator.warnings=" + snap.moduleValidatorWarnings());
     lines.add("modules.validator.criticals=" + snap.moduleValidatorCriticals());
+    lines.add("soak.configured=" + snap.soakConfiguredEnabled());
+    lines.add("soak.running=" + snap.soakRunning());
+    lines.add("soak.assertionFailures=" + snap.soakAssertionFailures());
     if (snap.error() != null && !snap.error().isBlank()) {
       lines.add("error=" + snap.error());
     }
@@ -1133,6 +1178,56 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleSoakCommand(CommandSender sender, String[] args) {
+    if (soakProfile == null) {
+      sender.sendMessage("Soak profile is not available.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum soak start [durationMinutes]");
+      sender.sendMessage("Usage: /zakum soak stop [reason]");
+      sender.sendMessage("Usage: /zakum soak status");
+      return true;
+    }
+
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("start")) {
+      Integer duration = null;
+      if (args.length >= 3) {
+        int parsed = parseInt(args[2], -1);
+        if (parsed > 0) duration = parsed;
+      }
+      var result = soakProfile.start(duration);
+      sender.sendMessage(result.message());
+      return true;
+    }
+
+    if (sub.equals("stop")) {
+      String reason = "manual";
+      if (args.length >= 3) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 2; i < args.length; i++) {
+          if (i > 2) sb.append(' ');
+          sb.append(args[i]);
+        }
+        reason = sb.toString();
+      }
+      var result = soakProfile.stop(reason);
+      sender.sendMessage(result.message());
+      return true;
+    }
+
+    if (sub.equals("status")) {
+      sendSoakStatus(sender);
+      return true;
+    }
+
+    sender.sendMessage("Usage: /zakum soak start [durationMinutes]");
+    sender.sendMessage("Usage: /zakum soak stop [reason]");
+    sender.sendMessage("Usage: /zakum soak status");
+    return true;
+  }
+
   private void sendStressStatus(CommandSender sender) {
     if (stressHarness == null) {
       sender.sendMessage("Stress harness is not available.");
@@ -1164,6 +1259,42 @@ public final class ZakumPlugin extends JavaPlugin {
     if (snap.scenarioCounts() != null && !snap.scenarioCounts().isEmpty()) {
       sender.sendMessage("scenarioCounts=" + snap.scenarioCounts());
     }
+  }
+
+  private void sendSoakStatus(CommandSender sender) {
+    if (soakProfile == null) {
+      sender.sendMessage("Soak profile is not available.");
+      return;
+    }
+    var snap = soakProfile.snapshot();
+    sender.sendMessage("Zakum Soak Profile");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("running=" + snap.running());
+    sender.sendMessage("runId=" + snap.runId());
+    sender.sendMessage("taskId=" + snap.taskId());
+    sender.sendMessage("startedAt=" + formatEpochMillis(snap.startedAtMs()));
+    sender.sendMessage("stopAt=" + formatEpochMillis(snap.stopAtMs()));
+    sender.sendMessage("lastSampleAt=" + formatEpochMillis(snap.lastSampleAtMs()));
+    sender.sendMessage("durationMinutes=" + snap.durationMinutes());
+    sender.sendMessage("sampleIntervalSeconds=" + snap.sampleIntervalSeconds());
+    sender.sendMessage("minTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.minTps()));
+    sender.sendMessage("lastTps=" + String.format(java.util.Locale.ROOT, "%.2f", snap.lastTps()));
+    sender.sendMessage("samples=" + snap.sampleCount());
+    sender.sendMessage("lowTpsConsecutive=" + snap.lowTpsConsecutive());
+    sender.sendMessage("assertionFailures=" + snap.assertionFailures());
+    sender.sendMessage("abortOnAssertionFailure=" + snap.abortOnAssertionFailure());
+    sender.sendMessage("maxConsecutiveLowTpsSamples=" + snap.maxConsecutiveLowTpsSamples());
+    sender.sendMessage("maxThreadGuardViolationDelta=" + snap.maxThreadGuardViolationDelta());
+    sender.sendMessage("maxAsyncRejectedDelta=" + snap.maxAsyncRejectedDelta());
+    sender.sendMessage("maxStressErrorDelta=" + snap.maxStressErrorDelta());
+    sender.sendMessage("autoStressStarted=" + snap.autoStressStarted());
+    sender.sendMessage("threadGuardDelta=" + snap.deltaThreadGuardViolations());
+    sender.sendMessage("asyncRejectedDelta=" + snap.deltaAsyncRejected());
+    sender.sendMessage("stressErrorDelta=" + snap.deltaStressErrors());
+    String assertion = snap.lastAssertion();
+    sender.sendMessage("lastAssertion=" + (assertion == null || assertion.isBlank() ? "none" : assertion));
+    String reason = snap.lastStopReason();
+    sender.sendMessage("lastStopReason=" + (reason == null || reason.isBlank() ? "none" : reason));
   }
 
   private void sendChatBufferStatus(CommandSender sender) {
@@ -1605,6 +1736,18 @@ public final class ZakumPlugin extends JavaPlugin {
       lines.add("stress.running=false");
     }
 
+    if (soakProfile != null) {
+      var snap = soakProfile.snapshot();
+      appendTaskLines(lines, "soak.runner", snap.taskId());
+      lines.add("soak.running=" + snap.running());
+      lines.add("soak.assertionFailures=" + snap.assertionFailures());
+    } else {
+      lines.add("soak.runner.taskId=-1");
+      lines.add("soak.runner.active=false");
+      lines.add("soak.running=false");
+      lines.add("soak.assertionFailures=0");
+    }
+
     if (moduleStartupValidator != null) {
       var snap = moduleStartupValidator.snapshot();
       appendTaskLines(lines, "modules.validator", snap.startupTaskId());
@@ -1726,6 +1869,9 @@ public final class ZakumPlugin extends JavaPlugin {
     boolean moduleValidatorHealthy,
     int moduleValidatorWarnings,
     int moduleValidatorCriticals,
+    boolean soakConfiguredEnabled,
+    boolean soakRunning,
+    int soakAssertionFailures,
     String error
   ) {
     public static DataHealthSnapshot empty(String error) {
@@ -1749,6 +1895,9 @@ public final class ZakumPlugin extends JavaPlugin {
         false,
         false,
         0,
+        0,
+        false,
+        false,
         0,
         error == null ? "" : error
       );

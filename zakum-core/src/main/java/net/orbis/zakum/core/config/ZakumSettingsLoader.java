@@ -330,6 +330,21 @@ public final class ZakumSettingsLoader {
     java.util.List<ZakumSettings.Operations.StressScenario> scenarios = loadStressScenarios(cfg);
     var report = loadStressReport(cfg);
 
+    boolean soakEnabled = bool(cfg, "operations.soak.enabled", false);
+    int soakDurationMinutes = clampI(cfg.getInt("operations.soak.durationMinutes", 12 * 60), 1, 24 * 60);
+    int soakSampleIntervalSeconds = clampI(cfg.getInt("operations.soak.sampleIntervalSeconds", 60), 1, 3600);
+    double soakMinTps = clampF((float) cfg.getDouble("operations.soak.minTps", 18.0d), 5.0f, 20.0f);
+    int soakMaxConsecutiveLowTpsSamples = clampI(cfg.getInt("operations.soak.maxConsecutiveLowTpsSamples", 5), 1, 1000);
+    long soakMaxThreadGuardViolationDelta = clampL(cfg.getLong("operations.soak.maxThreadGuardViolationDelta", 0L), 0L, 10_000_000L);
+    long soakMaxAsyncRejectedDelta = clampL(cfg.getLong("operations.soak.maxAsyncRejectedDelta", 0L), 0L, 10_000_000L);
+    long soakMaxStressErrorDelta = clampL(cfg.getLong("operations.soak.maxStressErrorDelta", 1_000L), 0L, 10_000_000L);
+    boolean soakAbortOnAssertionFailure = bool(cfg, "operations.soak.abortOnAssertionFailure", true);
+    boolean soakAutoStartStress = bool(cfg, "operations.soak.autoStartStress", true);
+    int soakStressIterations = clampI(cfg.getInt("operations.soak.stressIterations", 0), 0, 2_000_000);
+    int soakStressVirtualPlayers = clampI(cfg.getInt("operations.soak.stressVirtualPlayers", 0), 0, 50_000);
+    boolean soakAutoWriteStressReport = bool(cfg, "operations.soak.autoWriteStressReport", true);
+    String soakReportLabelPrefix = str(cfg, "operations.soak.reportLabelPrefix", "soak").trim();
+
     boolean guardEnabled = bool(cfg, "operations.threadGuard.enabled", true);
     boolean failOnViolation = bool(cfg, "operations.threadGuard.failOnViolation", false);
     int maxReports = clampI(cfg.getInt("operations.threadGuard.maxReportsPerMinute", 12), 0, 600);
@@ -382,6 +397,22 @@ public final class ZakumSettingsLoader {
         allowVisuals,
         scenarios,
         report
+      ),
+      new ZakumSettings.Operations.Soak(
+        soakEnabled,
+        soakDurationMinutes,
+        soakSampleIntervalSeconds,
+        soakMinTps,
+        soakMaxConsecutiveLowTpsSamples,
+        soakMaxThreadGuardViolationDelta,
+        soakMaxAsyncRejectedDelta,
+        soakMaxStressErrorDelta,
+        soakAbortOnAssertionFailure,
+        soakAutoStartStress,
+        soakStressIterations,
+        soakStressVirtualPlayers,
+        soakAutoWriteStressReport,
+        soakReportLabelPrefix
       ),
       new ZakumSettings.Operations.ThreadGuard(
         guardEnabled,

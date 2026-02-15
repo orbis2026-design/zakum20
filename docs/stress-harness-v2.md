@@ -38,6 +38,9 @@ Commands
 - /zakum stress stop
 - /zakum stress status
 - /zakum stress report [label]
+- /zakum soak start [durationMinutes]
+- /zakum soak stop [reason]
+- /zakum soak status
 
 Status output
 - Shows planned/scheduled/completed iterations, errors, TPS, and scenario counts.
@@ -62,6 +65,12 @@ Built-in Matrix (defaults)
 Report Output
 - Saved under `plugins/Zakum/<report.folder>/stress-report-<timestamp>[-label].yml`
 - Includes snapshot metrics, scenario counts, and config used for the run
+
+Soak Profile (12h automation baseline)
+- Config: `operations.soak.*` (duration, sample interval, assertion thresholds).
+- Assertions: low TPS streak, threadguard violation delta, async rejected delta, stress error delta.
+- Optional auto-start of stress harness and optional auto-write stress report on stop.
+- Designed for long-run core validation before moving jars to production servers.
 
 Notes
 - RTP/economy scenarios are skipped automatically if toggled off or economy is unavailable.

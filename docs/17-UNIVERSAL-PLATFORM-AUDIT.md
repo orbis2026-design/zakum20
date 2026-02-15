@@ -94,6 +94,7 @@ Progress updates after this audit:
 - Step 9: completed baseline via `/zakum datahealth status` (fallback + CommandAPI).
 - Step 13: completed baseline via shared `BurstCacheService` (Redis + local fallback) and `/zakum burstcache status|enable|disable`.
 - Step 17: completed via module startup/load-order validator and `/zakum modules status|validate`.
+- Step 19: completed baseline via soak automation profile and `/zakum soak start|stop|status`.
 
 ## 7) Diff Mode (This Refactor Pass Only)
 

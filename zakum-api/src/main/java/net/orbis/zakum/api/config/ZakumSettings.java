@@ -186,6 +186,7 @@ public record ZakumSettings(
   public record Operations(
     CircuitBreaker circuitBreaker,
     Stress stress,
+    Soak soak,
     ThreadGuard threadGuard,
     Async async,
     StartupValidator startupValidator
@@ -244,6 +245,28 @@ public record ZakumSettings(
     ) {
       public StressReport {
         folder = folder == null ? "" : folder.trim();
+      }
+    }
+
+    public record Soak(
+      boolean enabled,
+      int durationMinutes,
+      int sampleIntervalSeconds,
+      double minTps,
+      int maxConsecutiveLowTpsSamples,
+      long maxThreadGuardViolationDelta,
+      long maxAsyncRejectedDelta,
+      long maxStressErrorDelta,
+      boolean abortOnAssertionFailure,
+      boolean autoStartStress,
+      int stressIterations,
+      int stressVirtualPlayers,
+      boolean autoWriteStressReport,
+      String reportLabelPrefix
+    ) {
+      public Soak {
+        reportLabelPrefix = reportLabelPrefix == null ? "soak" : reportLabelPrefix.trim();
+        if (reportLabelPrefix.isBlank()) reportLabelPrefix = "soak";
       }
     }
 
