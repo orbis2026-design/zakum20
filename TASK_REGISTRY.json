@@ -169,12 +169,13 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "in-progress",
       "description": "Complete ACE effect coverage, parser hardening, diagnostics bounds",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "startedAt": "2026-02-15T18:51:02Z"
     },
     {
       "id": "feature-001",
