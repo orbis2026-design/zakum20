@@ -116,6 +116,10 @@ jobs:
         run: |
           TASKS='${{ steps.assign.outputs.tasks }}'
           
+          # Initialize temp file to track successfully dispatched tasks
+          rm -f /tmp/successfully_dispatched_tasks.txt
+          touch /tmp/successfully_dispatched_tasks.txt
+          
           while IFS= read -r task; do
             TASK_ID=$(echo "$task" | jq -r '.id')
             TASK_NAME=$(echo "$task" | jq -r '.name')
@@ -137,11 +141,26 @@ jobs:
                 ;;
             esac
             
-            # Trigger the workflow
-            gh workflow run "$WORKFLOW" \
-              -f task_id="$TASK_ID" \
-              -f task_json="$(echo "$task" | jq -c .)" \
-              || echo "⚠️ Failed to trigger workflow for $TASK_ID"
+            # Trigger the workflow with appropriate parameters
+            if [ "$TASK_CATEGORY" = "dataHardening" ]; then
+              # 06-worker-testing.yml only accepts task_id and test_scope (not task_json)
+              if gh workflow run "$WORKFLOW" -f task_id="$TASK_ID"; then
+                echo "✅ Successfully triggered workflow for $TASK_ID"
+                echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+              else
+                echo "❌ Failed to trigger workflow for $TASK_ID"
+              fi
+            else
+              # Other workflows accept task_id and task_json
+              if gh workflow run "$WORKFLOW" \
+                -f task_id="$TASK_ID" \
+                -f task_json="$(echo "$task" | jq -c .)"; then
+                echo "✅ Successfully triggered workflow for $TASK_ID"
+                echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+              else
+                echo "❌ Failed to trigger workflow for $TASK_ID"
+              fi
+            fi
           done < <(echo "$TASKS" | jq -c '.[]')
 
       - name: Send Discord notification
@@ -181,8 +200,24 @@ jobs:
       - name: Update task status
         if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != ''
         run: |
-          TASKS='${{ steps.assign.outputs.tasks }}'
           REGISTRY="TASK_REGISTRY.json"
+          
+          # Check if any tasks were successfully dispatched
+          if [ ! -f /tmp/successfully_dispatched_tasks.txt ]; then
+            echo "⚠️ No tasks were successfully dispatched, skipping status update"
+            exit 0
+          fi
+          
+          # Read successfully dispatched task IDs
+          DISPATCHED_IDS=$(cat /tmp/successfully_dispatched_tasks.txt | jq -R . | jq -s .)
+          DISPATCHED_COUNT=$(echo "$DISPATCHED_IDS" | jq 'length')
+          
+          if [ "$DISPATCHED_COUNT" -eq 0 ]; then
+            echo "⚠️ No tasks were successfully dispatched, skipping status update"
+            exit 0
+          fi
+          
+          echo "📝 Updating status for $DISPATCHED_COUNT successfully dispatched task(s)"
           
           # Configure git
           git config user.name "github-actions[bot]"
@@ -192,12 +227,9 @@ jobs:
           # Pull latest changes first to minimize conflicts
           git pull origin master || echo "Pull failed, continuing..."
           
-          # Extract task IDs into a proper JSON array
-          TASK_IDS=$(echo "$TASKS" | jq -c '[.[].id]')
-          
-          # Update task status to "assigned" using jq arguments (avoids shell quoting issues)
+          # Update task status to "assigned" only for successfully dispatched tasks
           TMP_REGISTRY=$(mktemp)
-          jq --argjson task_ids "$TASK_IDS" \
+          jq --argjson task_ids "$DISPATCHED_IDS" \
              --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
              '.tasks |= map(
                if IN($task_ids[]; .id) then
