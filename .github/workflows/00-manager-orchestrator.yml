@@ -184,14 +184,20 @@ jobs:
           TASKS='${{ steps.assign.outputs.tasks }}'
           REGISTRY="TASK_REGISTRY.json"
           
-          # Update task status to "assigned"
+          # Extract task IDs into a proper JSON array
+          TASK_IDS=$(echo "$TASKS" | jq -c '[.[].id]')
+          
+          # Update task status to "assigned" using jq arguments (avoids shell quoting issues)
           TMP_REGISTRY=$(mktemp)
-          jq '.tasks |= map(
-            if ([.id] | inside(['$(echo "$TASKS" | jq -r '[.[].id] | @json')')
-            then .status = "assigned" | .assignedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
-            else .
-            end
-          )' "$REGISTRY" > "$TMP_REGISTRY"
+          jq --argjson task_ids "$TASK_IDS" \
+             --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '.tasks |= map(
+               if ($task_ids | index(.id)) then
+                 .status = "assigned" | .assignedAt = $timestamp
+               else
+                 .
+               end
+             )' "$REGISTRY" > "$TMP_REGISTRY"
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           

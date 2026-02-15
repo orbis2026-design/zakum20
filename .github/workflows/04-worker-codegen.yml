@@ -129,7 +129,7 @@ jobs:
           gh pr create \
             --title "feat: Generate $MODULE_ID module" \
             --body "Auto-generated module scaffolding for $PLUGIN_NAME (${{ github.event.inputs.kind }})" \
-            --base main \
+            --base master \
             --head "$BRANCH_NAME" || echo "PR already exists"
 
       - name: Summary
