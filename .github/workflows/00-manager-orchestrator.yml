@@ -213,38 +213,34 @@ jobs:
           git add "$REGISTRY"
           
           # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          
-          # Commit changes
-          git commit -m "chore: assign tasks from orchestrator"
-          
-          # Try to push, retry with pull if needed
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if git push origin master; then
-              echo "✅ Successfully pushed changes"
-              exit 0
-            else
-              echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
-              
-              # Pull with merge strategy
-              if git pull origin master --no-edit; then
-                echo "Pulled latest changes, retrying push..."
-                RETRY_COUNT=$((RETRY_COUNT + 1))
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: assign tasks from orchestrator"
+            
+            # Try to push, retry with pull if needed
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if git push origin master; then
+                echo "✅ Successfully pushed changes"
+                exit 0
               else
-                echo "❌ Pull failed, there may be conflicts"
-                exit 1
+                echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+                
+                # Pull with merge strategy
+                if git pull origin master --no-edit; then
+                  echo "Pulled latest changes, retrying push..."
+                  RETRY_COUNT=$((RETRY_COUNT + 1))
+                else
+                  echo "❌ Pull failed, there may be conflicts"
+                  exit 1
+                fi
               fi
-            fi
-          done
-          
-          echo "❌ Failed to push after $MAX_RETRIES attempts"
-          exit 1
+            done
+            
+            echo "❌ Failed to push after $MAX_RETRIES attempts"
+            exit 1
+          fi
 
       - name: Summary
         run: |

@@ -145,25 +145,7 @@ jobs:
           # Check if there are changes to commit
           if ! git diff --staged --quiet; then
             git commit -m "feat: implement ${{ steps.task.outputs.id }}"
-            
-            # Retry push logic
-            MAX_RETRIES=3
-            RETRY_COUNT=0
-            
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if git push; then
-                echo "✅ Successfully pushed changes"
-                break
-              else
-                echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
-                if git pull --no-edit; then
-                  RETRY_COUNT=$((RETRY_COUNT + 1))
-                else
-                  echo "❌ Pull failed"
-                  break
-                fi
-              fi
-            done
+            git push || echo "Push failed, but continuing..."
           fi
           
           echo "✅ Task implementation marker created"
