@@ -23,6 +23,10 @@ jobs:
     name: Check Budget & Execute
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: write  # Required for git push (budget updates)
+      pull-requests: write  # Required for PR creation
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -136,6 +140,9 @@ jobs:
     runs-on: ubuntu-latest
     # Run on the 1st of each month at 00:00 UTC
     if: github.event.schedule == '0 0 1 * *' || github.event_name == 'workflow_dispatch'
+    
+    permissions:
+      contents: read  # Only need to read for monthly summary
     
     steps:
       - name: Checkout Repository
