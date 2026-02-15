@@ -2,10 +2,11 @@ name: AI Orchestration - Sonnet 4.5 + GPT-4o Mini
 
 on:
   schedule:
-    # Run every 2.5 hours (optimal for $15/month budget)
-    # This schedule runs at: 00:00, 02:30, 05:00, 07:30, 10:00, 12:30, 15:00, 17:30, 20:00, 22:30 UTC
-    - cron: '0 0,2,5,7,10,12,15,17,20,22 * * *'
-    - cron: '30 2,7,12,17,22 * * *'
+    # Run every 2.5-3 hours (optimal for $15/month budget with ~479 monthly executions)
+    # Schedule pattern: Runs at 00:00, 02:30, 05:00, 07:30, 10:00, 12:30, 15:00, 17:30, 20:00, 22:30 UTC
+    # This achieves approximately 10 executions per day = ~300 executions per month
+    - cron: '0 0,2,5,7,10,12,15,17,20,22 * * *'  # On the hour runs
+    - cron: '30 2,7,12,17,22 * * *'              # Half-hour runs
   
   workflow_dispatch:
     inputs:

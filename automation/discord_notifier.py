@@ -5,7 +5,7 @@ Supports standard notifications and milestone progress tracking.
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 import requests
 
@@ -61,7 +61,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         return self.send_notification("", embed)
     
@@ -100,7 +100,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         return self.send_notification("", embed)
     
@@ -158,7 +158,7 @@ class DiscordNotifier:
                     "inline": False
                 }
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         return self.send_notification("", embed)
@@ -186,7 +186,7 @@ class DiscordNotifier:
                     "inline": False
                 }
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         return self.send_notification("@here Budget Limit Reached!", embed)
     
@@ -229,7 +229,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         return self.send_notification("", embed)
     
@@ -249,7 +249,7 @@ class DiscordNotifier:
                 "inline": True
             })
         
-        embed["timestamp"] = datetime.now().isoformat()
+        embed["timestamp"] = datetime.now(timezone.utc).isoformat()
         
         return self.send_notification("", embed)
     

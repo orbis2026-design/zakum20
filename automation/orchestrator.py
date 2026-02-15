@@ -6,7 +6,7 @@ Handles cost tracking, budget enforcement, and model execution coordination.
 import os
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 
@@ -64,7 +64,7 @@ class BudgetTracker:
                 "openai_output": 0
             },
             "milestones_reached": [],
-            "last_reset": datetime.now().isoformat(),  # Initialization timestamp
+            "last_reset": datetime.now(timezone.utc).isoformat(),  # Tracks last budget reset (initialization for new files)
             "history": []
         }
     
@@ -232,8 +232,9 @@ class AIOrchestrator:
         """
         
         # Estimate token usage (in production, these come from API response)
-        input_tokens = len(task_description.split()) * 2  # Rough estimate
-        output_tokens = len(specification.split()) * 2
+        # NOTE: These are VERY rough approximations - actual values will differ
+        input_tokens = len(task_description.split()) * 2  # Placeholder estimate
+        output_tokens = len(specification.split()) * 2     # Placeholder estimate
         
         return specification, input_tokens, output_tokens
     
