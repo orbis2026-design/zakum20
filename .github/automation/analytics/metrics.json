@@ -1,0 +1,30 @@
+{
+  "generated": "2026-02-15T18:44:35Z",
+  "tasks": {
+    "total": 29,
+    "ready": 28,
+    "assigned": 0,
+    "in_progress": 1,
+    "testing": 0,
+    "completed": 0,
+    "blocked": 0,
+    "completion_percentage": 0,
+    "points_total": 159,
+    "points_completed": 0
+  },
+  "budget": {
+    "total_spent": 0,
+    "days_tracked": 0,
+    "average_daily": 0,
+    "daily_limit": 25.0
+  },
+  "repository": {
+    "module_count": 23,
+    "java_files": 291,
+    "lines_of_code": 34257,
+    "commits_30d": 58
+  },
+  "workflows": {
+    "recent_runs": 13
+  }
+}
