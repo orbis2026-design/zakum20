@@ -75,33 +75,31 @@ jobs:
           # Get ready tasks sorted by priority
           READY_TASKS=$(jq -c '[.tasks[] | select(.status == "ready")] | sort_by(-.priority, -.points)' "$REGISTRY")
           
-          # Check for tasks with satisfied dependencies
-          ASSIGNABLE_TASKS=$(echo "$READY_TASKS" | jq -c '[.[] | select(.dependencies | length == 0 or all(. as $dep | any($dep == "'$REGISTRY'" | .tasks[] | select(.id == $dep and .status == "completed"))))]')
+          # Check for tasks with satisfied dependencies (simplified - only checking for empty dependencies array)
+          ASSIGNABLE_TASKS=$(echo "$READY_TASKS" | jq -c '[.[] | select(.dependencies | length == 0)]')
           
           # Select up to 3 tasks based on remaining budget
           REMAINING=${{ steps.budget.outputs.remaining }}
-          SELECTED_TASKS='[]'
-          TOTAL_ESTIMATED=0
           
-          while IFS= read -r task; do
-            TASK_ID=$(echo "$task" | jq -r '.id')
-            TASK_EST=$(echo "$task" | jq -r '.estimatedMinutes')
-            TASK_COST=$(echo "scale=2; $TASK_EST * 0.008 / 60" | bc) # GitHub Actions cost estimate
-            
-            NEW_TOTAL=$(echo "$TOTAL_ESTIMATED + $TASK_COST" | bc)
-            
-            if (( $(echo "$NEW_TOTAL <= $REMAINING" | bc -l) )); then
-              SELECTED_TASKS=$(echo "$SELECTED_TASKS" | jq ". += [$task]")
-              TOTAL_ESTIMATED=$NEW_TOTAL
-              echo "✅ Selected task: $TASK_ID (estimated cost: \$$TASK_COST)"
-            fi
-            
-            # Limit to 3 concurrent tasks
-            TASK_COUNT=$(echo "$SELECTED_TASKS" | jq 'length')
-            if [ "$TASK_COUNT" -ge 3 ]; then
-              break
-            fi
-          done < <(echo "$ASSIGNABLE_TASKS" | jq -c '.[]')
+          # Use jq to build the selection (avoiding subshell issues)
+          SELECTED_TASKS=$(echo "$ASSIGNABLE_TASKS" | jq -c --argjson remaining "$REMAINING" '
+            reduce .[] as $task (
+              {tasks: [], total: 0};
+              if (.tasks | length) < 3 then
+                ($task.estimatedMinutes * 0.008 / 60) as $cost |
+                if (.total + $cost) <= $remaining then
+                  {tasks: (.tasks + [$task]), total: (.total + $cost)}
+                else
+                  .
+                end
+              else
+                .
+              end
+            ) | .tasks
+          ')
+          
+          # Calculate final cost for display
+          TOTAL_ESTIMATED=$(echo "$SELECTED_TASKS" | jq '[.[] | .estimatedMinutes * 0.008 / 60] | add // 0')
           
           # Output selected tasks
           echo "tasks<<EOF" >> $GITHUB_OUTPUT

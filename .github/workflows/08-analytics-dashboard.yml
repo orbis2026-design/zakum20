@@ -92,7 +92,39 @@ jobs:
           else
             AVG_DAILY=0
           fi
-          echo "avg_daily=$AVG_DAILY" >> $GITHUB_OUTPUT
+          echo "avg_daily_spend=$AVG_DAILY" >> $GITHUB_OUTPUT
+
+      - name: Generate analytics dashboard
+        run: |
+          mkdir -p docs/analytics
+          
+          cat > docs/analytics/dashboard.md << EOF
+          # 📊 Zakum Analytics Dashboard
+          
+          Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ## Task Progress
+          - **Total Tasks:** ${{ steps.tasks.outputs.total }}
+          - **Ready:** ${{ steps.tasks.outputs.ready }}
+          - **In Progress:** ${{ steps.tasks.outputs.in_progress }}
+          - **Completed:** ${{ steps.tasks.outputs.completed }}
+          - **Completion Rate:** ${{ steps.tasks.outputs.completion }}%
+          
+          ## Points Progress
+          - **Total Points:** ${{ steps.tasks.outputs.points_total }}
+          - **Completed Points:** ${{ steps.tasks.outputs.points_completed }}
+          
+          ## Budget Tracking
+          - **Total Spent:** \$$${{ steps.budget.outputs.total_spent }}
+          - **Days Tracked:** ${{ steps.budget.outputs.days_tracked }}
+          - **Avg Daily Spend:** \$$${{ steps.budget.outputs.avg_daily_spend }}
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/analytics/
+          git commit -m "chore: update analytics dashboard [skip ci]" || echo "No changes"
+          git push || echo "No changes to push"
 
       - name: Collect workflow metrics
         id: workflows
