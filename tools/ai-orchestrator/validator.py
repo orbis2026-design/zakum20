@@ -7,7 +7,7 @@ import subprocess
 import json
 from pathlib import Path
 from typing import Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class BuildValidator:

@@ -5,9 +5,9 @@
   "spent_today": 0.0,
   "total_spent": 0.0,
   "tokens_used": 0,
-  "prs_generated": 1,
+  "prs_generated": 2,
   "phase": "initial_sprint",
   "sprint_start_date": "2026-02-15T16:50:40.244Z",
   "last_reset_date": "2026-02-15T16:50:40.244Z",
-  "tasks_completed": 1
+  "tasks_completed": 2
 }
