@@ -77,6 +77,7 @@ On the proxy (Velocity) side:
 
 See: `docs/01-MODULES.md` for deeper details.
 See: `docs/16-ORBISGUI.md` for architecture and integration boundaries.
+See: `docs/18-CORE-BONES-DIMENSION.md` for the priority #1 core-bones point system.
 
 - `docs/13-CONFIG-FOLDERS.md` (per-plugin config folders)
 

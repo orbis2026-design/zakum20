@@ -12,6 +12,8 @@ Key sections (top-level):
 - `entitlements.cache.*`: cache sizing/TTL for premium checks
 - `boosters.*`: booster behavior (handled by BoosterService)
 - `actions.*`: action emitters + movement sampling + deferred replay
+- `datastore.*`: optional Mongo/Redis profile+session capability
+- `economy.global.*`: optional Redis global economy capability
 - `http.*`: shared OkHttp client defaults + resilience guards
 - `cache.defaults.*`: shared cache posture (future systems)
 - `observability.metrics.*`: embedded Prometheus endpoint

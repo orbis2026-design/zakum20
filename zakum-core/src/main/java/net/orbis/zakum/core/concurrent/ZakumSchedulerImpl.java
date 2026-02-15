@@ -217,6 +217,15 @@ public final class ZakumSchedulerImpl implements ZakumScheduler {
     return backpressure.runtimeEnabled();
   }
 
+  public boolean isTaskActive(int taskId) {
+    if (taskId <= 0) return false;
+    return scheduledTasks.containsKey(taskId);
+  }
+
+  public int trackedTaskCount() {
+    return scheduledTasks.size();
+  }
+
   public record AsyncSnapshot(
     boolean configuredEnabled,
     boolean runtimeEnabled,

@@ -41,7 +41,8 @@ public final class ZakumSettingsLoader {
     var boosters = loadBoosters(cfg);
     var actions = loadActions(cfg);
     var operations = loadOperations(cfg);
-    var economy = loadEconomy(cfg);
+    var dataStore = loadDataStore(cfg);
+    var economy = loadEconomy(cfg, dataStore);
     var moderation = loadModeration(cfg);
     var chat = loadChat(cfg);
     var visuals = loadVisuals(cfg);
@@ -61,6 +62,7 @@ public final class ZakumSettingsLoader {
       actions,
       operations,
       economy,
+      dataStore,
       moderation,
       chat,
       visuals,
@@ -390,11 +392,27 @@ public final class ZakumSettingsLoader {
     return new ZakumSettings.Operations.StressReport(enabled, folder, keep);
   }
 
-  private static ZakumSettings.Economy loadEconomy(FileConfiguration cfg) {
+  private static ZakumSettings.DataStore loadDataStore(FileConfiguration cfg) {
+    boolean enabled = bool(cfg, "datastore.enabled", false);
+    String mongoUri = str(cfg, "datastore.mongoUri", "").trim();
+    String mongoDatabase = str(cfg, "datastore.mongoDatabase", "").trim();
+    String redisUri = str(cfg, "datastore.redisUri", "").trim();
+    String sessionKeyPrefix = str(cfg, "datastore.sessionKeyPrefix", "zakum:session").trim();
+    if (sessionKeyPrefix.isBlank()) sessionKeyPrefix = "zakum:session";
+    return new ZakumSettings.DataStore(
+      enabled,
+      mongoUri,
+      mongoDatabase,
+      redisUri,
+      sessionKeyPrefix
+    );
+  }
+
+  private static ZakumSettings.Economy loadEconomy(FileConfiguration cfg, ZakumSettings.DataStore dataStore) {
     boolean enabled = bool(cfg, "economy.global.enabled", false);
     String redisUri = firstNonBlank(
       str(cfg, "economy.global.redisUri", "").trim(),
-      str(cfg, "datastore.redisUri", "").trim()
+      dataStore == null ? "" : dataStore.redisUri()
     );
     String keyPrefix = str(cfg, "economy.global.keyPrefix", "zakum:economy").trim();
     if (keyPrefix.isBlank()) keyPrefix = "zakum:economy";

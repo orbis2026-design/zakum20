@@ -83,6 +83,8 @@ datastore:
   mongoUri: "mongodb://127.0.0.1:27017"
   mongoDatabase: "zakum"
   redisUri: "redis://127.0.0.1:6379"
+  # Prefix used for per-player ephemeral session keys.
+  sessionKeyPrefix: "zakum:session"
 
 economy:
   global:

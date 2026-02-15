@@ -79,6 +79,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 public final class ZakumPlugin extends JavaPlugin {
@@ -506,11 +507,12 @@ public final class ZakumPlugin extends JavaPlugin {
   }
 
   private MongoDataStore createMongoDataStore() {
-    if (!getConfig().getBoolean("datastore.enabled", false)) return null;
+    var cfg = settings == null ? null : settings.dataStore();
+    if (cfg == null || !cfg.enabled()) return null;
 
-    String mongoUri = getConfig().getString("datastore.mongoUri", "").trim();
-    String mongoDatabase = getConfig().getString("datastore.mongoDatabase", "").trim();
-    String redisUri = getConfig().getString("datastore.redisUri", "").trim();
+    String mongoUri = cfg.mongoUri();
+    String mongoDatabase = cfg.mongoDatabase();
+    String redisUri = cfg.redisUri();
     if (mongoUri.isBlank() || mongoDatabase.isBlank() || redisUri.isBlank()) {
       getLogger().warning("DataStore is enabled but datastore.mongoUri/datastore.mongoDatabase/datastore.redisUri are not fully configured.");
       return null;
@@ -519,7 +521,7 @@ public final class ZakumPlugin extends JavaPlugin {
     try {
       MongoClient mongoClient = MongoClients.create(mongoUri);
       JedisPool jedisPool = new JedisPool(URI.create(redisUri));
-      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler, threadGuard);
+      return new MongoDataStore(mongoClient, jedisPool, mongoDatabase, scheduler, threadGuard, cfg.sessionKeyPrefix());
     } catch (Throwable ex) {
       getLogger().warning("Failed to initialize Mongo DataStore: " + ex.getMessage());
       return null;
@@ -610,6 +612,24 @@ public final class ZakumPlugin extends JavaPlugin {
       return handlePacketCullCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("datahealth") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendDataHealthStatus(sender);
+      return true;
+    }
+
+    if (args.length >= 2 && args[0].equalsIgnoreCase("tasks") && args[1].equalsIgnoreCase("status")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      sendTaskRegistryStatus(sender);
+      return true;
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("async")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -634,6 +654,8 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
+    sender.sendMessage("Usage: /" + label + " datahealth status");
+    sender.sendMessage("Usage: /" + label + " tasks status");
     sender.sendMessage("Usage: /" + label + " async status|enable|disable");
     sender.sendMessage("Usage: /" + label + " threadguard status|enable|disable");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
@@ -682,6 +704,101 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public ZakumSchedulerImpl getSchedulerRuntime() {
     return scheduler;
+  }
+
+  public CompletableFuture<DataHealthSnapshot> collectDataHealth() {
+    if (scheduler == null) {
+      return CompletableFuture.completedFuture(DataHealthSnapshot.empty("scheduler_offline"));
+    }
+    return scheduler.supplyAsync(() -> {
+      String sqlState = sql == null ? "OFFLINE" : String.valueOf(sql.state());
+      int poolActive = 0;
+      int poolIdle = 0;
+      if (sql != null) {
+        var pool = sql.poolStats();
+        poolActive = pool.active();
+        poolIdle = pool.idle();
+      }
+
+      boolean cloudConfigured = settings != null && settings.cloud().enabled();
+      boolean cloudOnline = cloudClient != null;
+      boolean datastoreOnline = dataStore != null;
+      boolean socialOnline = socialService != null;
+      boolean threadGuardOnline = threadGuard != null;
+
+      boolean economyRegistered = economyService != null;
+      boolean economyAvailable = false;
+      String economyError = "";
+      if (economyService != null) {
+        try {
+          economyAvailable = economyService.available();
+        } catch (Throwable ex) {
+          economyError = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+        }
+      }
+
+      var packets = Bukkit.getServicesManager().load(net.orbis.zakum.api.packets.PacketService.class);
+      boolean packetsOnline = packets != null;
+      String packetBackend = packets == null ? "offline" : packets.backend();
+      int packetHooks = packets == null ? 0 : packets.hookCount();
+
+      long threadGuardViolations = threadGuard == null ? 0L : threadGuard.snapshot().violations();
+      long asyncRejected = scheduler.asyncSnapshot().rejected();
+
+      if (metricsMonitor != null) {
+        metricsMonitor.recordAction("datahealth_status");
+      }
+
+      return new DataHealthSnapshot(
+        sqlState,
+        poolActive,
+        poolIdle,
+        cloudConfigured,
+        cloudOnline,
+        datastoreOnline,
+        socialOnline,
+        economyRegistered,
+        economyAvailable,
+        economyError,
+        packetsOnline,
+        packetBackend,
+        packetHooks,
+        threadGuardOnline,
+        threadGuardViolations,
+        asyncRejected,
+        ""
+      );
+    });
+  }
+
+  public List<String> dataHealthLines(DataHealthSnapshot snap) {
+    if (snap == null) {
+      return List.of("Data health unavailable.");
+    }
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum Data Health");
+    lines.add("sql.state=" + snap.sqlState());
+    lines.add("sql.pool.active=" + snap.poolActive());
+    lines.add("sql.pool.idle=" + snap.poolIdle());
+    lines.add("cloud.configured=" + snap.cloudConfigured());
+    lines.add("cloud.online=" + snap.cloudOnline());
+    lines.add("datastore.online=" + snap.datastoreOnline());
+    lines.add("social.online=" + snap.socialOnline());
+    lines.add("economy.registered=" + snap.economyRegistered());
+    lines.add("economy.available=" + snap.economyAvailable());
+    if (snap.economyError() != null && !snap.economyError().isBlank()) {
+      lines.add("economy.error=" + snap.economyError());
+    }
+    lines.add("packets.online=" + snap.packetsOnline());
+    lines.add("packets.backend=" + snap.packetBackend());
+    lines.add("packets.hooks=" + snap.packetHooks());
+    lines.add("threadguard.online=" + snap.threadGuardOnline());
+    lines.add("threadguard.violations=" + snap.threadGuardViolations());
+    lines.add("async.rejected=" + snap.asyncRejected());
+    if (snap.error() != null && !snap.error().isBlank()) {
+      lines.add("error=" + snap.error());
+    }
+    return lines;
   }
 
   private boolean handlePerfModeCommand(CommandSender sender, String[] args) {
@@ -1153,6 +1270,8 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("backend=" + snap.backend());
     sender.sendMessage("hookCount=" + snap.hookCount());
     sender.sendMessage("probeIntervalTicks=" + snap.probeIntervalTicks());
+    sender.sendMessage("sampleTaskId=" + snap.sampleTaskId());
+    sender.sendMessage("probeTaskId=" + snap.probeTaskId());
     sender.sendMessage("hookLastChanged=" + formatEpochMillis(snap.hookLastChangedMs()));
     sender.sendMessage("radius=" + snap.radius());
     sender.sendMessage("densityThreshold=" + snap.densityThreshold());
@@ -1224,9 +1343,126 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("lastCallerRunAt=" + formatEpochMillis(snap.lastCallerRunAtMs()));
   }
 
+  private void sendDataHealthStatus(CommandSender sender) {
+    sender.sendMessage("Collecting data health...");
+    collectDataHealth().whenComplete((snap, ex) -> {
+      Runnable send = () -> {
+        if (ex != null) {
+          sender.sendMessage("Data health failed: " + ex.getMessage());
+          return;
+        }
+        for (String line : dataHealthLines(snap)) {
+          sender.sendMessage(line);
+        }
+      };
+      if (scheduler != null) {
+        scheduler.runGlobal(send);
+      } else {
+        send.run();
+      }
+    });
+  }
+
+  public List<String> taskRegistryLines() {
+    if (scheduler == null) {
+      return List.of("Task registry unavailable: scheduler offline.");
+    }
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum Task Registry");
+    lines.add("scheduler.tracked=" + scheduler.trackedTaskCount());
+    appendTaskLines(lines, "cloud.poll", cloudPollTaskId);
+    appendTaskLines(lines, "social.refresh", socialRefreshTaskId);
+
+    if (visualCircuitBreaker != null) {
+      var snap = visualCircuitBreaker.snapshot();
+      appendTaskLines(lines, "visual.circuit", snap.taskId());
+      lines.add("visual.circuit.open=" + snap.open());
+    } else {
+      lines.add("visual.circuit.taskId=-1");
+      lines.add("visual.circuit.active=false");
+    }
+
+    if (packetCullingKernel != null) {
+      var snap = packetCullingKernel.snapshot();
+      appendTaskLines(lines, "packetcull.sample", snap.sampleTaskId());
+      appendTaskLines(lines, "packetcull.probe", snap.probeTaskId());
+      lines.add("packetcull.hookRegistered=" + snap.hookRegistered());
+    } else {
+      lines.add("packetcull.sample.taskId=-1");
+      lines.add("packetcull.sample.active=false");
+      lines.add("packetcull.probe.taskId=-1");
+      lines.add("packetcull.probe.active=false");
+    }
+
+    if (stressHarness != null) {
+      var snap = stressHarness.snapshot();
+      appendTaskLines(lines, "stress.runner", snap.taskId());
+      lines.add("stress.running=" + snap.running());
+    } else {
+      lines.add("stress.runner.taskId=-1");
+      lines.add("stress.runner.active=false");
+      lines.add("stress.running=false");
+    }
+    return lines;
+  }
+
+  private void sendTaskRegistryStatus(CommandSender sender) {
+    for (String line : taskRegistryLines()) {
+      sender.sendMessage(line);
+    }
+  }
+
+  private void appendTaskLines(List<String> lines, String key, int taskId) {
+    if (lines == null || key == null || key.isBlank()) return;
+    lines.add(key + ".taskId=" + taskId);
+    lines.add(key + ".active=" + (scheduler != null && scheduler.isTaskActive(taskId)));
+  }
+
   private static String formatEpochMillis(long epochMillis) {
     if (epochMillis <= 0L) return "never";
     return Instant.ofEpochMilli(epochMillis).toString();
+  }
+
+  public record DataHealthSnapshot(
+    String sqlState,
+    int poolActive,
+    int poolIdle,
+    boolean cloudConfigured,
+    boolean cloudOnline,
+    boolean datastoreOnline,
+    boolean socialOnline,
+    boolean economyRegistered,
+    boolean economyAvailable,
+    String economyError,
+    boolean packetsOnline,
+    String packetBackend,
+    int packetHooks,
+    boolean threadGuardOnline,
+    long threadGuardViolations,
+    long asyncRejected,
+    String error
+  ) {
+    public static DataHealthSnapshot empty(String error) {
+      return new DataHealthSnapshot(
+        "OFFLINE",
+        0,
+        0,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        "",
+        false,
+        "offline",
+        0,
+        false,
+        0L,
+        0L,
+        error == null ? "" : error
+      );
+    }
   }
 
   private static UUID resolveUuid(CommandSender sender, String token) {

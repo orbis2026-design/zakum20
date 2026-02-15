@@ -27,6 +27,7 @@ public record ZakumSettings(
   Actions actions,
   Operations operations,
   Economy economy,
+  DataStore dataStore,
   Moderation moderation,
   Chat chat,
   Visuals visuals,
@@ -261,6 +262,14 @@ public record ZakumSettings(
       String updatesChannel
     ) {}
   }
+
+  public record DataStore(
+    boolean enabled,
+    String mongoUri,
+    String mongoDatabase,
+    String redisUri,
+    String sessionKeyPrefix
+  ) {}
 
   public record Moderation(
     Toxicity toxicity

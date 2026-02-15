@@ -42,6 +42,16 @@ This snapshot is:
 - `operations.async.*`: bounded async backpressure (`maxInFlight`, `maxQueue`, caller-runs policy)
 - `operations.stress.*`: stress harness safety gates + scenario matrix
 
+### datastore
+- `datastore.enabled`: toggles Mongo/Redis profile + session capability bootstrap
+- `datastore.mongoUri` / `datastore.mongoDatabase`: profile store connection + database
+- `datastore.redisUri`: ephemeral/session sync backend
+- `datastore.sessionKeyPrefix`: namespaced Redis key prefix for cross-plugin session keys
+
+### economy
+- `economy.global.*`: network economy capability controls
+- `economy.global.redisUri` falls back to `datastore.redisUri` when blank
+
 ### packets
 - `packets.enabled`: master toggle for packet layer
 - `packets.backend`: `NONE` | `PACKETEVENTS`

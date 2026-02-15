@@ -24,18 +24,22 @@ public final class MongoDataStore implements DataStore, AutoCloseable {
   private final MongoCollection<Document> profiles;
   private final JedisPool jedisPool;
   private final ThreadGuard threadGuard;
+  private final String sessionKeyPrefix;
 
   public MongoDataStore(
     MongoClient mongoClient,
     JedisPool jedisPool,
     String databaseName,
     ZakumScheduler scheduler,
-    ThreadGuard threadGuard
+    ThreadGuard threadGuard,
+    String sessionKeyPrefix
   ) {
     this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
     this.mongoClient = Objects.requireNonNull(mongoClient, "mongoClient");
     this.jedisPool = Objects.requireNonNull(jedisPool, "jedisPool");
     this.threadGuard = Objects.requireNonNull(threadGuard, "threadGuard");
+    String prefix = Objects.requireNonNull(sessionKeyPrefix, "sessionKeyPrefix").trim();
+    this.sessionKeyPrefix = prefix.isBlank() ? "zakum:session" : prefix;
     this.profiles = this.mongoClient
       .getDatabase(Objects.requireNonNull(databaseName, "databaseName"))
       .getCollection("player_profiles");
@@ -97,7 +101,7 @@ public final class MongoDataStore implements DataStore, AutoCloseable {
     }
   }
 
-  private static String sessionKey(UUID uuid, String key) {
-    return "zakum:session:" + uuid + ":" + key;
+  private String sessionKey(UUID uuid, String key) {
+    return sessionKeyPrefix + ":" + uuid + ":" + key;
   }
 }

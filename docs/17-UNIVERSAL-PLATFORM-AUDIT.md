@@ -87,6 +87,12 @@ Rationale: full multi-module `clean build` is passing, platform boundaries exist
 19. **4 pts** Add 12h automated soak profile (task/memory/queue telemetry assertions).
 20. **3 pts** Add release checklist automation for shaded dependency collision audit.
 
+Progress updates after this audit:
+- Step 1: completed with typed `datastore.*` settings wiring into core bootstrap.
+- Step 2: completed (DataStore optional service/capability registration is active).
+- Step 8: completed via `/zakum tasks status` (fallback + CommandAPI).
+- Step 9: completed baseline via `/zakum datahealth status` (fallback + CommandAPI).
+
 ## 7) Diff Mode (This Refactor Pass Only)
 
 Changed files:

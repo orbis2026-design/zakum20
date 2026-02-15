@@ -28,6 +28,8 @@ Plugin: `ZakumBridgeCommandAPI`
 - `/zakum packetcull status|enable|disable|sample|refresh`
 - `/zakum async status|enable|disable`
 - `/zakum threadguard status|enable|disable`
+- `/zakum datahealth status`
+- `/zakum tasks status`
 - `/zakum packets status`
 - `/zakum entitlements check|grant|revoke|invalidate ...`
 - `/zakum boosters multiplier|grant_all|grant_player ...`

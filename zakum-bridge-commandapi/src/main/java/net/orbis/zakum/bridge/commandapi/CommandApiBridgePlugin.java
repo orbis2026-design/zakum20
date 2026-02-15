@@ -107,6 +107,8 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(packetCullCommand());
     root.withSubcommand(asyncCommand());
     root.withSubcommand(threadGuardCommand());
+    root.withSubcommand(dataHealthCommand());
+    root.withSubcommand(tasksCommand());
 
     root.register();
     registerPerfModeCommand();
@@ -723,6 +725,42 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
       );
   }
 
+  private CommandAPICommand dataHealthCommand() {
+    return new CommandAPICommand("datahealth")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          sender.sendMessage("Collecting data health...");
+          corePlugin.collectDataHealth().whenComplete((snap, ex) -> {
+            Runnable send = () -> {
+              if (ex != null) {
+                sender.sendMessage("Data health failed: " + ex.getMessage());
+                return;
+              }
+              for (String line : corePlugin.dataHealthLines(snap)) {
+                sender.sendMessage(line);
+              }
+            };
+            api.getScheduler().runGlobal(send);
+          });
+        })
+      );
+  }
+
+  private CommandAPICommand tasksCommand() {
+    return new CommandAPICommand("tasks")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          for (String line : corePlugin.taskRegistryLines()) {
+            sender.sendMessage(line);
+          }
+        })
+      );
+  }
+
   private void cmdPacketCullStatus(CommandSender sender) {
     ZakumPlugin corePlugin = requireCore(sender);
     if (corePlugin == null) return;
@@ -739,6 +777,8 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     sender.sendMessage("backend=" + snap.backend());
     sender.sendMessage("hookCount=" + snap.hookCount());
     sender.sendMessage("probeIntervalTicks=" + snap.probeIntervalTicks());
+    sender.sendMessage("sampleTaskId=" + snap.sampleTaskId());
+    sender.sendMessage("probeTaskId=" + snap.probeTaskId());
     sender.sendMessage("hookLastChanged=" + formatEpochMillis(snap.hookLastChangedMs()));
     sender.sendMessage("radius=" + snap.radius());
     sender.sendMessage("densityThreshold=" + snap.densityThreshold());

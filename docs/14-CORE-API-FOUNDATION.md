@@ -3,6 +3,9 @@
 This roadmap defines the implementation order for a future-proof Zakum core/API
 that can support the full plugin ecosystem on Paper/Spigot 1.21.11 with Java 21.
 
+Priority note:
+- Core/platform execution is now reweighted under the dedicated core-bones dimension in `docs/18-CORE-BONES-DIMENSION.md` and is treated as priority #1 for cross-plugin leverage.
+
 ## Point-scored execution order
 
 1. **22 pts** - API contract freeze + capability registry + semver policy
