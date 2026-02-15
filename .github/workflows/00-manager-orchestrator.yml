@@ -184,6 +184,14 @@ jobs:
           TASKS='${{ steps.assign.outputs.tasks }}'
           REGISTRY="TASK_REGISTRY.json"
           
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+          
+          # Pull latest changes first to minimize conflicts
+          git pull origin master || echo "Pull failed, continuing..."
+          
           # Extract task IDs into a proper JSON array
           TASK_IDS=$(echo "$TASKS" | jq -c '[.[].id]')
           
@@ -201,13 +209,42 @@ jobs:
           
           mv "$TMP_REGISTRY" "$REGISTRY"
           
-          # Commit and push changes
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase false  # Use merge strategy for divergent branches
+          # Stage changes
           git add "$REGISTRY"
-          git commit -m "chore: assign tasks from orchestrator" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Commit changes
+          git commit -m "chore: assign tasks from orchestrator"
+          
+          # Try to push, retry with pull if needed
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if git push origin master; then
+              echo "✅ Successfully pushed changes"
+              exit 0
+            else
+              echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+              
+              # Pull with merge strategy
+              if git pull origin master --no-edit; then
+                echo "Pulled latest changes, retrying push..."
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+              else
+                echo "❌ Pull failed, there may be conflicts"
+                exit 1
+              fi
+            fi
+          done
+          
+          echo "❌ Failed to push after $MAX_RETRIES attempts"
+          exit 1
 
       - name: Summary
         run: |

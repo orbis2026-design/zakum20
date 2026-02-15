@@ -128,12 +128,39 @@ jobs:
 
       - name: Commit documentation
         run: |
+          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase false  # Use merge strategy for divergent branches
+          git config pull.rebase false
+          
+          # Pull latest changes first
+          git pull origin master || echo "Pull failed, continuing..."
+          
           git add docs/
-          git commit -m "docs: update auto-generated documentation [skip ci]" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: update auto-generated documentation [skip ci]"
+            
+            # Retry push logic
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if git push origin master; then
+                echo "✅ Successfully pushed changes"
+                break
+              else
+                echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+                if git pull origin master --no-edit; then
+                  RETRY_COUNT=$((RETRY_COUNT + 1))
+                else
+                  echo "❌ Pull failed"
+                  break
+                fi
+              fi
+            done
+          fi
 
       - name: Generate usage guides
         id: guides
@@ -231,8 +258,13 @@ jobs:
       - name: Commit documentation updates
         id: commit
         run: |
+          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+          
+          # Pull latest changes first
+          git pull origin master || echo "Pull failed, continuing..."
           
           git add docs/generated/
           
@@ -264,8 +296,29 @@ jobs:
       - name: Push directly to master
         if: steps.commit.outputs.committed == 'true' && github.event_name == 'push'
         run: |
-          git config pull.rebase false  # Use merge strategy for divergent branches
-          git push origin master
+          git config pull.rebase false
+          
+          # Retry push logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if git push origin master; then
+              echo "✅ Successfully pushed changes"
+              exit 0
+            else
+              echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+              if git pull origin master --no-edit; then
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+              else
+                echo "❌ Pull failed"
+                exit 1
+              fi
+            fi
+          done
+          
+          echo "❌ Failed to push after $MAX_RETRIES attempts"
+          exit 1
 
       - name: Summary
         run: |

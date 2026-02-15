@@ -119,19 +119,28 @@ jobs:
           PLUGIN_NAME="${{ github.event.inputs.plugin_name }}"
           BRANCH_NAME="automation/codegen-$MODULE_ID"
           
+          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase false  # Use merge strategy for divergent branches
+          git config pull.rebase false
+          
+          # Pull latest changes first
+          git pull origin master || echo "Pull failed, continuing..."
+          
           git checkout -b "$BRANCH_NAME"
           git add .
-          git commit -m "feat: generate $MODULE_ID module ($PLUGIN_NAME)" || echo "No changes to commit"
-          git push -u origin "$BRANCH_NAME"
           
-          gh pr create \
-            --title "feat: Generate $MODULE_ID module" \
-            --body "Auto-generated module scaffolding for $PLUGIN_NAME (${{ github.event.inputs.kind }})" \
-            --base master \
-            --head "$BRANCH_NAME" || echo "PR already exists"
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "feat: generate $MODULE_ID module ($PLUGIN_NAME)"
+            git push -u origin "$BRANCH_NAME"
+            
+            gh pr create \
+              --title "feat: Generate $MODULE_ID module" \
+              --body "Auto-generated module scaffolding for $PLUGIN_NAME (${{ github.event.inputs.kind }})" \
+              --base master \
+              --head "$BRANCH_NAME" || echo "PR already exists"
+          fi
 
       - name: Summary
         run: |
