@@ -26,6 +26,8 @@ Plugin: `ZakumBridgeCommandAPI`
 - `/zakum chatbuffer status|warmup`
 - `/zakum economy status|balance|set|add|take ...`
 - `/zakum packetcull status|enable|disable|sample|refresh`
+- `/zakum async status|enable|disable`
+- `/zakum threadguard status|enable|disable`
 - `/zakum packets status`
 - `/zakum entitlements check|grant|revoke|invalidate ...`
 - `/zakum boosters multiplier|grant_all|grant_player ...`

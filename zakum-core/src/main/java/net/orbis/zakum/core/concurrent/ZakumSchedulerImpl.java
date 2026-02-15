@@ -1,7 +1,9 @@
 package net.orbis.zakum.core.concurrent;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import net.orbis.zakum.api.config.ZakumSettings;
 import net.orbis.zakum.api.concurrent.ZakumScheduler;
+import net.orbis.zakum.core.metrics.MetricsMonitor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
@@ -15,21 +17,39 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 public final class ZakumSchedulerImpl implements ZakumScheduler {
 
   private final Plugin plugin;
   private final ExecutorService virtualExecutor;
+  private final AsyncBackpressureController backpressure;
   private final AtomicInteger taskIds;
   private final Map<Integer, ScheduledTask> scheduledTasks;
 
   public ZakumSchedulerImpl(Plugin plugin) {
-    this(plugin, Executors.newVirtualThreadPerTaskExecutor());
+    this(plugin, Executors.newVirtualThreadPerTaskExecutor(), null, plugin.getLogger(), null);
   }
 
   public ZakumSchedulerImpl(Plugin plugin, ExecutorService virtualExecutor) {
+    this(plugin, virtualExecutor, null, plugin.getLogger(), null);
+  }
+
+  public ZakumSchedulerImpl(
+    Plugin plugin,
+    ExecutorService virtualExecutor,
+    ZakumSettings.Operations.Async asyncCfg,
+    Logger logger,
+    MetricsMonitor metrics
+  ) {
     this.plugin = Objects.requireNonNull(plugin, "plugin");
     this.virtualExecutor = Objects.requireNonNull(virtualExecutor, "virtualExecutor");
+    this.backpressure = new AsyncBackpressureController(
+      this.virtualExecutor,
+      asyncCfg,
+      logger == null ? plugin.getLogger() : logger,
+      metrics
+    );
     this.taskIds = new AtomicInteger(1);
     this.scheduledTasks = new ConcurrentHashMap<>();
   }
@@ -37,7 +57,7 @@ public final class ZakumSchedulerImpl implements ZakumScheduler {
   @Override
   public void runAsync(Runnable task) {
     if (task == null) return;
-    virtualExecutor.execute(task);
+    backpressure.execute(task);
   }
 
   @Override
@@ -161,4 +181,59 @@ public final class ZakumSchedulerImpl implements ZakumScheduler {
     scheduledTasks.clear();
     virtualExecutor.shutdownNow();
   }
+
+  public AsyncSnapshot asyncSnapshot() {
+    AsyncBackpressureController.Snapshot snap = backpressure.snapshot();
+    return new AsyncSnapshot(
+      snap.configuredEnabled(),
+      snap.runtimeEnabled(),
+      snap.enabled(),
+      snap.maxInFlight(),
+      snap.maxQueue(),
+      snap.callerRunsOffMainThread(),
+      snap.inFlight(),
+      snap.queued(),
+      snap.submitted(),
+      snap.executed(),
+      snap.queuedTasks(),
+      snap.rejected(),
+      snap.callerRuns(),
+      snap.drainRuns(),
+      snap.lastQueueAtMs(),
+      snap.lastRejectAtMs(),
+      snap.lastCallerRunAtMs()
+    );
+  }
+
+  public void setAsyncRuntimeEnabled(boolean enabled) {
+    backpressure.setRuntimeEnabled(enabled);
+  }
+
+  public boolean asyncConfiguredEnabled() {
+    return backpressure.configuredEnabled();
+  }
+
+  public boolean asyncRuntimeEnabled() {
+    return backpressure.runtimeEnabled();
+  }
+
+  public record AsyncSnapshot(
+    boolean configuredEnabled,
+    boolean runtimeEnabled,
+    boolean enabled,
+    int maxInFlight,
+    int maxQueue,
+    boolean callerRunsOffMainThread,
+    int inFlight,
+    int queued,
+    long submitted,
+    long executed,
+    long queuedTasks,
+    long rejected,
+    long callerRuns,
+    long drainRuns,
+    long lastQueueAtMs,
+    long lastRejectAtMs,
+    long lastCallerRunAtMs
+  ) {}
 }

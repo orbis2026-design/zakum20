@@ -154,6 +154,15 @@ operations:
     failOnViolation: false
     # Log at most N violations per minute (0 disables logging).
     maxReportsPerMinute: 12
+  async:
+    # Bounded async guardrail for virtual-thread scheduling.
+    enabled: true
+    # Max concurrently executing async tasks.
+    maxInFlight: 4096
+    # Max queued async tasks waiting for execution.
+    maxQueue: 16384
+    # If queue is saturated, allow caller-runs only for non-main threads.
+    callerRunsOffMainThread: true
   stress:
     enabled: false
     # Total script executions per run.

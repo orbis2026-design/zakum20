@@ -176,7 +176,8 @@ public record ZakumSettings(
   public record Operations(
     CircuitBreaker circuitBreaker,
     Stress stress,
-    ThreadGuard threadGuard
+    ThreadGuard threadGuard,
+    Async async
   ) {
     public record CircuitBreaker(
       boolean enabled,
@@ -239,6 +240,13 @@ public record ZakumSettings(
       boolean enabled,
       boolean failOnViolation,
       int maxReportsPerMinute
+    ) {}
+
+    public record Async(
+      boolean enabled,
+      int maxInFlight,
+      int maxQueue,
+      boolean callerRunsOffMainThread
     ) {}
   }
 

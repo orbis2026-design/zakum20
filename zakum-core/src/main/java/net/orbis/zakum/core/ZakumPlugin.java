@@ -167,7 +167,13 @@ public final class ZakumPlugin extends JavaPlugin {
     this.boosters = new SqlBoosterService(this, sql, async, settings.boosters());
     this.boosters.start();
 
-    this.scheduler = new ZakumSchedulerImpl(this, EarlySchedulerRuntime.claimOrCreateExecutor());
+    this.scheduler = new ZakumSchedulerImpl(
+      this,
+      EarlySchedulerRuntime.claimOrCreateExecutor(),
+      settings.operations().async(),
+      getLogger(),
+      metricsMonitor
+    );
     this.visualCircuitBreaker = new VisualCircuitBreaker(settings.operations().circuitBreaker(), getLogger(), metricsMonitor);
     this.visualCircuitBreaker.start(scheduler, this);
     this.visualModeService = new PlayerVisualModeService(scheduler, getLogger());
@@ -604,6 +610,14 @@ public final class ZakumPlugin extends JavaPlugin {
       return handlePacketCullCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("async")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleAsyncCommand(sender, args);
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("threadguard")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -620,6 +634,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
+    sender.sendMessage("Usage: /" + label + " async status|enable|disable");
     sender.sendMessage("Usage: /" + label + " threadguard status|enable|disable");
     sender.sendMessage("Usage: /perfmode <auto|on|off> [player]");
     return true;
@@ -663,6 +678,10 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public EconomyService getEconomyService() {
     return economyService;
+  }
+
+  public ZakumSchedulerImpl getSchedulerRuntime() {
+    return scheduler;
   }
 
   private boolean handlePerfModeCommand(CommandSender sender, String[] args) {
@@ -1083,6 +1102,31 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleAsyncCommand(CommandSender sender, String[] args) {
+    if (scheduler == null) {
+      sender.sendMessage("Scheduler is offline.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum async status|enable|disable");
+      return true;
+    }
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    switch (sub) {
+      case "status" -> sendAsyncStatus(sender);
+      case "enable" -> {
+        scheduler.setAsyncRuntimeEnabled(true);
+        sender.sendMessage("Async backpressure runtime enabled.");
+      }
+      case "disable" -> {
+        scheduler.setAsyncRuntimeEnabled(false);
+        sender.sendMessage("Async backpressure runtime disabled.");
+      }
+      default -> sender.sendMessage("Usage: /zakum async status|enable|disable");
+    }
+    return true;
+  }
+
   private Player resolvePacketCullTarget(CommandSender sender, String[] args) {
     if (args.length >= 3) {
       Player target = Bukkit.getPlayerExact(args[2]);
@@ -1152,6 +1196,32 @@ public final class ZakumPlugin extends JavaPlugin {
     if (snap.topOperations() != null && !snap.topOperations().isEmpty()) {
       sender.sendMessage("topOperations=" + snap.topOperations());
     }
+  }
+
+  private void sendAsyncStatus(CommandSender sender) {
+    if (scheduler == null) {
+      sender.sendMessage("Scheduler is offline.");
+      return;
+    }
+    var snap = scheduler.asyncSnapshot();
+    sender.sendMessage("Zakum Async Backpressure");
+    sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+    sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+    sender.sendMessage("enabled=" + snap.enabled());
+    sender.sendMessage("maxInFlight=" + snap.maxInFlight());
+    sender.sendMessage("maxQueue=" + snap.maxQueue());
+    sender.sendMessage("callerRunsOffMainThread=" + snap.callerRunsOffMainThread());
+    sender.sendMessage("inFlight=" + snap.inFlight());
+    sender.sendMessage("queued=" + snap.queued());
+    sender.sendMessage("submitted=" + snap.submitted());
+    sender.sendMessage("executed=" + snap.executed());
+    sender.sendMessage("queuedTasks=" + snap.queuedTasks());
+    sender.sendMessage("rejected=" + snap.rejected());
+    sender.sendMessage("callerRuns=" + snap.callerRuns());
+    sender.sendMessage("drainRuns=" + snap.drainRuns());
+    sender.sendMessage("lastQueueAt=" + formatEpochMillis(snap.lastQueueAtMs()));
+    sender.sendMessage("lastRejectAt=" + formatEpochMillis(snap.lastRejectAtMs()));
+    sender.sendMessage("lastCallerRunAt=" + formatEpochMillis(snap.lastCallerRunAtMs()));
   }
 
   private static String formatEpochMillis(long epochMillis) {

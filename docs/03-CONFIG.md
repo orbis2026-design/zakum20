@@ -39,6 +39,7 @@ This snapshot is:
 ### operations
 - `operations.circuitBreaker.*`: TPS-based visual circuit breaker
 - `operations.threadGuard.*`: detect blocking I/O on the main thread
+- `operations.async.*`: bounded async backpressure (`maxInFlight`, `maxQueue`, caller-runs policy)
 - `operations.stress.*`: stress harness safety gates + scenario matrix
 
 ### packets

@@ -20,6 +20,7 @@ import net.orbis.zakum.core.ZakumPlugin;
 import net.orbis.zakum.core.boosters.SqlBoosterService;
 import net.orbis.zakum.core.cloud.SecureCloudClient;
 import net.orbis.zakum.core.ops.StressHarnessV2;
+import net.orbis.zakum.core.concurrent.ZakumSchedulerImpl;
 import net.orbis.zakum.core.perf.PacketCullingKernel;
 import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.ThreadGuard;
@@ -104,6 +105,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(chatBufferCommand());
     root.withSubcommand(economyCommand());
     root.withSubcommand(packetCullCommand());
+    root.withSubcommand(asyncCommand());
     root.withSubcommand(threadGuardCommand());
 
     root.register();
@@ -657,6 +659,66 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           }
           guard.setRuntimeEnabled(false);
           sender.sendMessage("Thread guard runtime disabled.");
+        })
+      );
+  }
+
+  private CommandAPICommand asyncCommand() {
+    return new CommandAPICommand("async")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ZakumSchedulerImpl scheduler = corePlugin.getSchedulerRuntime();
+          if (scheduler == null) {
+            sender.sendMessage("Scheduler is offline.");
+            return;
+          }
+          var snap = scheduler.asyncSnapshot();
+          sender.sendMessage("Zakum Async Backpressure");
+          sender.sendMessage("configuredEnabled=" + snap.configuredEnabled());
+          sender.sendMessage("runtimeEnabled=" + snap.runtimeEnabled());
+          sender.sendMessage("enabled=" + snap.enabled());
+          sender.sendMessage("maxInFlight=" + snap.maxInFlight());
+          sender.sendMessage("maxQueue=" + snap.maxQueue());
+          sender.sendMessage("callerRunsOffMainThread=" + snap.callerRunsOffMainThread());
+          sender.sendMessage("inFlight=" + snap.inFlight());
+          sender.sendMessage("queued=" + snap.queued());
+          sender.sendMessage("submitted=" + snap.submitted());
+          sender.sendMessage("executed=" + snap.executed());
+          sender.sendMessage("queuedTasks=" + snap.queuedTasks());
+          sender.sendMessage("rejected=" + snap.rejected());
+          sender.sendMessage("callerRuns=" + snap.callerRuns());
+          sender.sendMessage("drainRuns=" + snap.drainRuns());
+          sender.sendMessage("lastQueueAt=" + formatEpochMillis(snap.lastQueueAtMs()));
+          sender.sendMessage("lastRejectAt=" + formatEpochMillis(snap.lastRejectAtMs()));
+          sender.sendMessage("lastCallerRunAt=" + formatEpochMillis(snap.lastCallerRunAtMs()));
+        })
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ZakumSchedulerImpl scheduler = corePlugin.getSchedulerRuntime();
+          if (scheduler == null) {
+            sender.sendMessage("Scheduler is offline.");
+            return;
+          }
+          scheduler.setAsyncRuntimeEnabled(true);
+          sender.sendMessage("Async backpressure runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          ZakumSchedulerImpl scheduler = corePlugin.getSchedulerRuntime();
+          if (scheduler == null) {
+            sender.sendMessage("Scheduler is offline.");
+            return;
+          }
+          scheduler.setAsyncRuntimeEnabled(false);
+          sender.sendMessage("Async backpressure runtime disabled.");
         })
       );
   }

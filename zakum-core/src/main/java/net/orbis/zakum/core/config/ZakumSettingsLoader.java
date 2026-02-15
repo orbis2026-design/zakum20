@@ -316,6 +316,10 @@ public final class ZakumSettingsLoader {
     boolean guardEnabled = bool(cfg, "operations.threadGuard.enabled", true);
     boolean failOnViolation = bool(cfg, "operations.threadGuard.failOnViolation", false);
     int maxReports = clampI(cfg.getInt("operations.threadGuard.maxReportsPerMinute", 12), 0, 600);
+    boolean asyncEnabled = bool(cfg, "operations.async.enabled", true);
+    int asyncMaxInFlight = clampI(cfg.getInt("operations.async.maxInFlight", 4096), 16, 1_000_000);
+    int asyncMaxQueue = clampI(cfg.getInt("operations.async.maxQueue", 16384), 0, 2_000_000);
+    boolean callerRunsOffMain = bool(cfg, "operations.async.callerRunsOffMainThread", true);
 
     return new ZakumSettings.Operations(
       new ZakumSettings.Operations.CircuitBreaker(
@@ -348,6 +352,12 @@ public final class ZakumSettingsLoader {
         guardEnabled,
         failOnViolation,
         maxReports
+      ),
+      new ZakumSettings.Operations.Async(
+        asyncEnabled,
+        asyncMaxInFlight,
+        asyncMaxQueue,
+        callerRunsOffMain
       )
     );
   }
