@@ -204,6 +204,7 @@ jobs:
           # Commit and push changes
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add "$REGISTRY"
           git commit -m "chore: assign tasks from orchestrator" || echo "No changes to commit"
           git push || echo "No changes to push"

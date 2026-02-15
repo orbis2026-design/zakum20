@@ -130,6 +130,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add docs/
           git commit -m "docs: update auto-generated documentation [skip ci]" || echo "No changes to commit"
           git push || echo "No changes to push"
@@ -249,6 +250,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH_NAME="docs/auto-generated-$(date +%Y%m%d-%H%M%S)"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git checkout -b "$BRANCH_NAME"
           git push -u origin "$BRANCH_NAME"
           
@@ -262,6 +264,7 @@ jobs:
       - name: Push directly to master
         if: steps.commit.outputs.committed == 'true' && github.event_name == 'push'
         run: |
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git push origin master
 
       - name: Summary

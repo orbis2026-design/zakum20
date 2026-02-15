@@ -122,6 +122,7 @@ jobs:
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add docs/analytics/
           git commit -m "chore: update analytics dashboard [skip ci]" || echo "No changes"
           git push || echo "No changes to push"
@@ -309,6 +310,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           
           git add .github/automation/analytics/
           git commit -m "chore: update analytics dashboard" || echo "No changes to commit"

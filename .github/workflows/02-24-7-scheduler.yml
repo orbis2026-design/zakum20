@@ -152,6 +152,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false  # Use merge strategy for divergent branches
           git add .github/automation/
           git commit -m "chore: update budget cycle ${{ steps.budget.outputs.cycles }}" || echo "No changes to commit"
           git push || echo "No changes to push"
