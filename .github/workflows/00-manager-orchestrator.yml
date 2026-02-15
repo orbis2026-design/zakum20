@@ -83,7 +83,7 @@ jobs:
           SELECTED_TASKS='[]'
           TOTAL_ESTIMATED=0
           
-          echo "$ASSIGNABLE_TASKS" | jq -c '.[]' | while read task; do
+          while IFS= read -r task; do
             TASK_ID=$(echo "$task" | jq -r '.id')
             TASK_EST=$(echo "$task" | jq -r '.estimatedMinutes')
             TASK_COST=$(echo "scale=2; $TASK_EST * 0.008 / 60" | bc) # GitHub Actions cost estimate
@@ -101,7 +101,7 @@ jobs:
             if [ "$TASK_COUNT" -ge 3 ]; then
               break
             fi
-          done
+          done < <(echo "$ASSIGNABLE_TASKS" | jq -c '.[]')
           
           # Output selected tasks
           echo "tasks<<EOF" >> $GITHUB_OUTPUT
@@ -118,7 +118,7 @@ jobs:
         run: |
           TASKS='${{ steps.assign.outputs.tasks }}'
           
-          echo "$TASKS" | jq -c '.[]' | while read task; do
+          while IFS= read -r task; do
             TASK_ID=$(echo "$task" | jq -r '.id')
             TASK_NAME=$(echo "$task" | jq -r '.name')
             TASK_CATEGORY=$(echo "$task" | jq -r '.category')
@@ -144,7 +144,7 @@ jobs:
               -f task_id="$TASK_ID" \
               -f task_json="$(echo "$task" | jq -c .)" \
               || echo "⚠️ Failed to trigger workflow for $TASK_ID"
-          done
+          done < <(echo "$TASKS" | jq -c '.[]')
 
       - name: Send Discord notification
         if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != '' && env.DISCORD_WEBHOOK_URL != ''
@@ -157,12 +157,12 @@ jobs:
           
           # Build task list for Discord
           TASK_LIST=""
-          echo "$TASKS" | jq -c '.[]' | while read task; do
+          while IFS= read -r task; do
             TASK_ID=$(echo "$task" | jq -r '.id')
             TASK_NAME=$(echo "$task" | jq -r '.name')
             TASK_POINTS=$(echo "$task" | jq -r '.points')
             TASK_LIST="$TASK_LIST\n• **$TASK_ID** ($TASK_POINTS pts): $TASK_NAME"
-          done
+          done < <(echo "$TASKS" | jq -c '.[]')
           
           # Send Discord webhook
           curl -X POST "$DISCORD_WEBHOOK_URL" \
