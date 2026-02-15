@@ -39,13 +39,14 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement entity-backed hologram spawn/despawn diff runtime",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:45:11Z"
     },
     {
       "id": "wave-a-003",
@@ -55,13 +56,14 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement key balances and transactional open flow",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:45:11Z"
     },
     {
       "id": "wave-a-004",
@@ -135,12 +137,13 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Complete remaining 8 points of protocol and command substrate work",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-15T18:45:11Z"
     },
     {
       "id": "bridge-001",
