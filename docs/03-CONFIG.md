@@ -43,6 +43,7 @@ This snapshot is:
 - `operations.startupValidator.*`: module load-order and startup compatibility guard (`status|validate` command surface)
 - `operations.stress.*`: stress harness safety gates + scenario matrix
 - `operations.soak.*`: 12h soak automation profile (telemetry assertions, auto stress bootstrap, report labeling)
+- `operations.aceDiagnostics.*`: ACE parse/execute error taxonomy diagnostics buffer and limits
 
 ### datastore
 - `datastore.enabled`: toggles Mongo/Redis profile + session capability bootstrap

@@ -20,6 +20,7 @@ import net.orbis.zakum.api.storage.DataStore;
 import net.orbis.zakum.api.storage.StorageService;
 import net.orbis.zakum.api.ui.GuiBridge;
 import net.orbis.zakum.api.vault.EconomyService;
+import net.orbis.zakum.core.action.AceDiagnosticsTracker;
 import net.orbis.zakum.core.action.ZakumAceEngine;
 import net.orbis.zakum.core.actions.DeferredActionReplayListener;
 import net.orbis.zakum.core.config.ZakumSettingsLoader;
@@ -100,6 +101,7 @@ public final class ZakumPlugin extends JavaPlugin {
   private SqlBoosterService boosters;
   private CapabilityRegistry capabilityRegistry;
   private AceEngine aceEngine;
+  private AceDiagnosticsTracker aceDiagnostics;
   private StorageService storageService;
   private ZakumSchedulerImpl scheduler;
   private AnimationService animationService;
@@ -195,7 +197,8 @@ public final class ZakumPlugin extends JavaPlugin {
       visualModeService
     );
     this.packetCullingKernel.start();
-    this.aceEngine = new ZakumAceEngine(metricsMonitor);
+    this.aceDiagnostics = new AceDiagnosticsTracker(settings.operations().aceDiagnostics());
+    this.aceEngine = new ZakumAceEngine(metricsMonitor, aceDiagnostics);
     this.storageService = new StorageServiceImpl(sql);
     this.animationService = new net.orbis.zakum.core.packet.AnimationService(
       this,
@@ -418,6 +421,7 @@ public final class ZakumPlugin extends JavaPlugin {
       try { soakProfile.close(); } catch (Throwable ignored) {}
       soakProfile = null;
     }
+    aceDiagnostics = null;
     if (moduleStartupValidator != null) {
       moduleStartupValidator.stop();
       moduleStartupValidator = null;
@@ -663,6 +667,14 @@ public final class ZakumPlugin extends JavaPlugin {
       return handleStressCommand(sender, args);
     }
 
+    if (args.length >= 2 && args[0].equalsIgnoreCase("ace")) {
+      if (!sender.hasPermission("zakum.admin")) {
+        sender.sendMessage("No permission.");
+        return true;
+      }
+      return handleAceCommand(sender, args);
+    }
+
     if (args.length >= 2 && args[0].equalsIgnoreCase("soak")) {
       if (!sender.hasPermission("zakum.admin")) {
         sender.sendMessage("No permission.");
@@ -764,6 +776,7 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("Usage: /" + label + " soak start [durationMinutes]");
     sender.sendMessage("Usage: /" + label + " soak stop [reason]");
     sender.sendMessage("Usage: /" + label + " soak status");
+    sender.sendMessage("Usage: /" + label + " ace status|errors [limit]|clear|enable|disable");
     sender.sendMessage("Usage: /" + label + " chatbuffer status|warmup");
     sender.sendMessage("Usage: /" + label + " economy status|balance|set|add|take ...");
     sender.sendMessage("Usage: /" + label + " packetcull status|enable|disable");
@@ -795,6 +808,10 @@ public final class ZakumPlugin extends JavaPlugin {
 
   public SoakAutomationProfile getSoakProfile() {
     return soakProfile;
+  }
+
+  public AceDiagnosticsTracker getAceDiagnostics() {
+    return aceDiagnostics;
   }
 
   public ChatBufferCache getChatBufferCache() {
@@ -882,6 +899,19 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleValidatorWarnings = modSnap.warnings();
         moduleValidatorCriticals = modSnap.criticals();
       }
+      long aceParseFailures = 0L;
+      long aceExecutionFailures = 0L;
+      long aceUnknownEffects = 0L;
+      long aceUnknownTargeters = 0L;
+      boolean aceDiagnosticsEnabled = false;
+      if (aceDiagnostics != null) {
+        var ace = aceDiagnostics.snapshot();
+        aceDiagnosticsEnabled = ace.enabled();
+        aceParseFailures = ace.parseFailures();
+        aceExecutionFailures = ace.executionFailures();
+        aceUnknownEffects = ace.unknownEffects();
+        aceUnknownTargeters = ace.unknownTargeters();
+      }
       boolean soakConfiguredEnabled = settings != null && settings.operations() != null && settings.operations().soak().enabled();
       boolean soakRunning = false;
       int soakAssertionFailures = 0;
@@ -916,6 +946,11 @@ public final class ZakumPlugin extends JavaPlugin {
         moduleValidatorHealthy,
         moduleValidatorWarnings,
         moduleValidatorCriticals,
+        aceDiagnosticsEnabled,
+        aceParseFailures,
+        aceExecutionFailures,
+        aceUnknownEffects,
+        aceUnknownTargeters,
         soakConfiguredEnabled,
         soakRunning,
         soakAssertionFailures,
@@ -952,6 +987,11 @@ public final class ZakumPlugin extends JavaPlugin {
     lines.add("modules.validator.healthy=" + snap.moduleValidatorHealthy());
     lines.add("modules.validator.warnings=" + snap.moduleValidatorWarnings());
     lines.add("modules.validator.criticals=" + snap.moduleValidatorCriticals());
+    lines.add("ace.diag.enabled=" + snap.aceDiagnosticsEnabled());
+    lines.add("ace.diag.parseFailures=" + snap.aceParseFailures());
+    lines.add("ace.diag.executionFailures=" + snap.aceExecutionFailures());
+    lines.add("ace.diag.unknownEffects=" + snap.aceUnknownEffects());
+    lines.add("ace.diag.unknownTargeters=" + snap.aceUnknownTargeters());
     lines.add("soak.configured=" + snap.soakConfiguredEnabled());
     lines.add("soak.running=" + snap.soakRunning());
     lines.add("soak.assertionFailures=" + snap.soakAssertionFailures());
@@ -1228,6 +1268,46 @@ public final class ZakumPlugin extends JavaPlugin {
     return true;
   }
 
+  private boolean handleAceCommand(CommandSender sender, String[] args) {
+    if (aceDiagnostics == null) {
+      sender.sendMessage("ACE diagnostics are offline.");
+      return true;
+    }
+    if (args.length < 2) {
+      sender.sendMessage("Usage: /zakum ace status|errors [limit]|clear|enable|disable");
+      return true;
+    }
+
+    String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+    if (sub.equals("status")) {
+      sendAceDiagnosticsStatus(sender);
+      return true;
+    }
+    if (sub.equals("errors")) {
+      int limit = parseInt(args.length >= 3 ? args[2] : null, 10);
+      sendAceDiagnosticsErrors(sender, Math.max(1, Math.min(100, limit)));
+      return true;
+    }
+    if (sub.equals("clear")) {
+      aceDiagnostics.clear();
+      sender.sendMessage("ACE diagnostics cleared.");
+      return true;
+    }
+    if (sub.equals("enable")) {
+      aceDiagnostics.setRuntimeEnabled(true);
+      sender.sendMessage("ACE diagnostics runtime enabled.");
+      return true;
+    }
+    if (sub.equals("disable")) {
+      aceDiagnostics.setRuntimeEnabled(false);
+      sender.sendMessage("ACE diagnostics runtime disabled.");
+      return true;
+    }
+
+    sender.sendMessage("Usage: /zakum ace status|errors [limit]|clear|enable|disable");
+    return true;
+  }
+
   private void sendStressStatus(CommandSender sender) {
     if (stressHarness == null) {
       sender.sendMessage("Stress harness is not available.");
@@ -1295,6 +1375,84 @@ public final class ZakumPlugin extends JavaPlugin {
     sender.sendMessage("lastAssertion=" + (assertion == null || assertion.isBlank() ? "none" : assertion));
     String reason = snap.lastStopReason();
     sender.sendMessage("lastStopReason=" + (reason == null || reason.isBlank() ? "none" : reason));
+  }
+
+  public List<String> aceDiagnosticsStatusLines() {
+    if (aceDiagnostics == null) {
+      return List.of("ACE diagnostics are offline.");
+    }
+    var snap = aceDiagnostics.snapshot();
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum ACE Diagnostics");
+    lines.add("configuredEnabled=" + snap.configuredEnabled());
+    lines.add("runtimeEnabled=" + snap.runtimeEnabled());
+    lines.add("enabled=" + snap.enabled());
+    lines.add("maxRecentEntries=" + snap.maxRecentEntries());
+    lines.add("maxLineLength=" + snap.maxLineLength());
+    lines.add("scripts=" + snap.scripts());
+    lines.add("lines=" + snap.lines());
+    lines.add("resolvedEffects=" + snap.resolvedEffects());
+    lines.add("parseFailures=" + snap.parseFailures());
+    lines.add("unknownEffects=" + snap.unknownEffects());
+    lines.add("unknownTargeters=" + snap.unknownTargeters());
+    lines.add("executionFailures=" + snap.executionFailures());
+    lines.add("recentErrors=" + (snap.recent() == null ? 0 : snap.recent().size()));
+    if (snap.byCode() != null && !snap.byCode().isEmpty()) {
+      lines.add("taxonomyCounts=" + snap.byCode());
+    }
+    return lines;
+  }
+
+  public List<String> aceDiagnosticsErrorLines(int limit) {
+    if (aceDiagnostics == null) {
+      return List.of("ACE diagnostics are offline.");
+    }
+    int bounded = Math.max(1, Math.min(100, limit));
+    var snap = aceDiagnostics.snapshot();
+    List<String> lines = new ArrayList<>();
+    lines.add("Zakum ACE Diagnostics Errors");
+    lines.add("limit=" + bounded);
+    if (snap.recent() == null || snap.recent().isEmpty()) {
+      lines.add("errors=none");
+      return lines;
+    }
+
+    int count = 0;
+    for (var entry : snap.recent()) {
+      if (entry == null) continue;
+      if (count >= bounded) break;
+      count++;
+      String prefix = count + ". ";
+      lines.add(prefix + "at=" + formatEpochMillis(entry.timestampMs()));
+      lines.add(prefix + "severity=" + entry.severity());
+      lines.add(prefix + "code=" + entry.code());
+      if (entry.effect() != null && !entry.effect().isBlank()) {
+        lines.add(prefix + "effect=" + entry.effect());
+      }
+      if (entry.targeter() != null && !entry.targeter().isBlank()) {
+        lines.add(prefix + "targeter=" + entry.targeter());
+      }
+      if (entry.errorClass() != null && !entry.errorClass().isBlank()) {
+        lines.add(prefix + "errorClass=" + entry.errorClass());
+      }
+      lines.add(prefix + "message=" + entry.message());
+      if (entry.line() != null && !entry.line().isBlank()) {
+        lines.add(prefix + "line=" + entry.line());
+      }
+    }
+    return lines;
+  }
+
+  private void sendAceDiagnosticsStatus(CommandSender sender) {
+    for (String line : aceDiagnosticsStatusLines()) {
+      sender.sendMessage(line);
+    }
+  }
+
+  private void sendAceDiagnosticsErrors(CommandSender sender, int limit) {
+    for (String line : aceDiagnosticsErrorLines(limit)) {
+      sender.sendMessage(line);
+    }
   }
 
   private void sendChatBufferStatus(CommandSender sender) {
@@ -1869,6 +2027,11 @@ public final class ZakumPlugin extends JavaPlugin {
     boolean moduleValidatorHealthy,
     int moduleValidatorWarnings,
     int moduleValidatorCriticals,
+    boolean aceDiagnosticsEnabled,
+    long aceParseFailures,
+    long aceExecutionFailures,
+    long aceUnknownEffects,
+    long aceUnknownTargeters,
     boolean soakConfiguredEnabled,
     boolean soakRunning,
     int soakAssertionFailures,
@@ -1896,6 +2059,11 @@ public final class ZakumPlugin extends JavaPlugin {
         false,
         0,
         0,
+        false,
+        0L,
+        0L,
+        0L,
+        0L,
         false,
         false,
         0,

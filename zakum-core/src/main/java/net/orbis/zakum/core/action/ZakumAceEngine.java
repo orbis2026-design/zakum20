@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,18 +26,38 @@ public final class ZakumAceEngine implements AceEngine {
   private static final Pattern ACE_PATTERN = Pattern.compile(
     "^\\[(?<effect>\\w+)]\\s*(?<value>[^@\\{]+)?(?:@(?<targeter>\\w+))?\\s*(?:\\{(?<params>.*)})?$"
   );
+  private static final Set<String> KNOWN_TARGETERS = Set.of(
+    "SELF",
+    "VICTIM",
+    "ALL",
+    "RADIUS",
+    "NEARBY",
+    "ALLIES",
+    "FRIENDS",
+    "RIVALS"
+  );
 
   private final Map<String, EffectAction> effects;
   private final MetricsMonitor metrics;
+  private final AceDiagnosticsTracker diagnostics;
 
   public ZakumAceEngine() {
-    this(null);
+    this(null, AceDiagnosticsTracker.disabled());
   }
 
   public ZakumAceEngine(MetricsMonitor metrics) {
+    this(metrics, AceDiagnosticsTracker.disabled());
+  }
+
+  public ZakumAceEngine(MetricsMonitor metrics, AceDiagnosticsTracker diagnostics) {
     this.effects = new ConcurrentHashMap<>();
     this.metrics = metrics;
+    this.diagnostics = diagnostics == null ? AceDiagnosticsTracker.disabled() : diagnostics;
     registerDefaults();
+  }
+
+  public AceDiagnosticsTracker diagnostics() {
+    return diagnostics;
   }
 
   @Override
@@ -44,15 +65,21 @@ public final class ZakumAceEngine implements AceEngine {
     if (script == null || script.isEmpty() || context == null || context.actor() == null) return;
     long startedAtNanos = System.nanoTime();
     int resolvedEffects = 0;
+    diagnostics.recordScript();
 
     try {
       for (String raw : script) {
         if (raw == null) continue;
         String line = raw.trim();
         if (line.isEmpty() || line.startsWith("#")) continue;
+        diagnostics.recordLine();
 
         Matcher m = ACE_PATTERN.matcher(line);
-        if (!m.matches()) continue;
+        if (!m.matches()) {
+          diagnostics.recordParseFailure(line, "Line does not match ACE syntax pattern.");
+          if (metrics != null) metrics.recordAction("ace_diag_parse_syntax");
+          continue;
+        }
 
         String effectKey = normalize(m.group("effect"));
         String value = trim(m.group("value"));
@@ -60,7 +87,16 @@ public final class ZakumAceEngine implements AceEngine {
         String inlineParams = trim(m.group("params"));
 
         EffectAction action = effects.get(effectKey);
-        if (action == null) continue;
+        if (action == null) {
+          diagnostics.recordUnknownEffect(effectKey, line);
+          if (metrics != null) metrics.recordAction("ace_diag_unknown_effect");
+          continue;
+        }
+
+        if (targetKey != null && !targetKey.isBlank() && !KNOWN_TARGETERS.contains(normalize(targetKey))) {
+          diagnostics.recordUnknownTargeter(targetKey, line);
+          if (metrics != null) metrics.recordAction("ace_diag_unknown_targeter");
+        }
 
         Map<String, String> params = parseParams(value, inlineParams);
         List<Entity> targets = resolveTargets(context, targetKey, params);
@@ -69,9 +105,12 @@ public final class ZakumAceEngine implements AceEngine {
         }
 
         resolvedEffects++;
+        diagnostics.recordResolvedEffect();
         try {
           action.apply(context, targets, params);
-        } catch (Throwable ignored) {
+        } catch (Throwable error) {
+          diagnostics.recordExecutionFailure(effectKey, targetKey, line, error);
+          if (metrics != null) metrics.recordAction("ace_diag_execution_error");
           // Script execution should be fault-tolerant across individual effect lines.
         }
       }

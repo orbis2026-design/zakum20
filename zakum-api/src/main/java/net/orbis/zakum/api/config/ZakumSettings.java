@@ -187,6 +187,7 @@ public record ZakumSettings(
     CircuitBreaker circuitBreaker,
     Stress stress,
     Soak soak,
+    AceDiagnostics aceDiagnostics,
     ThreadGuard threadGuard,
     Async async,
     StartupValidator startupValidator
@@ -269,6 +270,12 @@ public record ZakumSettings(
         if (reportLabelPrefix.isBlank()) reportLabelPrefix = "soak";
       }
     }
+
+    public record AceDiagnostics(
+      boolean enabled,
+      int maxRecentEntries,
+      int maxLineLength
+    ) {}
 
     public record ThreadGuard(
       boolean enabled,

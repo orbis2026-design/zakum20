@@ -25,6 +25,7 @@ Plugin: `ZakumBridgeCommandAPI`
 - `/zakum perf status`
 - `/zakum stress start|stop|status`
 - `/zakum soak start|stop|status`
+- `/zakum ace status|errors|clear|enable|disable`
 - `/zakum chatbuffer status|warmup`
 - `/zakum economy status|balance|set|add|take ...`
 - `/zakum packetcull status|enable|disable|sample|refresh`

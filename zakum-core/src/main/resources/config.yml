@@ -261,6 +261,11 @@ operations:
     stressVirtualPlayers: 0
     autoWriteStressReport: true
     reportLabelPrefix: "soak"
+  aceDiagnostics:
+    # Structured ACE parser/execution diagnostics taxonomy.
+    enabled: true
+    maxRecentEntries: 200
+    maxLineLength: 200
 
 http:
   # Default client used by Zakum (controlPlane, future bridges).

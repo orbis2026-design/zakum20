@@ -106,6 +106,7 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
     root.withSubcommand(perfCommand());
     root.withSubcommand(stressCommand());
     root.withSubcommand(soakCommand());
+    root.withSubcommand(aceCommand());
     root.withSubcommand(chatBufferCommand());
     root.withSubcommand(economyCommand());
     root.withSubcommand(packetCullCommand());
@@ -396,6 +397,69 @@ public final class CommandApiBridgePlugin extends JavaPlugin {
           sender.sendMessage("lastAssertion=" + (assertion == null || assertion.isBlank() ? "none" : assertion));
           String reason = snap.lastStopReason();
           sender.sendMessage("lastStopReason=" + (reason == null || reason.isBlank() ? "none" : reason));
+        })
+      );
+  }
+
+  private CommandAPICommand aceCommand() {
+    return new CommandAPICommand("ace")
+      .withSubcommand(new CommandAPICommand("status")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          for (String line : corePlugin.aceDiagnosticsStatusLines()) {
+            sender.sendMessage(line);
+          }
+        })
+      )
+      .withSubcommand(new CommandAPICommand("errors")
+        .withOptionalArguments(new IntegerArgument("limit", 1, 100))
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          Integer limit = (Integer) args.getOptional("limit").orElse(10);
+          for (String line : corePlugin.aceDiagnosticsErrorLines(limit == null ? 10 : limit)) {
+            sender.sendMessage(line);
+          }
+        })
+      )
+      .withSubcommand(new CommandAPICommand("clear")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          var diagnostics = corePlugin.getAceDiagnostics();
+          if (diagnostics == null) {
+            sender.sendMessage("ACE diagnostics are offline.");
+            return;
+          }
+          diagnostics.clear();
+          sender.sendMessage("ACE diagnostics cleared.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("enable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          var diagnostics = corePlugin.getAceDiagnostics();
+          if (diagnostics == null) {
+            sender.sendMessage("ACE diagnostics are offline.");
+            return;
+          }
+          diagnostics.setRuntimeEnabled(true);
+          sender.sendMessage("ACE diagnostics runtime enabled.");
+        })
+      )
+      .withSubcommand(new CommandAPICommand("disable")
+        .executes((CommandExecutor) (sender, args) -> {
+          ZakumPlugin corePlugin = requireCore(sender);
+          if (corePlugin == null) return;
+          var diagnostics = corePlugin.getAceDiagnostics();
+          if (diagnostics == null) {
+            sender.sendMessage("ACE diagnostics are offline.");
+            return;
+          }
+          diagnostics.setRuntimeEnabled(false);
+          sender.sendMessage("ACE diagnostics runtime disabled.");
         })
       );
   }

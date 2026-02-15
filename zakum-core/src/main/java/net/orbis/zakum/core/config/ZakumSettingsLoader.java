@@ -345,6 +345,10 @@ public final class ZakumSettingsLoader {
     boolean soakAutoWriteStressReport = bool(cfg, "operations.soak.autoWriteStressReport", true);
     String soakReportLabelPrefix = str(cfg, "operations.soak.reportLabelPrefix", "soak").trim();
 
+    boolean aceDiagEnabled = bool(cfg, "operations.aceDiagnostics.enabled", true);
+    int aceDiagMaxRecentEntries = clampI(cfg.getInt("operations.aceDiagnostics.maxRecentEntries", 200), 10, 10_000);
+    int aceDiagMaxLineLength = clampI(cfg.getInt("operations.aceDiagnostics.maxLineLength", 200), 40, 2000);
+
     boolean guardEnabled = bool(cfg, "operations.threadGuard.enabled", true);
     boolean failOnViolation = bool(cfg, "operations.threadGuard.failOnViolation", false);
     int maxReports = clampI(cfg.getInt("operations.threadGuard.maxReportsPerMinute", 12), 0, 600);
@@ -413,6 +417,11 @@ public final class ZakumSettingsLoader {
         soakStressVirtualPlayers,
         soakAutoWriteStressReport,
         soakReportLabelPrefix
+      ),
+      new ZakumSettings.Operations.AceDiagnostics(
+        aceDiagEnabled,
+        aceDiagMaxRecentEntries,
+        aceDiagMaxLineLength
       ),
       new ZakumSettings.Operations.ThreadGuard(
         guardEnabled,
