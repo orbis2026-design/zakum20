@@ -7,7 +7,7 @@ import sys
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 # Import our modules
@@ -252,7 +252,8 @@ class Orchestrator:
                     "success": True,
                     "build_output": "DRY RUN - SKIPPED",
                     "errors": [],
-                    "warnings": []
+                    "warnings": [],
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             else:
                 # In a real implementation, we would:

@@ -69,7 +69,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "footer": {
                 "text": "AI Development System"
             }
@@ -198,7 +198,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         if budget_info["phase"] == "initial_sprint":
@@ -266,7 +266,7 @@ class DiscordNotifier:
                     "inline": True
                 }
             ],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         payload = {

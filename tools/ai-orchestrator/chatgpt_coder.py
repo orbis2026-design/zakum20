@@ -63,7 +63,7 @@ class ChatGPTCoder:
                 "output_tokens": output_tokens,
                 "impl_file": str(impl_file),
                 "model": self.model,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
         except Exception as e:
@@ -150,7 +150,7 @@ Be specific, complete, and production-ready. The code should compile and run wit
         
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(f"// Implementation for Task: {task_id}\n")
-            f.write(f"// Generated: {datetime.utcnow().isoformat()}\n")
+            f.write(f"// Generated: {datetime.now(timezone.utc).isoformat()}\n")
             f.write("// This file contains multiple classes/files - extract as needed\n\n")
             f.write(code)
         

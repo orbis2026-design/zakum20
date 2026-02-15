@@ -39,7 +39,7 @@ class BuildValidator:
             "build_output": "",
             "errors": [],
             "warnings": [],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         try:

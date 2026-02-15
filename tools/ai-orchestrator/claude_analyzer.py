@@ -56,7 +56,7 @@ class ClaudeAnalyzer:
                 "output_tokens": output_tokens,
                 "spec_file": str(spec_file),
                 "model": self.model,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
         except Exception as e:
@@ -149,7 +149,7 @@ Focus on being specific and actionable rather than vague or generic.
         
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(f"# Technical Specification: {task_id}\n\n")
-            f.write(f"Generated: {datetime.utcnow().isoformat()}\n\n")
+            f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n\n")
             f.write("---\n\n")
             f.write(specification)
         

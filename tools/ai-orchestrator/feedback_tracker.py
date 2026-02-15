@@ -6,7 +6,7 @@ Stores patterns to improve future code generation.
 import json
 from pathlib import Path
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 
 class FeedbackTracker:
@@ -27,12 +27,12 @@ class FeedbackTracker:
                 "successful_patterns": {},
                 "common_fixes": [],
                 "best_practices": [],
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.now(timezone.utc).isoformat()
             }
     
     def _save_data(self):
         """Save tracking data to file."""
-        self.data["last_updated"] = datetime.utcnow().isoformat()
+        self.data["last_updated"] = datetime.now(timezone.utc).isoformat()
         with open(self.tracking_file, 'w') as f:
             json.dump(self.data, f, indent=2)
     
@@ -53,7 +53,7 @@ class FeedbackTracker:
             "module": module,
             "code_summary": code_summary,
             "review_comments": review_comments or [],
-            "merged_at": datetime.utcnow().isoformat()
+            "merged_at": datetime.now(timezone.utc).isoformat()
         }
         
         self.data["merged_prs"].append(pr_data)
@@ -77,7 +77,7 @@ class FeedbackTracker:
             "code_snippet": code_snippet,
             "applicable_modules": applicable_modules,
             "uses": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self.data["successful_patterns"][pattern_name] = pattern
@@ -105,14 +105,14 @@ class FeedbackTracker:
         fix_data = {
             "issue": issue,
             "fix": fix,
-            "added_at": datetime.utcnow().isoformat()
+            "added_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Check if similar fix already exists
         for existing_fix in self.data["common_fixes"]:
             if existing_fix["issue"] == issue:
                 existing_fix["fix"] = fix
-                existing_fix["updated_at"] = datetime.utcnow().isoformat()
+                existing_fix["updated_at"] = datetime.now(timezone.utc).isoformat()
                 self._save_data()
                 return
         
@@ -124,7 +124,7 @@ class FeedbackTracker:
         practice_data = {
             "practice": practice,
             "category": category,
-            "added_at": datetime.utcnow().isoformat()
+            "added_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Avoid duplicates
@@ -201,7 +201,7 @@ class FeedbackTracker:
         if not self.data["merged_prs"]:
             return 0.0
         
-        cutoff = datetime.utcnow() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         recent_merges = [
             pr for pr in self.data["merged_prs"]
             if datetime.fromisoformat(pr["merged_at"]) > cutoff

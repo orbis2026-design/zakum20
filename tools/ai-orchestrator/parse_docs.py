@@ -7,7 +7,7 @@ import re
 import json
 from pathlib import Path
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TaskParser:
@@ -88,7 +88,7 @@ class TaskParser:
             "requirements": requirements,
             "success_criteria": success_criteria,
             "full_content": content,
-            "parsed_at": datetime.utcnow().isoformat()
+            "parsed_at": datetime.now(timezone.utc).isoformat()
         }
     
     def _extract_metadata(self, content: str, key: str) -> Optional[str]:
@@ -144,7 +144,7 @@ class CompletedTasksTracker:
         data = {
             "completed_task_ids": self.completed,
             "total_completed": len(self.completed),
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
         
         if pr_url:
