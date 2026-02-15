@@ -78,14 +78,15 @@ jobs:
           # Check for tasks with satisfied dependencies (simplified - only checking for empty dependencies array)
           ASSIGNABLE_TASKS=$(echo "$READY_TASKS" | jq -c '[.[] | select(.dependencies | length == 0)]')
           
-          # Select up to 3 tasks based on remaining budget
+          # Select up to 1 task based on remaining budget (single-task mode for 100% stability)
+          # To enable multi-task mode: change "< 1" to "< 3" below
           REMAINING=${{ steps.budget.outputs.remaining }}
           
           # Use jq to build the selection (avoiding subshell issues)
           SELECTED_TASKS=$(echo "$ASSIGNABLE_TASKS" | jq -c --argjson remaining "$REMAINING" '
             reduce .[] as $task (
               {tasks: [], total: 0};
-              if (.tasks | length) < 3 then
+              if (.tasks | length) < 1 then
                 (($task.estimatedMinutes // 0) * 0.008 / 60) as $cost |
                 if (.total + $cost) <= $remaining then
                   {tasks: (.tasks + [$task]), total: (.total + $cost)}
@@ -116,16 +117,77 @@ jobs:
         run: |
           TASKS='${{ steps.assign.outputs.tasks }}'
           
+          # Configuration: delay between tasks in multi-task mode (seconds)
+          INTER_TASK_DELAY=20
+          
           # Initialize temp file to track successfully dispatched tasks
           rm -f /tmp/successfully_dispatched_tasks.txt
           touch /tmp/successfully_dispatched_tasks.txt
           
+          # Function to trigger workflow with retry logic
+          trigger_workflow_with_retry() {
+            local workflow="$1"
+            local task_id="$2"
+            local task_json="$3"
+            local max_retries=3
+            local retry_count=0
+            
+            while [ $retry_count -lt $max_retries ]; do
+              echo "📡 Attempt $((retry_count + 1))/$max_retries for $task_id"
+              
+              # Build the command based on parameters
+              if [ -z "$task_json" ]; then
+                # dataHardening tasks: only task_id
+                if gh workflow run "$workflow" -f task_id="$task_id" 2>&1; then
+                  echo "✅ Successfully triggered workflow for $task_id"
+                  return 0
+                else
+                  local exit_code=$?
+                  echo "⚠️ Dispatch failed with exit code $exit_code"
+                fi
+              else
+                # Other tasks: task_id and task_json
+                if gh workflow run "$workflow" \
+                  -f task_id="$task_id" \
+                  -f task_json="$task_json" 2>&1; then
+                  echo "✅ Successfully triggered workflow for $task_id"
+                  return 0
+                else
+                  local exit_code=$?
+                  echo "⚠️ Dispatch failed with exit code $exit_code"
+                fi
+              fi
+              
+              retry_count=$((retry_count + 1))
+              
+              if [ $retry_count -lt $max_retries ]; then
+                # Linear backoff: 10s, 20s, 30s
+                local delay=$((retry_count * 10))
+                echo "⏳ Waiting ${delay}s before retry..."
+                sleep $delay
+              fi
+            done
+            
+            echo "❌ Failed to trigger workflow for $task_id after $max_retries attempts"
+            return 1
+          }
+          
+          # Process each task sequentially with delays
+          TASK_NUM=0
           while IFS= read -r task; do
             TASK_ID=$(echo "$task" | jq -r '.id')
             TASK_NAME=$(echo "$task" | jq -r '.name')
             TASK_CATEGORY=$(echo "$task" | jq -r '.category')
             
-            echo "🚀 Triggering worker for task: $TASK_ID - $TASK_NAME"
+            # Add delay between tasks for multi-task mode stability
+            # Skip delay for the first task
+            if [ $TASK_NUM -gt 0 ]; then
+              echo "⏳ Waiting ${INTER_TASK_DELAY}s before triggering next worker (rate limit protection)..."
+              sleep $INTER_TASK_DELAY
+            fi
+            TASK_NUM=$((TASK_NUM + 1))
+            
+            echo "🚀 Triggering worker for task: $TASK_ID - $TASK_NAME (Category: $TASK_CATEGORY)"
             
             # Determine which worker workflow to use based on category
             WORKFLOW="01-worker-executor.yml"
@@ -141,24 +203,23 @@ jobs:
                 ;;
             esac
             
-            # Trigger the workflow with appropriate parameters
+            # Trigger the workflow with retry logic
             if [ "$TASK_CATEGORY" = "dataHardening" ]; then
-              # 06-worker-testing.yml only accepts task_id and test_scope (not task_json)
-              if gh workflow run "$WORKFLOW" -f task_id="$TASK_ID"; then
-                echo "✅ Successfully triggered workflow for $TASK_ID"
+              # 06-worker-testing.yml only accepts task_id (not task_json)
+              if trigger_workflow_with_retry "$WORKFLOW" "$TASK_ID" ""; then
                 echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+                echo "--- Task $TASK_ID processing complete ---"
               else
-                echo "❌ Failed to trigger workflow for $TASK_ID"
+                echo "--- Task $TASK_ID dispatch failed after retries ---"
               fi
             else
               # Other workflows accept task_id and task_json
-              if gh workflow run "$WORKFLOW" \
-                -f task_id="$TASK_ID" \
-                -f task_json="$(echo "$task" | jq -c .)"; then
-                echo "✅ Successfully triggered workflow for $TASK_ID"
+              TASK_JSON=$(echo "$task" | jq -c .)
+              if trigger_workflow_with_retry "$WORKFLOW" "$TASK_ID" "$TASK_JSON"; then
                 echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
+                echo "--- Task $TASK_ID processing complete ---"
               else
-                echo "❌ Failed to trigger workflow for $TASK_ID"
+                echo "--- Task $TASK_ID dispatch failed after retries ---"
               fi
             fi
           done < <(echo "$TASKS" | jq -c '.[]')
