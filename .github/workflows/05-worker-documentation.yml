@@ -305,7 +305,7 @@ jobs:
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             if git push origin master; then
               echo "✅ Successfully pushed changes"
-              exit 0
+              break
             else
               echo "⚠️ Push failed, pulling and retrying... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
               if git pull origin master --no-edit; then
@@ -316,9 +316,6 @@ jobs:
               fi
             fi
           done
-          
-          echo "❌ Failed to push after $MAX_RETRIES attempts"
-          exit 1
 
       - name: Summary
         run: |
