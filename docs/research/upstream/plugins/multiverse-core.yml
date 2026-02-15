@@ -1,0 +1,47 @@
+﻿id: multiverse-core
+name: Multiverse-Core
+status: research-complete
+updated_utc: 2026-02-15T11:39:04Z
+publisher: Multiverse
+creator: Multiverse Team
+module_fit:
+  primary: orbis-worlds
+marketplace:
+  spigot: https://www.spigotmc.org/resources/multiverse-core.390/
+  polymart: https://polymart.org/resource/multiverse-core.1046
+  builtbybit: null
+links:
+  wiki: https://github.com/Multiverse/Multiverse-Core/wiki
+  docs: https://github.com/Multiverse/Multiverse-Core/wiki
+  config: https://github.com/Multiverse/Multiverse-Core/wiki/config.yml
+  faq: https://github.com/Multiverse/Multiverse-Core/wiki/FAQ
+  api: https://github.com/Multiverse/Multiverse-Core/wiki/API
+dependencies:
+  required: []
+  optional:
+    - Multiverse-Portals
+    - PlaceholderAPI
+compatibility:
+  minecraft:
+    - 1.13+
+    - 1.21.x
+  notes:
+    - Core world lifecycle and command semantics are stable parity references.
+commands:
+  - command: /mv
+    summary: Root administration command.
+  - command: /mvcreate
+    summary: Create and register worlds.
+  - command: /mvtp
+    summary: Teleport to managed worlds.
+permissions:
+  - node: multiverse.core.*
+    summary: Full world administration.
+  - node: multiverse.teleport.*
+    summary: Teleport command access.
+  - node: multiverse.core.create
+    summary: World creation.
+  - node: multiverse.core.delete
+    summary: World deletion.
+notes:
+  - World lifecycle safety is the Wave A critical target; portals are deferred.

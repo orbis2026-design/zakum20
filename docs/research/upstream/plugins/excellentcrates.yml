@@ -1,0 +1,46 @@
+﻿id: excellentcrates
+name: ExcellentCrates
+status: research-complete
+updated_utc: 2026-02-15T11:39:04Z
+publisher: nulli0x
+creator: nulli0x
+module_fit:
+  primary: orbis-loot
+marketplace:
+  spigot: https://www.spigotmc.org/resources/excellentcrates-advanced-free-crates-plugin.48732/
+  polymart: https://polymart.org/resource/excellentcrates.560
+  builtbybit: null
+links:
+  wiki: https://nightexpressdev.com/excellentcrates/
+  docs: https://nightexpressdev.com/excellentcrates/
+  config: https://nightexpressdev.com/excellentcrates/configuration/
+  faq: https://nightexpressdev.com/excellentcrates/faq/
+  api: https://nightexpressdev.com/excellentcrates/developer-api/
+dependencies:
+  required: []
+  optional:
+    - PlaceholderAPI
+    - Vault
+compatibility:
+  minecraft:
+    - 1.16+
+    - 1.21.x
+  notes:
+    - Modern animation and reward pipelines rely on internal abstractions not required for v1 parity.
+commands:
+  - command: /crates
+    summary: Root command for crate management and open flow.
+  - command: /keys
+    summary: Key management for players.
+permissions:
+  - node: excellentcrates.admin
+    summary: Full admin access.
+  - node: excellentcrates.open
+    summary: Allow crate opening.
+  - node: excellentcrates.key.give
+    summary: Grant keys to players.
+  - node: excellentcrates.key.take
+    summary: Remove keys from players.
+notes:
+  - Reward weighting, key flows, and command ergonomics are primary parity anchors.
+  - Economy and placeholder integrations remain optional bridge concerns.

@@ -1,0 +1,46 @@
+﻿id: tab
+name: TAB
+status: research-complete
+updated_utc: 2026-02-15T11:39:04Z
+publisher: NEZNAMY
+creator: NEZNAMY
+module_fit:
+  primary: orbis-hud
+  secondary:
+    - orbis-worlds
+marketplace:
+  spigot: https://www.spigotmc.org/resources/tab-1-5-x-1-21-x.57806/
+  polymart: https://polymart.org/resource/tab.707
+  builtbybit: null
+links:
+  wiki: https://github.com/NEZNAMY/TAB/wiki
+  docs: https://github.com/NEZNAMY/TAB/wiki
+  config: https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Scoreboard
+  faq: https://github.com/NEZNAMY/TAB/wiki/FAQ
+  api: https://github.com/NEZNAMY/TAB/wiki/Developer-API
+dependencies:
+  required: []
+  optional:
+    - PlaceholderAPI
+    - Vault
+    - LuckPerms
+compatibility:
+  minecraft:
+    - 1.8+
+    - 1.21.x
+  notes:
+    - Scoreboard subsystem is stable across modern Paper builds.
+    - Some placeholder features depend on external hooks (PAPI/Vault).
+commands:
+  - command: /tab
+    summary: Root admin command for TAB features.
+permissions:
+  - node: tab.admin
+    summary: Full administration.
+  - node: tab.toggle
+    summary: Toggle TAB features per-player.
+  - node: tab.scoreboard.toggle
+    summary: Toggle scoreboard visibility.
+notes:
+  - TAB parity for Wave A targets scoreboard profile quality and runtime stability.
+  - Header/footer and nametag parity are optional and deferred.

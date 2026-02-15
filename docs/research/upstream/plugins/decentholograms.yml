@@ -1,0 +1,47 @@
+﻿id: decentholograms
+name: DecentHolograms
+status: research-complete
+updated_utc: 2026-02-15T11:39:04Z
+publisher: DecentSoftware
+creator: DecentSoftware
+module_fit:
+  primary: orbis-holograms
+marketplace:
+  spigot: https://www.spigotmc.org/resources/decent-holograms-1-8-1-21-8-papi-support-no-dependencies.96927/
+  polymart: https://polymart.org/resource/decentholograms.2246
+  builtbybit: null
+links:
+  wiki: https://wiki.decentholograms.eu/
+  docs: https://wiki.decentholograms.eu/
+  config: https://wiki.decentholograms.eu/general/configuration
+  faq: https://wiki.decentholograms.eu/general/faq
+  api: https://wiki.decentholograms.eu/general/developer-api
+dependencies:
+  required: []
+  optional:
+    - PlaceholderAPI
+compatibility:
+  minecraft:
+    - 1.8+
+    - 1.21.x
+  notes:
+    - Supports broad versions; Wave A implementation will target 1.21.11 behavior.
+commands:
+  - command: /dh
+    summary: Root command for hologram administration.
+  - command: /dh h create
+    summary: Create hologram at location.
+  - command: /dh h remove
+    summary: Remove hologram by id.
+permissions:
+  - node: dh.admin
+    summary: Full administration.
+  - node: dh.hologram.create
+    summary: Create holograms.
+  - node: dh.hologram.delete
+    summary: Delete holograms.
+  - node: dh.hologram.edit
+    summary: Edit hologram properties.
+notes:
+  - Upstream line editing and visibility rules define baseline UX targets.
+  - Animation breadth is optional for Wave A.
