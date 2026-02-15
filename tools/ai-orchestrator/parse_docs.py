@@ -113,7 +113,7 @@ class TaskParser:
         Returns:
             Metadata value or default
         """
-        pattern = f'<!-- {key}: ([^-]+?) -->'
+        pattern = f'<!-- {key}:\\s*(.+?)\\s*-->'
         match = re.search(pattern, content)
         return match.group(1).strip() if match else default
     
