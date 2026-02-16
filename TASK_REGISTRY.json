@@ -2336,11 +2336,12 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement CI/CD pipeline with automated builds, tests, and artifact publishing",
       "verificationGates": [
         "build"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:01:32Z"
     }
   ],
   "workflow": {
