@@ -652,12 +652,13 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement plugin messaging channel for cross-server communication via BungeeCord/Velocity",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:02:22Z"
     },
     {
       "id": "core-005",
