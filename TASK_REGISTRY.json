@@ -2115,13 +2115,14 @@
       "priority": 40,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Implement command alias system for custom shortcuts and macro commands",
       "verificationGates": [
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-16T08:13:35Z"
+      "assignedAt": "2026-02-16T08:13:35Z",
+      "startedAt": "2026-02-16T08:13:44Z"
     },
     {
       "id": "admin-012",
