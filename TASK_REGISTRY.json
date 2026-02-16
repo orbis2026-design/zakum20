@@ -1633,13 +1633,14 @@
       "priority": 40,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Implement maintenance mode with whitelist bypass and custom kick messages",
       "verificationGates": [
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-16T08:10:06Z"
+      "assignedAt": "2026-02-16T08:10:06Z",
+      "startedAt": "2026-02-16T08:10:15Z"
     },
     {
       "id": "admin-006",
