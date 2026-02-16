@@ -667,12 +667,13 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement scheduler abstraction with region-aware task execution and automatic cleanup",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:00:42Z"
     },
     {
       "id": "core-006",
