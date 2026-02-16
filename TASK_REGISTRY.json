@@ -1812,9 +1812,10 @@
       "priority": 20,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Create deployment guide for production server setup and configuration",
-      "verificationGates": []
+      "verificationGates": [],
+      "assignedAt": "2026-02-16T08:15:22Z"
     },
     {
       "id": "test-003",
