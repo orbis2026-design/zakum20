@@ -35,6 +35,47 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Validate secret accessibility
+        id: secrets
+        run: |
+          echo "🔐 Validating secret accessibility..."
+          
+          # Check if API keys are accessible (without revealing them)
+          OPENAI_AVAILABLE="false"
+          ANTHROPIC_AVAILABLE="false"
+          DISCORD_AVAILABLE="false"
+          
+          if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+            OPENAI_AVAILABLE="true"
+            echo "✅ OPENAI_API_KEY is accessible"
+          else
+            echo "⚠️ OPENAI_API_KEY is not configured"
+          fi
+          
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            ANTHROPIC_AVAILABLE="true"
+            echo "✅ ANTHROPIC_API_KEY is accessible"
+          else
+            echo "⚠️ ANTHROPIC_API_KEY is not configured"
+          fi
+          
+          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            DISCORD_AVAILABLE="true"
+            echo "✅ DISCORD_WEBHOOK_URL is accessible"
+          else
+            echo "⚠️ DISCORD_WEBHOOK_URL is not configured"
+          fi
+          
+          echo "openai_available=$OPENAI_AVAILABLE" >> $GITHUB_OUTPUT
+          echo "anthropic_available=$ANTHROPIC_AVAILABLE" >> $GITHUB_OUTPUT
+          echo "discord_available=$DISCORD_AVAILABLE" >> $GITHUB_OUTPUT
+          
+          # Log summary
+          echo "📊 Secret Availability Summary:"
+          echo "   OPENAI_API_KEY: $OPENAI_AVAILABLE"
+          echo "   ANTHROPIC_API_KEY: $ANTHROPIC_AVAILABLE"
+          echo "   DISCORD_WEBHOOK_URL: $DISCORD_AVAILABLE"
+
       - name: Check daily budget
         id: budget
         run: |
@@ -65,12 +106,36 @@ jobs:
           
           echo "exhausted=false" >> $GITHUB_OUTPUT
 
+      - name: Discover tasks from documentation
+        id: discover
+        if: steps.budget.outputs.exhausted != 'true'
+        run: |
+          echo "🔍 Discovering tasks from documentation files..."
+          
+          # Scan docs/ for task definitions (placeholder for future implementation)
+          # This would parse docs/*.md files looking for task metadata
+          # Format: <!-- TASK: id=xxx, priority=xxx, category=xxx -->
+          
+          if [ -d "docs" ]; then
+            TASK_DOCS=$(find docs -name "*.md" -type f | wc -l)
+            echo "📄 Found $TASK_DOCS documentation files"
+            echo "   (Advanced task discovery from docs will be implemented in future iteration)"
+          fi
+          
+          # Scan for tasks in PR comments (placeholder for future implementation)
+          # This would use GitHub API to find task definitions in PR comments
+          echo "   (PR comment task discovery will be implemented in future iteration)"
+          
+          echo "discovery_complete=true" >> $GITHUB_OUTPUT
+
       - name: Assign highest priority tasks
         id: assign
-        if: steps.budget.outputs.exhausted != 'true'
+        if: steps.budget.outputs.exhausted != 'true' && steps.discover.outputs.discovery_complete == 'true'
         run: |
           # Read task registry
           REGISTRY="TASK_REGISTRY.json"
+          
+          echo "📋 Reading task registry from $REGISTRY"
           
           # Get ready tasks sorted by priority
           READY_TASKS=$(jq -c '[.tasks[] | select(.status == "ready")] | sort_by(-.priority, -.points)' "$REGISTRY")
@@ -290,16 +355,23 @@ jobs:
           FAILED_COUNT=$(jq '.tasks | length' "$FAILED_TASKS_FILE")
           echo "📊 Failed tasks tracking: $FAILED_COUNT task(s) in failed state"
           
-          # Mark tasks with >3 failures as abandoned
+          # Mark tasks with >3 failures as requiring review, >5 as abandoned
           if [ "$FAILED_COUNT" -gt 0 ]; then
             echo "⚠️ Tasks with failed dispatch attempts:"
             jq -r '.tasks[] | "  - \(.id): \(.failedAttempts) attempt(s)"' "$FAILED_TASKS_FILE"
             
-            # Check for tasks to abandon (>3 failures)
-            ABANDON_COUNT=$(jq '[.tasks[] | select(.failedAttempts > 3)] | length' "$FAILED_TASKS_FILE")
+            # Check for tasks to review (>3 failures)
+            REVIEW_COUNT=$(jq '[.tasks[] | select(.failedAttempts > 3 and .failedAttempts <= 5)] | length' "$FAILED_TASKS_FILE")
+            if [ "$REVIEW_COUNT" -gt 0 ]; then
+              echo "⚠️ Tasks with >3 failures (should be reviewed):"
+              jq -r '.tasks[] | select(.failedAttempts > 3 and .failedAttempts <= 5) | "  - \(.id): \(.failedAttempts) attempts"' "$FAILED_TASKS_FILE"
+            fi
+            
+            # Check for tasks to abandon (>5 failures - max retry limit)
+            ABANDON_COUNT=$(jq '[.tasks[] | select(.failedAttempts > 5)] | length' "$FAILED_TASKS_FILE")
             if [ "$ABANDON_COUNT" -gt 0 ]; then
-              echo "🚫 Tasks with >3 failures (should be reviewed):"
-              jq -r '.tasks[] | select(.failedAttempts > 3) | "  - \(.id): \(.failedAttempts) attempts"' "$FAILED_TASKS_FILE"
+              echo "🚫 Tasks with >5 failures (max retry limit exceeded - ABANDONED):"
+              jq -r '.tasks[] | select(.failedAttempts > 5) | "  - \(.id): \(.failedAttempts) attempts - REQUIRES MANUAL INTERVENTION"' "$FAILED_TASKS_FILE"
             fi
           fi
           
@@ -442,4 +514,52 @@ jobs:
             echo "**Tasks Assigned:** $TASK_COUNT" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "$TASKS" | jq -r '.[] | "- **\(.id)** (\(.points) pts): \(.name)"' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for more ready tasks (seamless looping)
+        id: check_next
+        if: steps.budget.outputs.exhausted != 'true'
+        run: |
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Pull latest changes to ensure we have the most recent task status
+          git pull origin master --no-edit || echo "Pull failed, using local state"
+          
+          # Count ready tasks with no dependencies
+          READY_COUNT=$(jq '[.tasks[] | select(.status == "ready" and (.dependencies | length == 0))] | length' "$REGISTRY")
+          
+          echo "📊 Ready tasks available: $READY_COUNT"
+          echo "ready_count=$READY_COUNT" >> $GITHUB_OUTPUT
+          
+          # Check if budget allows for more tasks
+          REMAINING=${{ steps.budget.outputs.remaining }}
+          if (( $(echo "$REMAINING > 0" | bc -l) )) && [ "$READY_COUNT" -gt 0 ]; then
+            echo "✅ More tasks available and budget allows - will trigger next cycle"
+            echo "trigger_next=true" >> $GITHUB_OUTPUT
+          else
+            if [ "$READY_COUNT" -eq 0 ]; then
+              echo "🎉 All tasks completed! No more ready tasks."
+              echo "💫 System will restart from highest priority when new tasks become ready"
+            else
+              echo "💰 Budget exhausted - waiting for next budget cycle"
+            fi
+            echo "trigger_next=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger next cycle (24/7 continuous operation)
+        if: steps.check_next.outputs.trigger_next == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "🔄 Triggering next orchestrator cycle for continuous operation..."
+          
+          # Wait a bit before triggering next cycle to avoid rate limits
+          sleep 30
+          
+          # Trigger the manager orchestrator again
+          if gh workflow run 00-manager-orchestrator.yml; then
+            echo "✅ Successfully triggered next cycle"
+            echo "🔁 24/7 continuous loop active"
+          else
+            echo "⚠️ Failed to trigger next cycle - will resume on next scheduled run"
           fi

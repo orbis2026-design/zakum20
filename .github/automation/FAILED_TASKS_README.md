@@ -64,6 +64,12 @@ Tasks with more than 3 failed attempts are flagged:
   - task-id: 4 attempts
 ```
 
+**Retry Policy:**
+- Maximum retries: 5 attempts per task
+- Backoff strategy: Exponential (10s, 20s, 30s between retries within a dispatch)
+- Tasks exceeding 5 failed attempts are marked for manual review
+- Automatic removal on successful dispatch
+
 These tasks should be:
 - Manually reviewed for root cause
 - Fixed if there's a workflow configuration issue

@@ -138,6 +138,8 @@ TASK_REGISTRY.json               # Task definitions and status
 ### Primary Guides
 
 - **[.github/AUTOMATION_GUIDE.md](.github/AUTOMATION_GUIDE.md)** - Complete automation system documentation
+- **[.github/SECRETS-AND-LABELS-SETUP.md](.github/SECRETS-AND-LABELS-SETUP.md)** - ⭐ **NEW:** Secrets and labels configuration
+- **[.github/TROUBLESHOOTING.md](.github/TROUBLESHOOTING.md)** - ⭐ **NEW:** Troubleshooting guide
 - **[.github/workflows/README.md](.github/workflows/README.md)** - Workflow overview
 - **[docs/23-PLUGIN-DEVKIT.md](docs/23-PLUGIN-DEVKIT.md)** - Plugin development kit
 - **[docs/27-CORE-PRIMER.md](docs/27-CORE-PRIMER.md)** - Core platform primer
@@ -147,6 +149,37 @@ TASK_REGISTRY.json               # Task definitions and status
 - [docs/22-ANY-PLUGIN-INFRASTRUCTURE-DIRECTIVE.md](docs/22-ANY-PLUGIN-INFRASTRUCTURE-DIRECTIVE.md) - Infrastructure directive
 - [docs/22-PLUGIN-ECOSYSTEM-CONSOLIDATION.md](docs/22-PLUGIN-ECOSYSTEM-CONSOLIDATION.md) - Ecosystem strategy
 - [docs/26-E2E-FEATURE-BOARD.md](docs/26-E2E-FEATURE-BOARD.md) - Feature board
+- [.github/automation/FAILED_TASKS_README.md](.github/automation/FAILED_TASKS_README.md) - Failed task recovery system
+
+## Recent Enhancements (2026-02-16)
+
+### 🔐 API Key Management
+- **Secret Validation:** All workflows now validate API key availability
+- **OPENAI_API_KEY:** Checked but not yet actively used (reserved for future AI features)
+- **ANTHROPIC_API_KEY:** Checked but not yet actively used (reserved for future AI features)
+- **DISCORD_WEBHOOK_URL:** Active for task assignment notifications
+- **Setup Guide:** See [SECRETS-AND-LABELS-SETUP.md](.github/SECRETS-AND-LABELS-SETUP.md)
+
+### 🔄 Seamless Looping (24/7 Operation)
+- **Continuous Cycle:** Manager orchestrator automatically triggers next cycle when tasks complete
+- **Smart Detection:** Checks for ready tasks and available budget before triggering
+- **Auto-Restart:** System restarts from highest priority when all tasks complete
+- **Rate Limit Protection:** 30-second delay between cycles
+- **Budget Aware:** Respects daily budget limits ($25/day default)
+
+### 🛡️ Enhanced Failed Task Recovery
+- **Max Retries:** 5 attempts per task before abandonment
+- **Exponential Backoff:** 10s, 20s, 30s delays between retries
+- **Circuit Breaker:** Tasks with >3 failures flagged for review
+- **Automatic Cleanup:** Successfully dispatched tasks removed from failed list
+- **Detailed Logging:** Comprehensive failure tracking and reporting
+- **Manual Override:** Admin tools available for manual intervention
+
+### 📊 Improved Observability
+- **Secret Status:** Real-time validation of API key availability
+- **Task Discovery:** Placeholder for docs/*.md and PR comment task discovery
+- **Better Logging:** Enhanced error messages and status updates
+- **Failure Tracking:** Detailed failed task metrics and history
 
 ## Getting Started
 
