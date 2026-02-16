@@ -2145,14 +2145,16 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement comprehensive PlaceholderAPI expansion with all module placeholders",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:05:46Z",
-      "startedAt": "2026-02-16T08:05:52Z"
+      "startedAt": "2026-02-16T08:05:52Z",
+      "completedAt": "2026-02-16T08:07:51Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-011",
