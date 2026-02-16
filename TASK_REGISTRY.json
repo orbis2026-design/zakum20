@@ -229,12 +229,13 @@
       "priority": 20,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Remove stale code, docs, dead flags, and duplicate command paths",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T03:53:17Z"
     },
     {
       "id": "cleanup-002",
