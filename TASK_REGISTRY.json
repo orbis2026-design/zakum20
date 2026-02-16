@@ -1836,14 +1836,16 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement mock server framework for unit testing without full server startup",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:04:03Z",
-      "startedAt": "2026-02-16T08:04:11Z"
+      "startedAt": "2026-02-16T08:04:11Z",
+      "completedAt": "2026-02-16T08:06:12Z",
+      "prUrl": ""
     },
     {
       "id": "security-002",
