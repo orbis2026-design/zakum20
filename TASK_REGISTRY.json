@@ -1867,12 +1867,13 @@
       "priority": 80,
       "estimatedMinutes": 105,
       "dependencies": [],
-      "status": "ready",
+      "status": "in-progress",
       "description": "Implement protections against common exploits: dupe bugs, item manipulation, fly hacks",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "startedAt": "2026-02-16T05:06:11Z"
     },
     {
       "id": "player-011",
