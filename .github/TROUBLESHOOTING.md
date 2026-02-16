@@ -414,5 +414,53 @@ If you've tried these solutions and still have issues:
 
 ---
 
+## Emergency Procedures
+
+### Stop All Running Workflows
+
+**When to use:** 
+- Multiple workflows are consuming too many resources
+- Workflows are stuck or behaving unexpectedly
+- Emergency maintenance is required
+- Budget is being exhausted by runaway workflows
+
+**Methods:**
+
+#### Option 1: GitHub Actions UI
+1. Go to **Actions** tab
+2. Select **"11 - Stop All Workflows"**
+3. Click **"Run workflow"**
+4. Choose whether to exclude current workflow
+5. Click **"Run workflow"** button
+
+#### Option 2: Command Line Script
+```bash
+# Interactive mode (with confirmation)
+./tools/stop-all-workflows.sh
+
+# Automatic mode (no confirmation)
+./tools/stop-all-workflows.sh --auto
+
+# Exclude current workflow (when running from CI)
+./tools/stop-all-workflows.sh --auto --exclude-current
+```
+
+**Requirements:**
+- `GITHUB_TOKEN` environment variable
+- `GITHUB_REPOSITORY` environment variable (format: 'owner/repo')
+- `jq` command-line tool installed
+
+**What it does:**
+1. Fetches all running and queued workflows
+2. Cancels each workflow via GitHub API
+3. Reports success/failure for each
+4. Provides summary of results
+
+**Note:** The script supports up to 100 concurrent workflows. For more, implement pagination or run more frequently.
+
+**See also:** [tools/README.md](../tools/README.md) for detailed documentation
+
+---
+
 **Last Updated:** 2026-02-16
 **Maintainer:** GitHub Actions Bot
