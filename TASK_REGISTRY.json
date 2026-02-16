@@ -2342,13 +2342,15 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement CI/CD pipeline with automated builds, tests, and artifact publishing",
       "verificationGates": [
         "build"
       ],
       "assignedAt": "2026-02-16T08:01:32Z",
-      "startedAt": "2026-02-16T08:01:40Z"
+      "startedAt": "2026-02-16T08:01:40Z",
+      "completedAt": "2026-02-16T08:03:05Z",
+      "prUrl": ""
     }
   ],
   "workflow": {
