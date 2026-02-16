@@ -307,12 +307,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config pull.rebase false
-          git pull origin master || echo "Pull failed, continuing..."
+          git pull origin master || echo "⚠️ Pull failed - may result in conflicts during push"
           git add "$FAILED_TASKS_FILE"
           
           if ! git diff --staged --quiet; then
             git commit -m "chore: update failed tasks tracking"
-            git push origin master || echo "⚠️ Failed to push failed tasks tracking"
+            git push origin master || echo "⚠️ Failed to push failed tasks tracking - manual sync may be required"
           fi
 
       - name: Send Discord notification
