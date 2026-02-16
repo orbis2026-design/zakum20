@@ -557,7 +557,7 @@
       "priority": 100,
       "estimatedMinutes": 135,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement server warp system with permission-based access and location validation",
       "verificationGates": [
         "verifyPlatformInfrastructure",
@@ -565,7 +565,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T05:02:31Z",
-      "startedAt": "2026-02-16T05:02:38Z"
+      "startedAt": "2026-02-16T05:02:38Z",
+      "completedAt": "2026-02-16T05:04:52Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-009",
