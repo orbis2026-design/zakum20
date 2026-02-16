@@ -405,9 +405,10 @@
       "priority": 20,
       "estimatedMinutes": 45,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Generate API documentation from source code",
-      "verificationGates": []
+      "verificationGates": [],
+      "assignedAt": "2026-02-16T04:16:07Z"
     },
     {
       "id": "doc-002",
