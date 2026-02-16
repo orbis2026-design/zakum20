@@ -204,8 +204,8 @@ jobs:
             esac
             
             # Trigger the workflow with retry logic
-            if [ "$TASK_CATEGORY" = "dataHardening" ]; then
-              # 06-worker-testing.yml only accepts task_id (not task_json)
+            if [ "$TASK_CATEGORY" = "dataHardening" ] || [ "$TASK_CATEGORY" = "documentation" ]; then
+              # 06-worker-testing.yml and 05-worker-documentation.yml only accept task_id (not task_json)
               if trigger_workflow_with_retry "$WORKFLOW" "$TASK_ID" ""; then
                 echo "$TASK_ID" >> /tmp/successfully_dispatched_tasks.txt
                 echo "--- Task $TASK_ID processing complete ---"
@@ -223,6 +223,97 @@ jobs:
               fi
             fi
           done < <(echo "$TASKS" | jq -c '.[]')
+
+      - name: Track failed task dispatches
+        if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != ''
+        run: |
+          # Create automation directory if it doesn't exist
+          mkdir -p .github/automation
+          FAILED_TASKS_FILE=".github/automation/FAILED_TASKS.json"
+          
+          # Initialize failed tasks file if it doesn't exist
+          if [ ! -f "$FAILED_TASKS_FILE" ]; then
+            echo '{"tasks":[],"lastUpdated":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > "$FAILED_TASKS_FILE"
+          fi
+          
+          # Get list of all attempted tasks
+          TASKS='${{ steps.assign.outputs.tasks }}'
+          ALL_TASK_IDS=$(echo "$TASKS" | jq -r '.[].id')
+          
+          # Get list of successfully dispatched tasks
+          DISPATCHED_IDS=""
+          if [ -f /tmp/successfully_dispatched_tasks.txt ]; then
+            DISPATCHED_IDS=$(cat /tmp/successfully_dispatched_tasks.txt || echo "")
+          fi
+          
+          # Find tasks that failed to dispatch
+          echo "🔍 Checking for failed dispatches..."
+          for TASK_ID in $ALL_TASK_IDS; do
+            if ! echo "$DISPATCHED_IDS" | grep -q "^${TASK_ID}$"; then
+              echo "❌ Task $TASK_ID failed to dispatch"
+              
+              # Get task details
+              TASK_DATA=$(echo "$TASKS" | jq -c ".[] | select(.id == \"$TASK_ID\")")
+              
+              # Check if task already in failed tasks file
+              EXISTING_COUNT=$(jq --arg id "$TASK_ID" '[.tasks[] | select(.id == $id)] | length' "$FAILED_TASKS_FILE")
+              
+              if [ "$EXISTING_COUNT" -eq 0 ]; then
+                # Add new failed task with attempt count
+                TMP_FILE=$(mktemp)
+                jq --argjson task "$TASK_DATA" \
+                   --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                   '.tasks += [($task + {failedAttempts: 1, lastAttempt: $timestamp})] | .lastUpdated = $timestamp' \
+                   "$FAILED_TASKS_FILE" > "$TMP_FILE"
+                mv "$TMP_FILE" "$FAILED_TASKS_FILE"
+              else
+                # Increment attempt count for existing failed task
+                TMP_FILE=$(mktemp)
+                jq --arg id "$TASK_ID" \
+                   --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                   '.tasks |= map(if .id == $id then .failedAttempts += 1 | .lastAttempt = $timestamp else . end) | .lastUpdated = $timestamp' \
+                   "$FAILED_TASKS_FILE" > "$TMP_FILE"
+                mv "$TMP_FILE" "$FAILED_TASKS_FILE"
+              fi
+            else
+              # Task succeeded - remove from failed tasks if present
+              TMP_FILE=$(mktemp)
+              jq --arg id "$TASK_ID" \
+                 --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                 '.tasks |= map(select(.id != $id)) | .lastUpdated = $timestamp' \
+                 "$FAILED_TASKS_FILE" > "$TMP_FILE"
+              mv "$TMP_FILE" "$FAILED_TASKS_FILE"
+            fi
+          done
+          
+          # Log failed tasks summary
+          FAILED_COUNT=$(jq '.tasks | length' "$FAILED_TASKS_FILE")
+          echo "📊 Failed tasks tracking: $FAILED_COUNT task(s) in failed state"
+          
+          # Mark tasks with >3 failures as abandoned
+          if [ "$FAILED_COUNT" -gt 0 ]; then
+            echo "⚠️ Tasks with failed dispatch attempts:"
+            jq -r '.tasks[] | "  - \(.id): \(.failedAttempts) attempt(s)"' "$FAILED_TASKS_FILE"
+            
+            # Check for tasks to abandon (>3 failures)
+            ABANDON_COUNT=$(jq '[.tasks[] | select(.failedAttempts > 3)] | length' "$FAILED_TASKS_FILE")
+            if [ "$ABANDON_COUNT" -gt 0 ]; then
+              echo "🚫 Tasks with >3 failures (should be reviewed):"
+              jq -r '.tasks[] | select(.failedAttempts > 3) | "  - \(.id): \(.failedAttempts) attempts"' "$FAILED_TASKS_FILE"
+            fi
+          fi
+          
+          # Commit failed tasks file
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+          git pull origin master || echo "Pull failed, continuing..."
+          git add "$FAILED_TASKS_FILE"
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update failed tasks tracking"
+            git push origin master || echo "⚠️ Failed to push failed tasks tracking"
+          fi
 
       - name: Send Discord notification
         if: steps.assign.outputs.tasks != '[]' && steps.assign.outputs.tasks != '' && env.DISCORD_WEBHOOK_URL != ''
