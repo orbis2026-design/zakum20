@@ -2344,14 +2344,16 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement scheduled server restart with countdown warnings and data save",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:12:39Z",
-      "startedAt": "2026-02-16T08:12:47Z"
+      "startedAt": "2026-02-16T08:12:47Z",
+      "completedAt": "2026-02-16T08:14:47Z",
+      "prUrl": ""
     },
     {
       "id": "doc-009",
