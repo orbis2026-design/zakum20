@@ -689,13 +689,14 @@
       "priority": 80,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement version detection and compatibility shims for PaperSpigot 1.20-1.21.1",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T05:04:20Z"
     },
     {
       "id": "core-008",
