@@ -654,14 +654,16 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement plugin messaging channel for cross-server communication via BungeeCord/Velocity",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:02:22Z",
-      "startedAt": "2026-02-16T08:02:28Z"
+      "startedAt": "2026-02-16T08:02:28Z",
+      "completedAt": "2026-02-16T08:04:32Z",
+      "prUrl": ""
     },
     {
       "id": "core-005",
