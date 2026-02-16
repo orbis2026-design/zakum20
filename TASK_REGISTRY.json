@@ -563,13 +563,14 @@
       "priority": 100,
       "estimatedMinutes": 165,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement dynamic chest GUI framework with pagination, item builders, and click handlers",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T04:58:49Z"
     },
     {
       "id": "wave-a-010",
@@ -578,7 +579,9 @@
       "points": 10,
       "priority": 100,
       "estimatedMinutes": 150,
-      "dependencies": ["wave-a-003"],
+      "dependencies": [
+        "wave-a-003"
+      ],
       "status": "ready",
       "description": "Implement weighted drop table system with tier-based probability and condition evaluation",
       "verificationGates": [
@@ -686,7 +689,9 @@
       "points": 4,
       "priority": 80,
       "estimatedMinutes": 60,
-      "dependencies": ["core-006"],
+      "dependencies": [
+        "core-006"
+      ],
       "status": "ready",
       "description": "Implement fluent ItemStack builder with component support, NBT, and enchantments",
       "verificationGates": [
@@ -701,7 +706,9 @@
       "points": 5,
       "priority": 80,
       "estimatedMinutes": 75,
-      "dependencies": ["core-006"],
+      "dependencies": [
+        "core-006"
+      ],
       "status": "ready",
       "description": "Implement entity manipulation utilities for metadata, AI, and attribute modification",
       "verificationGates": [
@@ -716,7 +723,9 @@
       "points": 6,
       "priority": 60,
       "estimatedMinutes": 90,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement transaction boundary management with rollback support for database operations",
       "verificationGates": [
@@ -731,7 +740,9 @@
       "points": 5,
       "priority": 60,
       "estimatedMinutes": 75,
-      "dependencies": ["data-002"],
+      "dependencies": [
+        "data-002"
+      ],
       "status": "ready",
       "description": "Implement smart query result caching with invalidation hooks and TTL management",
       "verificationGates": [
@@ -746,7 +757,9 @@
       "points": 7,
       "priority": 60,
       "estimatedMinutes": 105,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement versioned schema migration system with rollback and validation",
       "verificationGates": [
@@ -761,7 +774,9 @@
       "points": 6,
       "priority": 60,
       "estimatedMinutes": 90,
-      "dependencies": ["data-002"],
+      "dependencies": [
+        "data-002"
+      ],
       "status": "ready",
       "description": "Implement write-behind caching with batched flushes and failure recovery",
       "verificationGates": [
@@ -776,7 +791,9 @@
       "points": 5,
       "priority": 60,
       "estimatedMinutes": 75,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement bulk insert/update/delete operations with batching and deadlock prevention",
       "verificationGates": [
@@ -791,7 +808,9 @@
       "points": 4,
       "priority": 60,
       "estimatedMinutes": 60,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement connection pool metrics collection and alerting for resource exhaustion",
       "verificationGates": [
@@ -806,7 +825,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement player data persistence with async loading and atomic updates",
       "verificationGates": [
@@ -821,7 +842,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement player session lifecycle with join/quit hooks and data cleanup",
       "verificationGates": [
@@ -836,7 +859,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement player statistics system for kills, deaths, playtime, and custom metrics",
       "verificationGates": [
@@ -851,7 +876,9 @@
       "points": 9,
       "priority": 40,
       "estimatedMinutes": 135,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement achievement tracking with conditions, rewards, and progression tiers",
       "verificationGates": [
@@ -866,7 +893,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement player preference storage for UI settings, notifications, and custom flags",
       "verificationGates": [
@@ -881,7 +910,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["player-002"],
+      "dependencies": [
+        "player-002"
+      ],
       "status": "ready",
       "description": "Implement cooldown system with per-player timers and persistence across sessions",
       "verificationGates": [
@@ -896,7 +927,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement inventory snapshot system for rollback and restoration",
       "verificationGates": [
@@ -911,7 +944,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement custom experience/level system with configurable formulas and rewards",
       "verificationGates": [
@@ -926,7 +961,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["player-004"],
+      "dependencies": [
+        "player-004"
+      ],
       "status": "ready",
       "description": "Implement unlockable title system with display formatting and tab list integration",
       "verificationGates": [
@@ -941,7 +978,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["player-002"],
+      "dependencies": [
+        "player-002"
+      ],
       "status": "ready",
       "description": "Implement teleport history tracking with /back command support",
       "verificationGates": [
@@ -956,7 +995,10 @@
       "points": 10,
       "priority": 40,
       "estimatedMinutes": 150,
-      "dependencies": ["data-001", "player-001"],
+      "dependencies": [
+        "data-001",
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement economy system with balance tracking, transactions, and Vault integration",
       "verificationGates": [
@@ -972,7 +1014,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement multi-currency system with conversion rates and per-currency limits",
       "verificationGates": [
@@ -987,7 +1031,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement transaction audit log with history queries and rollback support",
       "verificationGates": [
@@ -1002,7 +1048,9 @@
       "points": 9,
       "priority": 40,
       "estimatedMinutes": 135,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement shop framework with buy/sell pricing, stock limits, and GUI integration",
       "verificationGates": [
@@ -1017,7 +1065,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement bank accounts with interest rates, shared accounts, and deposit limits",
       "verificationGates": [
@@ -1032,7 +1082,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement economy metrics tracking with money supply monitoring and sink/source analysis",
       "verificationGates": [
@@ -1047,7 +1099,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement player-to-player payment system with limits and confirmation",
       "verificationGates": [
@@ -1062,7 +1116,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement wealth leaderboards with cached rankings and periodic updates",
       "verificationGates": [
@@ -1077,7 +1133,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement world template copying for fast world creation from predefined layouts",
       "verificationGates": [
@@ -1092,7 +1150,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement per-world border configuration with dynamic resizing and damage zones",
       "verificationGates": [
@@ -1107,7 +1167,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement world-level protection rules for build, PvP, mob spawning, and explosions",
       "verificationGates": [
@@ -1122,7 +1184,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement spawn location management with spawn radius and forced respawn settings",
       "verificationGates": [
@@ -1137,7 +1201,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement custom world generator registration with void, flat, and custom terrain options",
       "verificationGates": [
@@ -1152,7 +1218,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement world time and weather locking with cycle control and instant change commands",
       "verificationGates": [
@@ -1167,7 +1235,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement world chunk preloading on startup for instant teleport availability",
       "verificationGates": [
@@ -1182,7 +1252,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement combat statistics tracking with kill/death ratios and killstreaks",
       "verificationGates": [
@@ -1197,7 +1269,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-002"],
+      "dependencies": [
+        "player-002"
+      ],
       "status": "ready",
       "description": "Implement combat tagging to prevent logout during PvP with configurable duration",
       "verificationGates": [
@@ -1227,7 +1301,9 @@
       "points": 10,
       "priority": 40,
       "estimatedMinutes": 150,
-      "dependencies": ["world-003"],
+      "dependencies": [
+        "world-003"
+      ],
       "status": "ready",
       "description": "Implement arena system with region-based combat zones, respawn points, and match states",
       "verificationGates": [
@@ -1242,7 +1318,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["player-007"],
+      "dependencies": [
+        "player-007"
+      ],
       "status": "ready",
       "description": "Implement custom death handling with keep inventory rules and grave systems",
       "verificationGates": [
@@ -1257,7 +1335,9 @@
       "points": 9,
       "priority": 40,
       "estimatedMinutes": 135,
-      "dependencies": ["player-006"],
+      "dependencies": [
+        "player-006"
+      ],
       "status": "ready",
       "description": "Implement weapon ability system with right-click triggers and cooldowns",
       "verificationGates": [
@@ -1272,7 +1352,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["combat-003"],
+      "dependencies": [
+        "combat-003"
+      ],
       "status": "ready",
       "description": "Implement critical hit mechanics with configurable chance and damage multipliers",
       "verificationGates": [
@@ -1287,7 +1369,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement friend system with requests, online status, and teleport features",
       "verificationGates": [
@@ -1302,7 +1386,9 @@
       "points": 9,
       "priority": 40,
       "estimatedMinutes": 135,
-      "dependencies": ["player-002"],
+      "dependencies": [
+        "player-002"
+      ],
       "status": "ready",
       "description": "Implement party system with invites, leader controls, and party chat channel",
       "verificationGates": [
@@ -1317,7 +1403,10 @@
       "points": 11,
       "priority": 40,
       "estimatedMinutes": 165,
-      "dependencies": ["player-001", "economy-001"],
+      "dependencies": [
+        "player-001",
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement guild creation, membership, ranks, and shared bank system",
       "verificationGates": [
@@ -1332,7 +1421,10 @@
       "points": 10,
       "priority": 40,
       "estimatedMinutes": 150,
-      "dependencies": ["social-003", "world-003"],
+      "dependencies": [
+        "social-003",
+        "world-003"
+      ],
       "status": "ready",
       "description": "Implement guild territory claiming with protection and member-only access",
       "verificationGates": [
@@ -1347,7 +1439,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["player-002"],
+      "dependencies": [
+        "player-002"
+      ],
       "status": "ready",
       "description": "Implement private messaging with reply tracking and block list",
       "verificationGates": [
@@ -1377,7 +1471,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement mail system for offline messaging and item delivery",
       "verificationGates": [
@@ -1392,7 +1488,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["social-006"],
+      "dependencies": [
+        "social-006"
+      ],
       "status": "ready",
       "description": "Implement chat formatting with permission-based colors, formats, and hover/click events",
       "verificationGates": [
@@ -1407,7 +1505,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["player-005"],
+      "dependencies": [
+        "player-005"
+      ],
       "status": "ready",
       "description": "Implement social media profile linking for Discord, Twitter, and website integration",
       "verificationGates": [
@@ -1422,7 +1522,9 @@
       "points": 9,
       "priority": 40,
       "estimatedMinutes": 135,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement kick, ban, mute, and warn commands with reason tracking",
       "verificationGates": [
@@ -1437,7 +1539,10 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["admin-001", "data-001"],
+      "dependencies": [
+        "admin-001",
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement punishment history tracking with appeal system and expiration",
       "verificationGates": [
@@ -1452,7 +1557,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["social-006"],
+      "dependencies": [
+        "social-006"
+      ],
       "status": "ready",
       "description": "Implement staff-only chat channel with permission-based access and cross-server support",
       "verificationGates": [
@@ -1497,7 +1604,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["player-007"],
+      "dependencies": [
+        "player-007"
+      ],
       "status": "ready",
       "description": "Implement inventory inspection, modification, and clearing commands for staff",
       "verificationGates": [
@@ -1512,7 +1621,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["player-010"],
+      "dependencies": [
+        "player-010"
+      ],
       "status": "ready",
       "description": "Implement teleport commands for staff: tp, tphere, tpall, tppos with safety checks",
       "verificationGates": [
@@ -1542,7 +1653,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["core-009"],
+      "dependencies": [
+        "core-009"
+      ],
       "status": "ready",
       "description": "Implement entity removal commands with type filtering and radius limits",
       "verificationGates": [
@@ -1557,7 +1670,9 @@
       "points": 7,
       "priority": 60,
       "estimatedMinutes": 105,
-      "dependencies": ["monitoring-001"],
+      "dependencies": [
+        "monitoring-001"
+      ],
       "status": "ready",
       "description": "Implement performance profiling tools for TPS monitoring and plugin timing analysis",
       "verificationGates": [
@@ -1608,7 +1723,9 @@
       "points": 4,
       "priority": 20,
       "estimatedMinutes": 60,
-      "dependencies": ["data-005"],
+      "dependencies": [
+        "data-005"
+      ],
       "status": "ready",
       "description": "Document database schema, relationships, and migration procedures",
       "verificationGates": []
@@ -1620,7 +1737,9 @@
       "points": 3,
       "priority": 20,
       "estimatedMinutes": 45,
-      "dependencies": ["core-002"],
+      "dependencies": [
+        "core-002"
+      ],
       "status": "ready",
       "description": "Document event system with priority handling and custom event creation",
       "verificationGates": []
@@ -1644,7 +1763,9 @@
       "points": 7,
       "priority": 60,
       "estimatedMinutes": 105,
-      "dependencies": ["ops-001"],
+      "dependencies": [
+        "ops-001"
+      ],
       "status": "ready",
       "description": "Implement automated load testing framework with bot players and stress scenarios",
       "verificationGates": [
@@ -1659,7 +1780,9 @@
       "points": 6,
       "priority": 80,
       "estimatedMinutes": 90,
-      "dependencies": ["test-002"],
+      "dependencies": [
+        "test-002"
+      ],
       "status": "ready",
       "description": "Create regression test suite for critical functionality and bug prevention",
       "verificationGates": [
@@ -1703,7 +1826,9 @@
       "points": 6,
       "priority": 60,
       "estimatedMinutes": 90,
-      "dependencies": ["perf-005"],
+      "dependencies": [
+        "perf-005"
+      ],
       "status": "ready",
       "description": "Implement comprehensive rate limiting for commands, packets, and API calls",
       "verificationGates": [
@@ -1733,7 +1858,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement rank system with permissions, prefixes, and LuckPerms integration",
       "verificationGates": [
@@ -1748,7 +1875,9 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001"],
+      "dependencies": [
+        "player-001"
+      ],
       "status": "ready",
       "description": "Implement cosmetic items system with particles, pets, and trails",
       "verificationGates": [
@@ -1763,7 +1892,9 @@
       "points": 10,
       "priority": 40,
       "estimatedMinutes": 150,
-      "dependencies": ["player-004"],
+      "dependencies": [
+        "player-004"
+      ],
       "status": "ready",
       "description": "Implement quest system with objectives, rewards, and progression tracking",
       "verificationGates": [
@@ -1778,7 +1909,10 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["player-001", "economy-001"],
+      "dependencies": [
+        "player-001",
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement daily login rewards with streak bonuses and calendar GUI",
       "verificationGates": [
@@ -1793,7 +1927,10 @@
       "points": 12,
       "priority": 40,
       "estimatedMinutes": 180,
-      "dependencies": ["economy-001", "wave-a-009"],
+      "dependencies": [
+        "economy-001",
+        "wave-a-009"
+      ],
       "status": "ready",
       "description": "Implement auction house with bidding, buyout, expiration, and GUI interface",
       "verificationGates": [
@@ -1808,7 +1945,9 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement player-to-player trading with GUI confirmation and scam prevention",
       "verificationGates": [
@@ -1823,7 +1962,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["world-005"],
+      "dependencies": [
+        "world-005"
+      ],
       "status": "ready",
       "description": "Implement void world generator with optional spawn platform",
       "verificationGates": [
@@ -1838,7 +1979,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["combat-003"],
+      "dependencies": [
+        "combat-003"
+      ],
       "status": "ready",
       "description": "Implement floating damage indicators with color coding and crit animations",
       "verificationGates": [
@@ -1853,7 +1996,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["combat-003"],
+      "dependencies": [
+        "combat-003"
+      ],
       "status": "ready",
       "description": "Implement customizable knockback values and vertical/horizontal ratios",
       "verificationGates": [
@@ -1868,7 +2013,10 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001", "admin-001"],
+      "dependencies": [
+        "player-001",
+        "admin-001"
+      ],
       "status": "ready",
       "description": "Implement player report system with categorization and staff notification",
       "verificationGates": [
@@ -1883,7 +2031,9 @@
       "points": 5,
       "priority": 40,
       "estimatedMinutes": 75,
-      "dependencies": ["social-005"],
+      "dependencies": [
+        "social-005"
+      ],
       "status": "ready",
       "description": "Implement player ignore list to block messages and interactions",
       "verificationGates": [
@@ -1928,7 +2078,9 @@
       "points": 5,
       "priority": 60,
       "estimatedMinutes": 75,
-      "dependencies": ["monitoring-001"],
+      "dependencies": [
+        "monitoring-001"
+      ],
       "status": "ready",
       "description": "Implement alert system for critical issues with Discord webhook integration",
       "verificationGates": [
@@ -1974,7 +2126,9 @@
       "points": 8,
       "priority": 100,
       "estimatedMinutes": 120,
-      "dependencies": ["wave-a-002"],
+      "dependencies": [
+        "wave-a-002"
+      ],
       "status": "ready",
       "description": "Implement hologram line update batching with change detection and minimal packet sending",
       "verificationGates": [
@@ -1989,7 +2143,9 @@
       "points": 5,
       "priority": 60,
       "estimatedMinutes": 75,
-      "dependencies": ["data-001"],
+      "dependencies": [
+        "data-001"
+      ],
       "status": "ready",
       "description": "Implement connection leak detection with stack trace logging and automatic recovery",
       "verificationGates": [
@@ -2019,7 +2175,10 @@
       "points": 7,
       "priority": 40,
       "estimatedMinutes": 105,
-      "dependencies": ["player-001", "data-005"],
+      "dependencies": [
+        "player-001",
+        "data-005"
+      ],
       "status": "ready",
       "description": "Implement player data migration utility for importing from other plugins",
       "verificationGates": [
@@ -2034,7 +2193,9 @@
       "points": 4,
       "priority": 40,
       "estimatedMinutes": 60,
-      "dependencies": ["economy-001"],
+      "dependencies": [
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement economy data export to CSV for analysis and backup",
       "verificationGates": [
@@ -2049,7 +2210,9 @@
       "points": 6,
       "priority": 40,
       "estimatedMinutes": 90,
-      "dependencies": ["wave-a-001"],
+      "dependencies": [
+        "wave-a-001"
+      ],
       "status": "ready",
       "description": "Implement scheduled world reset with player evacuation and template restoration",
       "verificationGates": [
@@ -2064,7 +2227,9 @@
       "points": 11,
       "priority": 40,
       "estimatedMinutes": 165,
-      "dependencies": ["core-008"],
+      "dependencies": [
+        "core-008"
+      ],
       "status": "ready",
       "description": "Implement custom enchantment system with registration, levels, and effect application",
       "verificationGates": [
@@ -2079,7 +2244,10 @@
       "points": 8,
       "priority": 40,
       "estimatedMinutes": 120,
-      "dependencies": ["player-001", "economy-001"],
+      "dependencies": [
+        "player-001",
+        "economy-001"
+      ],
       "status": "ready",
       "description": "Implement Votifier integration with reward distribution and streak tracking",
       "verificationGates": [
@@ -2121,7 +2289,9 @@
       "points": 5,
       "priority": 20,
       "estimatedMinutes": 75,
-      "dependencies": ["admin-010"],
+      "dependencies": [
+        "admin-010"
+      ],
       "status": "ready",
       "description": "Create performance tuning guide with optimization recommendations",
       "verificationGates": []
