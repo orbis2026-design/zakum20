@@ -43,6 +43,23 @@ jobs:
           # Change cache-disabled: true to cache-disabled: false
           cache-disabled: true  # Temporarily disabled due to GitHub cache service outage
 
+      - name: Validate API keys
+        id: api_keys
+        run: |
+          echo "🔐 Validating API key availability..."
+          
+          if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "✅ OPENAI_API_KEY is available"
+          else
+            echo "⚠️ OPENAI_API_KEY is not configured"
+          fi
+          
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            echo "✅ ANTHROPIC_API_KEY is available"
+          else
+            echo "⚠️ ANTHROPIC_API_KEY is not configured"
+          fi
+
       - name: Build artifacts
         run: |
           echo "🔨 Building artifacts for soak testing..."

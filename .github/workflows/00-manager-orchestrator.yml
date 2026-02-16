@@ -515,3 +515,51 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "$TASKS" | jq -r '.[] | "- **\(.id)** (\(.points) pts): \(.name)"' >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Check for more ready tasks (seamless looping)
+        id: check_next
+        if: steps.budget.outputs.exhausted != 'true'
+        run: |
+          REGISTRY="TASK_REGISTRY.json"
+          
+          # Pull latest changes to ensure we have the most recent task status
+          git pull origin master --no-edit || echo "Pull failed, using local state"
+          
+          # Count ready tasks with no dependencies
+          READY_COUNT=$(jq '[.tasks[] | select(.status == "ready" and (.dependencies | length == 0))] | length' "$REGISTRY")
+          
+          echo "📊 Ready tasks available: $READY_COUNT"
+          echo "ready_count=$READY_COUNT" >> $GITHUB_OUTPUT
+          
+          # Check if budget allows for more tasks
+          REMAINING=${{ steps.budget.outputs.remaining }}
+          if (( $(echo "$REMAINING > 0" | bc -l) )) && [ "$READY_COUNT" -gt 0 ]; then
+            echo "✅ More tasks available and budget allows - will trigger next cycle"
+            echo "trigger_next=true" >> $GITHUB_OUTPUT
+          else
+            if [ "$READY_COUNT" -eq 0 ]; then
+              echo "🎉 All tasks completed! No more ready tasks."
+              echo "💫 System will restart from highest priority when new tasks become ready"
+            else
+              echo "💰 Budget exhausted - waiting for next budget cycle"
+            fi
+            echo "trigger_next=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger next cycle (24/7 continuous operation)
+        if: steps.check_next.outputs.trigger_next == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "🔄 Triggering next orchestrator cycle for continuous operation..."
+          
+          # Wait a bit before triggering next cycle to avoid rate limits
+          sleep 30
+          
+          # Trigger the manager orchestrator again
+          if gh workflow run 00-manager-orchestrator.yml; then
+            echo "✅ Successfully triggered next cycle"
+            echo "🔁 24/7 continuous loop active"
+          else
+            echo "⚠️ Failed to trigger next cycle - will resume on next scheduled run"
+          fi
