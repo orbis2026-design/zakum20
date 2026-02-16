@@ -2337,12 +2337,13 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement scheduled server restart with countdown warnings and data save",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:12:39Z"
     },
     {
       "id": "doc-009",
