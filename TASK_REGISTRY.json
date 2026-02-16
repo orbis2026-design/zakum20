@@ -1500,14 +1500,16 @@
       "priority": 40,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement multi-channel chat with global, local, and custom channels",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:09:16Z",
-      "startedAt": "2026-02-16T08:09:26Z"
+      "startedAt": "2026-02-16T08:09:26Z",
+      "completedAt": "2026-02-16T08:11:41Z",
+      "prUrl": ""
     },
     {
       "id": "social-007",
