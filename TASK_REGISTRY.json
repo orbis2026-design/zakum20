@@ -1622,14 +1622,16 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement spectator mode with vanish, fly, and player inventory viewing",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:11:01Z",
-      "startedAt": "2026-02-16T08:11:11Z"
+      "startedAt": "2026-02-16T08:11:11Z",
+      "completedAt": "2026-02-16T08:13:22Z",
+      "prUrl": ""
     },
     {
       "id": "admin-005",
