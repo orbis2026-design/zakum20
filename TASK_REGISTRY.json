@@ -1832,13 +1832,14 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Implement mock server framework for unit testing without full server startup",
       "verificationGates": [
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-16T08:04:03Z"
+      "assignedAt": "2026-02-16T08:04:03Z",
+      "startedAt": "2026-02-16T08:04:11Z"
     },
     {
       "id": "security-002",
