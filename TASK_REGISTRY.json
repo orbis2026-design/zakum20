@@ -2114,13 +2114,14 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement pet entity spawning with follow AI and collision-free movement",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T05:00:47Z"
     },
     {
       "id": "wave-a-012",
