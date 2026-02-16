@@ -499,7 +499,7 @@
       "priority": 100,
       "estimatedMinutes": 135,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement packet-based scoreboard rendering with update batching and flickerless transitions",
       "verificationGates": [
         "verifyPlatformInfrastructure",
@@ -507,7 +507,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T05:01:38Z",
-      "startedAt": "2026-02-16T05:01:45Z"
+      "startedAt": "2026-02-16T05:01:45Z",
+      "completedAt": "2026-02-16T05:04:07Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-006",
