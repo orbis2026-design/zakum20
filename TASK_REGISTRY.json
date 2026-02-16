@@ -519,7 +519,7 @@
       "priority": 100,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement BossBar API with color/style transitions and multi-bar support",
       "verificationGates": [
         "verifyPlatformInfrastructure",
@@ -527,7 +527,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T05:03:24Z",
-      "startedAt": "2026-02-16T05:03:30Z"
+      "startedAt": "2026-02-16T05:03:30Z",
+      "completedAt": "2026-02-16T05:05:38Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-007",
