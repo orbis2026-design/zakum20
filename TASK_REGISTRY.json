@@ -1773,9 +1773,10 @@
       "priority": 20,
       "estimatedMinutes": 45,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Provide configuration examples for common use cases and scenarios",
-      "verificationGates": []
+      "verificationGates": [],
+      "assignedAt": "2026-02-16T08:17:59Z"
     },
     {
       "id": "doc-006",
