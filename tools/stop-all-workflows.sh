@@ -103,6 +103,11 @@ fi
 
 # Get all running and queued workflows
 echo -e "${BLUE}Fetching running and queued workflows...${NC}"
+
+# Note: This fetches up to 100 workflows per status. For most repositories,
+# this should be sufficient. If you have more than 100 concurrent workflows,
+# consider implementing pagination or running this script more frequently.
+
 RUNNING_WORKFLOWS=$(curl -s \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -167,17 +172,22 @@ while read -r workflow_id; do
     
     echo -n "Stopping [$workflow_id] $workflow_name... "
     
-    if curl -s -o /dev/null -w "%{http_code}" \
+    # GitHub API returns:
+    # - 202 (Accepted) on successful cancellation
+    # - 409 (Conflict) if workflow is already cancelled/completed
+    # Both are considered success cases
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST \
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer $GITHUB_TOKEN" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
-        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$workflow_id/cancel" \
-        | grep -q "^20"; then
+        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$workflow_id/cancel")
+    
+    if echo "$HTTP_CODE" | grep -qE "^(202|409)"; then
         echo -e "${GREEN}✓${NC}"
         ((STOPPED_COUNT++))
     else
-        echo -e "${RED}✗${NC}"
+        echo -e "${RED}✗ (HTTP $HTTP_CODE)${NC}"
         ((FAILED_COUNT++))
     fi
 done < <(echo "$WORKFLOWS_TO_STOP" | jq -r '.[].id')
