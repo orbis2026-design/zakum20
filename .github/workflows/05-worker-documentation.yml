@@ -52,9 +52,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          # TODO: Re-enable cache when GitHub cache service is stable
-          # Change cache-disabled: true to cache-disabled: false
-          cache-disabled: true  # Temporarily disabled due to GitHub cache service outage
+          # Cache enabled for improved build performance
+          cache-disabled: false
 
       - name: Validate API keys
         id: api_keys
