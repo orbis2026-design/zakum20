@@ -1694,14 +1694,16 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement broadcast and announcement system with formatting and scheduled messages",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:11:51Z",
-      "startedAt": "2026-02-16T08:11:58Z"
+      "startedAt": "2026-02-16T08:11:58Z",
+      "completedAt": "2026-02-16T08:14:00Z",
+      "prUrl": ""
     },
     {
       "id": "admin-009",
