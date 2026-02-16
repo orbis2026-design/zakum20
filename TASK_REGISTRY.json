@@ -1855,14 +1855,16 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement input sanitization for commands, chat, and user-provided data",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:04:53Z",
-      "startedAt": "2026-02-16T08:05:02Z"
+      "startedAt": "2026-02-16T08:05:02Z",
+      "completedAt": "2026-02-16T08:07:05Z",
+      "prUrl": ""
     },
     {
       "id": "security-003",
