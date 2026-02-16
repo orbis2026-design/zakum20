@@ -1,20 +1,20 @@
 {
-  "generated": "2026-02-16T04:58:08Z",
+  "generated": "2026-02-16T05:40:43Z",
   "tasks": {
     "total": 140,
-    "ready": 118,
+    "ready": 109,
     "assigned": 16,
-    "in_progress": 1,
+    "in_progress": 4,
     "testing": 0,
     "completed": 0,
-    "blocked": 5,
+    "blocked": 11,
     "completion_percentage": 0,
     "points_total": 882,
     "points_completed": 0
   },
   "budget": {
     "total_spent": 0,
-    "days_tracked": 0,
+    "days_tracked": 1,
     "average_daily": 0,
     "daily_limit": 25.0
   },
@@ -22,7 +22,7 @@
     "module_count": 23,
     "java_files": 291,
     "lines_of_code": 34257,
-    "commits_30d": 141
+    "commits_30d": 179
   },
   "workflows": {
     "recent_runs": 30
