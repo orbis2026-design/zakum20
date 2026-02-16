@@ -1759,9 +1759,10 @@
       "priority": 20,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Create comprehensive command reference with syntax, permissions, and examples",
-      "verificationGates": []
+      "verificationGates": [],
+      "assignedAt": "2026-02-16T08:14:27Z"
     },
     {
       "id": "doc-005",
