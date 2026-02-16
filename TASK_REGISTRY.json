@@ -692,14 +692,16 @@
       "priority": 80,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement NBT read/write utilities for ItemStack and Entity manipulation via reflection",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:03:13Z",
-      "startedAt": "2026-02-16T08:03:20Z"
+      "startedAt": "2026-02-16T08:03:20Z",
+      "completedAt": "2026-02-16T08:05:17Z",
+      "prUrl": ""
     },
     {
       "id": "core-007",
