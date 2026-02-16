@@ -1498,12 +1498,13 @@
       "priority": 40,
       "estimatedMinutes": 120,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement multi-channel chat with global, local, and custom channels",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:09:16Z"
     },
     {
       "id": "social-007",
