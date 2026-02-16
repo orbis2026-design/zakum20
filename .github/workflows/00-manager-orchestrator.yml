@@ -2,8 +2,8 @@ name: "00 - Manager Orchestrator"
 
 on:
   schedule:
-    # Run every hour
-    - cron: '0 * * * *'
+    # Run every 10 minutes for aggressive 24/7 development
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       force_assign:
@@ -16,9 +16,42 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  issues: write
 
 jobs:
+  setup-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Required Labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "🏷️ Ensuring GitHub labels exist..."
+          
+          # Define all labels as: name:color:description
+          LABELS=(
+            "automation:0366d6:Automated by workflow system"
+            "task-waveA:8e44ad:Wave A priority tasks"
+            "task-corePlatform:3498db:Core platform infrastructure"
+            "task-dataHardening:e67e22:Data hardening and reliability"
+            "task-features:2ecc71:Feature development"
+            "task-documentation:95a5a6:Documentation tasks"
+          )
+          
+          for LABEL_DEF in "${LABELS[@]}"; do
+            IFS=':' read -r NAME COLOR DESCRIPTION <<< "$LABEL_DEF"
+            
+            if ! gh label list --repo "$REPO" | grep -q "^${NAME}[[:space:]]"; then
+              echo "Creating label: $NAME"
+              gh label create "$NAME" --repo "$REPO" --color "$COLOR" --description "$DESCRIPTION" 2>/dev/null || echo "Label $NAME already exists"
+            fi
+          done
+          
+          echo "✅ Label setup complete"
+
   orchestrate:
+    needs: setup-labels
     runs-on: ubuntu-latest
     outputs:
       tasks_assigned: ${{ steps.assign.outputs.tasks }}

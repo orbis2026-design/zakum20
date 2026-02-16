@@ -1,0 +1,124 @@
+name: "10 - Setup GitHub Labels"
+
+# This workflow creates all required GitHub labels for the automation system
+# Run manually or automatically before other workflows that need labels
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Create Required Labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "🏷️ Creating GitHub labels for automation system..."
+          echo "Repository: $REPO"
+          
+          # Define all labels as: name:color:description
+          # Colors are 6-digit hex codes without the # prefix
+          LABELS=(
+            "automation:0366d6:Automated by workflow system"
+            "workflow-manager:1f6feb:Task assignment and orchestration"
+            "workflow-worker:a371f7:Task execution and implementation"
+            "task-ready:2cbe4e:Task queued and ready for dispatch"
+            "task-in-progress:fbca04:Task currently executing"
+            "task-completed:0075ca:Task successfully completed"
+            "task-failed:d73a49:Task execution failed"
+            "priority-critical:b60205:Critical priority task"
+            "priority-high:ff6b20:High priority task"
+            "priority-medium:ffd700:Medium priority task"
+            "priority-low:cccccc:Low priority task"
+            "feature-development:5f60a8:Feature implementation task"
+            "documentation:0e7490:Documentation update task"
+            "bug-fix:e4405f:Bug fix task"
+            "refactor:c2185b:Code refactoring task"
+            "infrastructure:9c27b0:Infrastructure/build system task"
+            "testing:8bc34a:Testing and quality assurance"
+            "task-waveA:8e44ad:Wave A priority tasks"
+            "task-corePlatform:3498db:Core platform infrastructure"
+            "task-dataHardening:e67e22:Data hardening and reliability"
+            "task-features:2ecc71:Feature development"
+          )
+          
+          # Track statistics
+          CREATED_COUNT=0
+          UPDATED_COUNT=0
+          SKIPPED_COUNT=0
+          
+          echo ""
+          echo "📋 Processing ${#LABELS[@]} labels..."
+          echo ""
+          
+          for LABEL_DEF in "${LABELS[@]}"; do
+            # Parse label definition
+            IFS=':' read -r NAME COLOR DESCRIPTION <<< "$LABEL_DEF"
+            
+            echo "Processing label: $NAME"
+            
+            # Check if label exists using gh CLI
+            if gh label list --repo "$REPO" --limit 1000 | grep -q "^${NAME}[[:space:]]"; then
+              echo "  ℹ️  Label already exists, checking if update needed..."
+              
+              # Get current color and description
+              CURRENT_INFO=$(gh label list --repo "$REPO" --limit 1000 | grep "^${NAME}[[:space:]]" || echo "")
+              
+              # Try to update the label (will only update if different)
+              if gh label edit "$NAME" --repo "$REPO" --color "$COLOR" --description "$DESCRIPTION" 2>/dev/null; then
+                echo "  ✅ Label updated: $NAME"
+                UPDATED_COUNT=$((UPDATED_COUNT + 1))
+              else
+                echo "  ✓  Label unchanged: $NAME"
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+              fi
+            else
+              # Create new label
+              if gh label create "$NAME" --repo "$REPO" --color "$COLOR" --description "$DESCRIPTION"; then
+                echo "  ✨ Created new label: $NAME"
+                CREATED_COUNT=$((CREATED_COUNT + 1))
+              else
+                echo "  ⚠️  Failed to create label: $NAME"
+              fi
+            fi
+            
+            echo ""
+          done
+          
+          # Print summary
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Label Setup Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  ✨ Created:  $CREATED_COUNT"
+          echo "  ✅ Updated:  $UPDATED_COUNT"
+          echo "  ✓  Skipped:  $SKIPPED_COUNT"
+          echo "  📋 Total:    ${#LABELS[@]}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "✅ Label setup complete!"
+          
+          # List all automation-related labels
+          echo ""
+          echo "📋 Current automation labels:"
+          gh label list --repo "$REPO" --limit 1000 | grep -E "automation|task-|priority-|workflow-|feature-|documentation|bug-fix|refactor|infrastructure|testing" || echo "(none found)"
+
+      - name: Summary
+        run: |
+          echo "## 🏷️ Label Setup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All required GitHub labels for the automation system have been created/updated." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Label Categories" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Labels**: automation, workflow-manager, workflow-worker" >> $GITHUB_STEP_SUMMARY
+          echo "- **Task Status**: task-ready, task-in-progress, task-completed, task-failed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Priority Levels**: priority-critical, priority-high, priority-medium, priority-low" >> $GITHUB_STEP_SUMMARY
+          echo "- **Task Categories**: task-waveA, task-corePlatform, task-dataHardening, task-features" >> $GITHUB_STEP_SUMMARY
+          echo "- **Work Types**: feature-development, documentation, bug-fix, refactor, infrastructure, testing" >> $GITHUB_STEP_SUMMARY
