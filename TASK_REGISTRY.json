@@ -1326,14 +1326,16 @@
       "priority": 40,
       "estimatedMinutes": 135,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement damage calculation modifiers for weapons, armor, and status effects",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:08:24Z",
-      "startedAt": "2026-02-16T08:08:34Z"
+      "startedAt": "2026-02-16T08:08:34Z",
+      "completedAt": "2026-02-16T08:10:45Z",
+      "prUrl": ""
     },
     {
       "id": "combat-004",
