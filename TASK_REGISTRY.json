@@ -1620,12 +1620,13 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Implement spectator mode with vanish, fly, and player inventory viewing",
       "verificationGates": [
         "build",
         "test"
-      ]
+      ],
+      "assignedAt": "2026-02-16T08:11:01Z"
     },
     {
       "id": "admin-005",
