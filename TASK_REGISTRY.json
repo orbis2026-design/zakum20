@@ -531,14 +531,15 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Implement per-player home location storage with limit enforcement and teleport safety checks",
       "verificationGates": [
         "verifyPlatformInfrastructure",
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-16T04:59:42Z"
+      "assignedAt": "2026-02-16T04:59:42Z",
+      "startedAt": "2026-02-16T04:59:52Z"
     },
     {
       "id": "wave-a-008",
