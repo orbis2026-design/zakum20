@@ -2367,9 +2367,10 @@
       "priority": 20,
       "estimatedMinutes": 60,
       "dependencies": [],
-      "status": "ready",
+      "status": "assigned",
       "description": "Create troubleshooting guide for common issues and solutions",
-      "verificationGates": []
+      "verificationGates": [],
+      "assignedAt": "2026-02-16T08:17:06Z"
     },
     {
       "id": "doc-010",
