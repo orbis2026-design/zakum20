@@ -55,6 +55,30 @@ jobs:
           # Change cache-disabled: true to cache-disabled: false
           cache-disabled: true  # Temporarily disabled due to GitHub cache service outage
 
+      - name: Validate API keys
+        id: api_keys
+        run: |
+          echo "🔐 Validating API key availability..."
+          
+          # Check API keys (without revealing them)
+          if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "✅ OPENAI_API_KEY is available"
+            echo "openai_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ OPENAI_API_KEY is not configured"
+            echo "openai_available=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            echo "✅ ANTHROPIC_API_KEY is available"
+            echo "anthropic_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ ANTHROPIC_API_KEY is not configured"
+            echo "anthropic_available=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📊 API Key Status logged (values are accessible but not displayed for security)"
+
       - name: Update task status to in-progress
         run: |
           REGISTRY="TASK_REGISTRY.json"
