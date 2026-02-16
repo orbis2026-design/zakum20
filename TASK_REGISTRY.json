@@ -616,7 +616,7 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement event priority orchestration for cross-module event handling with ordered execution",
       "verificationGates": [
         "verifyApiBoundaries",
@@ -624,7 +624,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T07:59:50Z",
-      "startedAt": "2026-02-16T08:00:00Z"
+      "startedAt": "2026-02-16T08:00:00Z",
+      "completedAt": "2026-02-16T08:02:23Z",
+      "prUrl": ""
     },
     {
       "id": "core-003",
