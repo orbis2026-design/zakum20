@@ -671,14 +671,16 @@
       "priority": 80,
       "estimatedMinutes": 90,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement scheduler abstraction with region-aware task execution and automatic cleanup",
       "verificationGates": [
         "build",
         "test"
       ],
       "assignedAt": "2026-02-16T08:00:42Z",
-      "startedAt": "2026-02-16T08:00:52Z"
+      "startedAt": "2026-02-16T08:00:52Z",
+      "completedAt": "2026-02-16T08:03:01Z",
+      "prUrl": ""
     },
     {
       "id": "core-006",
