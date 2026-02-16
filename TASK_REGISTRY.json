@@ -565,7 +565,7 @@
       "priority": 100,
       "estimatedMinutes": 165,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement dynamic chest GUI framework with pagination, item builders, and click handlers",
       "verificationGates": [
         "verifyPlatformInfrastructure",
@@ -573,7 +573,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T04:58:49Z",
-      "startedAt": "2026-02-16T04:58:57Z"
+      "startedAt": "2026-02-16T04:58:57Z",
+      "completedAt": "2026-02-16T05:01:08Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-010",
