@@ -2122,7 +2122,7 @@
       "priority": 100,
       "estimatedMinutes": 150,
       "dependencies": [],
-      "status": "in-progress",
+      "status": "blocked",
       "description": "Implement pet entity spawning with follow AI and collision-free movement",
       "verificationGates": [
         "verifyPlatformInfrastructure",
@@ -2130,7 +2130,9 @@
         "test"
       ],
       "assignedAt": "2026-02-16T05:00:47Z",
-      "startedAt": "2026-02-16T05:00:53Z"
+      "startedAt": "2026-02-16T05:00:53Z",
+      "completedAt": "2026-02-16T05:02:55Z",
+      "prUrl": ""
     },
     {
       "id": "wave-a-012",
