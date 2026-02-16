@@ -1690,13 +1690,14 @@
       "priority": 40,
       "estimatedMinutes": 75,
       "dependencies": [],
-      "status": "assigned",
+      "status": "in-progress",
       "description": "Implement broadcast and announcement system with formatting and scheduled messages",
       "verificationGates": [
         "build",
         "test"
       ],
-      "assignedAt": "2026-02-16T08:11:51Z"
+      "assignedAt": "2026-02-16T08:11:51Z",
+      "startedAt": "2026-02-16T08:11:58Z"
     },
     {
       "id": "admin-009",
