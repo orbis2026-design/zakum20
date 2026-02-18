@@ -3,6 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
   `java-library`
   alias(libs.plugins.shadow)
+  jacoco
 }
 
 dependencies {
@@ -36,6 +37,13 @@ dependencies {
   implementation(libs.slf4j.jdk14)
 
   compileOnly(libs.annotations)
+  
+  // Test dependencies
+  testImplementation(libs.junit.jupiter.api)
+  testRuntimeOnly(libs.junit.jupiter.engine)
+  testRuntimeOnly(libs.junit.platform.launcher)
+  testImplementation(libs.paper.api)
+  testImplementation(project(":zakum-api"))
 }
 
 tasks.processResources {
@@ -81,4 +89,29 @@ tasks.named<ShadowJar>("shadowJar") {
 
 tasks.build {
   dependsOn(tasks.named("shadowJar"))
+}
+
+// JaCoCo test coverage configuration
+tasks.jacocoTestReport {
+  dependsOn(tasks.test)
+  
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+    html.outputLocation.set(file("${buildDir}/reports/jacoco/html"))
+  }
+}
+
+tasks.jacocoTestCoverageVerification {
+  violationRules {
+    rule {
+      limit {
+        minimum = "0.60".toBigDecimal() // 60% coverage target
+      }
+    }
+  }
+}
+
+tasks.test {
+  finalizedBy(tasks.jacocoTestReport)
 }

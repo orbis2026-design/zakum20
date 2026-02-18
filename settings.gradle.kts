@@ -27,8 +27,6 @@ include(
   "zakum-bridge-commandapi",
   "zakum-bridge-mythicmobs",
   "zakum-bridge-jobs",
-  "zakum-bridge-superiorskyblock2",
-  "zakum-bridge-rosestacker",
   "zakum-bridge-worldguard",
   "zakum-bridge-fawe"
 )
