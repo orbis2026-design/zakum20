@@ -20,18 +20,49 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
- * Single-ticker crate animation runner.
+ * Legacy belt-based crate animation runner.
+ * 
+ * DEPRECATED: This class has been replaced by CrateAnimatorV2 which uses
+ * a modular animation system. This legacy implementation is incompatible
+ * with the current CrateSession class.
  *
- * - one repeating task total
- * - session map keyed by opener UUID
- * - GUI updates are bounded + lightweight
+ * @deprecated Use {@link CrateAnimatorV2} instead
  */
+@Deprecated
 public final class CrateAnimator {
+
+  // Legacy session class with belt-based animation
+  private static final class LegacyCrateSession {
+    final UUID opener;
+    final CrateDef crate;
+    final RewardDef finalReward;
+    final CrateGuiHolder holder;
+    final Inventory inv;
+    final int steps;
+    final int ticksPerStep;
+    final ItemStack[] belt = new ItemStack[9];
+    
+    int stepIdx = 0;
+    int tickCountdown;
+    boolean inventoryClosed = false;
+
+    LegacyCrateSession(UUID opener, CrateDef crate, RewardDef finalReward,
+                      CrateGuiHolder holder, Inventory inv, int steps, int ticksPerStep) {
+      this.opener = opener;
+      this.crate = crate;
+      this.finalReward = finalReward;
+      this.holder = holder;
+      this.inv = inv;
+      this.steps = steps;
+      this.ticksPerStep = ticksPerStep;
+      this.tickCountdown = ticksPerStep;
+    }
+  }
 
   private final Plugin plugin;
   private final Random random = new Random();
 
-  private final ConcurrentHashMap<UUID, CrateSession> sessions = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<UUID, LegacyCrateSession> sessions = new ConcurrentHashMap<>();
 
   private final int steps;
   private final int ticksPerStep;
@@ -59,7 +90,7 @@ public final class CrateAnimator {
     }
 
     // End sessions safely.
-    for (CrateSession s : sessions.values()) {
+    for (LegacyCrateSession s : sessions.values()) {
       endSession(s, false);
     }
     sessions.clear();
@@ -81,7 +112,7 @@ public final class CrateAnimator {
 
     buildShell(inv);
 
-    var s = new CrateSession(id, crate, opener.getLocation().clone(), finalReward, holder, inv, steps, ticksPerStep);
+    var s = new LegacyCrateSession(id, crate, finalReward, holder, inv, steps, ticksPerStep);
 
     // seed belt with random reward icons
     for (int i = 0; i < 9; i++) {
@@ -99,14 +130,14 @@ public final class CrateAnimator {
   }
 
   public void markClosed(UUID opener) {
-    CrateSession s = sessions.get(opener);
+    LegacyCrateSession s = sessions.get(opener);
     if (s != null) s.inventoryClosed = true;
   }
 
   private void tick() {
     if (sessions.isEmpty()) return;
 
-    for (CrateSession s : sessions.values()) {
+    for (LegacyCrateSession s : sessions.values()) {
       if (--s.tickCountdown > 0) continue;
       s.tickCountdown = s.ticksPerStep;
 
@@ -128,7 +159,7 @@ public final class CrateAnimator {
     }
   }
 
-  private void endSession(CrateSession s, boolean grant) {
+  private void endSession(LegacyCrateSession s, boolean grant) {
     Player p = Bukkit.getPlayer(s.opener);
     if (p != null) {
       if (!s.inventoryClosed) p.closeInventory();
@@ -140,7 +171,7 @@ public final class CrateAnimator {
     }
   }
 
-  private void shiftBelt(CrateSession s) {
+  private void shiftBelt(LegacyCrateSession s) {
     System.arraycopy(s.belt, 1, s.belt, 0, s.belt.length - 1);
     s.belt[s.belt.length - 1] = icon(s.crate.rewards());
   }
@@ -174,4 +205,3 @@ public final class CrateAnimator {
     }
   }
 }
-

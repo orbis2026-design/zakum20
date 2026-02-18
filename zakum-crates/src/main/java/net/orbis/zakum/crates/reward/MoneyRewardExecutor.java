@@ -2,6 +2,7 @@ package net.orbis.zakum.crates.reward;
 
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
+import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.crates.model.RewardDef;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -18,10 +19,19 @@ import java.util.Objects;
 public class MoneyRewardExecutor implements RewardExecutor {
     
     private Economy economy;
+    private EconomyService economyService;
     private boolean vaultAvailable = false;
     
+    public MoneyRewardExecutor(EconomyService economyService) {
+        this.economyService = economyService;
+        this.vaultAvailable = economyService != null;
+        if (!vaultAvailable) {
+            setupEconomy();
+        }
+    }
+    
     public MoneyRewardExecutor() {
-        setupEconomy();
+        this(null);
     }
     
     @Override
@@ -29,7 +39,7 @@ public class MoneyRewardExecutor implements RewardExecutor {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(reward, "reward");
         
-        if (!vaultAvailable || economy == null) {
+        if (!vaultAvailable && economy == null) {
             player.sendMessage("§cEconomy system not available!");
             return false;
         }
@@ -42,16 +52,25 @@ public class MoneyRewardExecutor implements RewardExecutor {
             return false; // No money reward
         }
         
-        // Deposit money
-        EconomyResponse response = economy.depositPlayer(player, amount);
-        
-        if (response.transactionSuccess()) {
+        // Use EconomyService if available, otherwise use Vault directly
+        if (economyService != null) {
+            economyService.deposit(player.getUniqueId(), amount);
             player.sendMessage("§a+$" + String.format("%.2f", amount));
             return true;
-        } else {
-            player.sendMessage("§cFailed to give money: " + response.errorMessage);
-            return false;
+        } else if (economy != null) {
+            // Deposit money via Vault
+            EconomyResponse response = economy.depositPlayer(player, amount);
+            
+            if (response.transactionSuccess()) {
+                player.sendMessage("§a+$" + String.format("%.2f", amount));
+                return true;
+            } else {
+                player.sendMessage("§cFailed to give money: " + response.errorMessage);
+                return false;
+            }
         }
+        
+        return false;
     }
     
     @Override
@@ -61,7 +80,7 @@ public class MoneyRewardExecutor implements RewardExecutor {
     
     @Override
     public boolean canHandle(RewardDef reward) {
-        return vaultAvailable && parseMoneyAmount(reward) > 0;
+        return (economyService != null || vaultAvailable) && parseMoneyAmount(reward) > 0;
     }
     
     /**

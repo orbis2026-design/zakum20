@@ -1,8 +1,10 @@
 package net.orbis.zakum.crates.reward;
 
+import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.crates.model.CrateDef;
 import net.orbis.zakum.crates.model.RewardDef;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,30 +17,64 @@ import java.util.Objects;
  */
 public class RewardSystemManager {
     
+    private final Plugin plugin;
     private final CompositeRewardExecutor executor;
     private final RewardProbabilityEngine probabilityEngine;
     private final RewardHistoryTracker historyTracker;
     private final RewardNotifier notifier;
     
-    public RewardSystemManager() {
+    public RewardSystemManager(Plugin plugin, EconomyService economyService) {
+        this.plugin = plugin;
         this.executor = new CompositeRewardExecutor();
         this.probabilityEngine = new RewardProbabilityEngine();
         this.historyTracker = new RewardHistoryTracker();
         this.notifier = new RewardNotifier();
         
         // Register all executor types
-        registerDefaultExecutors();
+        registerDefaultExecutors(economyService);
+    }
+    
+    public RewardSystemManager() {
+        this(null, null);
     }
     
     /**
      * Register default reward executors.
      */
-    private void registerDefaultExecutors() {
+    private void registerDefaultExecutors(EconomyService economyService) {
         executor.register(new ItemRewardExecutor());
         executor.register(new CommandRewardExecutor());
         executor.register(new EffectRewardExecutor());
-        executor.register(new MoneyRewardExecutor());
+        if (economyService != null) {
+            executor.register(new MoneyRewardExecutor(economyService));
+        }
         executor.register(new PermissionRewardExecutor());
+    }
+    
+    /**
+     * Execute reward for a player (used by animator).
+     * This method is called when animation completes.
+     */
+    public void executeReward(Player player, RewardDef reward) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(reward, "reward");
+        
+        // Execute reward
+        boolean success = executor.execute(player, reward);
+        
+        // Record history
+        RewardHistory history = success 
+            ? RewardHistory.success(player.getUniqueId(), player.getName(), 
+                                   "unknown", "Unknown Crate", reward)
+            : RewardHistory.failure(player.getUniqueId(), player.getName(), 
+                                   "unknown", "Unknown Crate", reward);
+        
+        historyTracker.record(history);
+        
+        // Notify player
+        if (success) {
+            notifier.notifyReward(player, reward, RewardNotifier.NotificationStyle.FULL);
+        }
     }
     
     /**

@@ -1,7 +1,7 @@
 package net.orbis.zakum.crates;
 
 import net.orbis.zakum.api.item.ZakumItem;
-import net.orbis.zakum.crates.anim.CrateAnimator;
+import net.orbis.zakum.crates.anim.CrateAnimatorV2;
 import net.orbis.zakum.crates.model.CrateDef;
 import net.orbis.zakum.crates.util.ItemBuilder;
 import org.bukkit.Sound;
@@ -10,9 +10,9 @@ import org.bukkit.inventory.ItemStack;
 
 public final class CrateService {
 
-  private final CrateAnimator animator;
+  private final CrateAnimatorV2 animator;
 
-  public CrateService(CrateAnimator animator) {
+  public CrateService(CrateAnimatorV2 animator) {
     this.animator = animator;
   }
 
@@ -30,7 +30,7 @@ public final class CrateService {
 
     broadcastOpen(opener, crate);
 
-    boolean ok = animator.begin(opener, crate);
+    boolean ok = animator.begin(opener, crate, crate.animationType());
     if (!ok) {
       opener.getInventory().addItem(consumed);
       opener.sendMessage(ItemBuilder.color("&cCould not start crate animation."));

@@ -12,6 +12,13 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Legacy reward executor - replaced by RewardSystemManager.
+ * Kept for backward compatibility but not actively used.
+ * 
+ * @deprecated Use {@link net.orbis.zakum.crates.reward.RewardSystemManager} instead
+ */
+@Deprecated
 public final class CrateRewardExecutor {
 
   private final EconomyService economy;
@@ -21,31 +28,29 @@ public final class CrateRewardExecutor {
   }
 
   public void execute(Player p, RewardDef reward) {
-    if (reward.economyAmount() > 0.0 && economy != null && economy.available()) {
-      economy.deposit(p.getUniqueId(), reward.economyAmount());
-    }
-
+    // Messages
     for (String msg : reward.messages()) {
       if (!msg.isBlank()) {
-        p.sendMessage(ItemBuilder.color(msg).replace("{amount}", String.valueOf(reward.economyAmount())));
+        p.sendMessage(ItemBuilder.color(msg));
       }
     }
 
-    executeAceCommands(p, reward.commands(), reward.economyAmount(), true);
-    executeAceCommands(p, reward.script(), reward.economyAmount(), false);
+    // Commands
+    executeCommands(p, reward.commands());
 
+    // Items
     giveItems(p, reward.items());
   }
 
-  private void executeAceCommands(Player player, List<String> lines, double amount, boolean commandMode) {
-    if (lines == null || lines.isEmpty()) return;
-    List<String> script = lines.stream()
+  private void executeCommands(Player player, List<String> commands) {
+    if (commands == null || commands.isEmpty()) return;
+    
+    List<String> script = commands.stream()
       .filter(cmd -> cmd != null && !cmd.isBlank())
       .map(cmd -> cmd
         .replace("{player}", player.getName())
-        .replace("{uuid}", player.getUniqueId().toString())
-        .replace("{amount}", String.valueOf(amount)))
-      .map(cmd -> commandMode && !cmd.startsWith("[") ? "[COMMAND] " + cmd : cmd)
+        .replace("{uuid}", player.getUniqueId().toString()))
+      .map(cmd -> cmd.startsWith("[") ? cmd : "[COMMAND] " + cmd)
       .collect(Collectors.toList());
 
     if (script.isEmpty()) return;
@@ -53,6 +58,7 @@ public final class CrateRewardExecutor {
   }
 
   private void giveItems(Player p, List<ItemStack> items) {
+    if (items == null) return;
     for (ItemStack it : items) {
       if (it == null || it.getType().isAir()) continue;
       var leftover = p.getInventory().addItem(it);

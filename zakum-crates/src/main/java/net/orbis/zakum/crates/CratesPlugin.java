@@ -2,7 +2,7 @@ package net.orbis.zakum.crates;
 
 import net.orbis.zakum.api.ZakumApi;
 import net.orbis.zakum.api.db.DatabaseState;
-import net.orbis.zakum.crates.anim.CrateAnimator;
+import net.orbis.zakum.crates.anim.CrateAnimatorV2;
 import net.orbis.zakum.crates.command.CratesCommand;
 import net.orbis.zakum.crates.db.CrateBlockStore;
 import net.orbis.zakum.crates.db.CratesSchema;
@@ -10,6 +10,7 @@ import net.orbis.zakum.crates.listener.CrateBlockListener;
 import net.orbis.zakum.crates.listener.CrateGuiListener;
 import net.orbis.zakum.api.vault.EconomyService;
 import net.orbis.zakum.crates.listener.CrateInteractListener;
+import net.orbis.zakum.crates.reward.RewardSystemManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -20,8 +21,9 @@ public final class CratesPlugin extends JavaPlugin {
   private CrateRegistry registry;
   private CrateBlockStore store;
 
-  private CrateAnimator animator;
+  private CrateAnimatorV2 animator;
   private CrateService service;
+  private RewardSystemManager rewardManager;
 
   @Override
   public void onEnable() {
@@ -43,13 +45,12 @@ public final class CratesPlugin extends JavaPlugin {
     this.registry = new CrateRegistry(CrateLoader.load(this));
     this.store = new CrateBlockStore(zakum);
 
-    int steps = Math.max(10, getConfig().getInt("animation.steps", 30));
-    int ticksPerStep = Math.max(1, getConfig().getInt("animation.ticksPerStep", 2));
-
+    // Initialize reward system
     EconomyService eco = Bukkit.getServicesManager().load(EconomyService.class);
+    this.rewardManager = new RewardSystemManager(this, eco);
 
-    var executor = new CrateRewardExecutor(eco);
-    this.animator = new CrateAnimator(this, steps, ticksPerStep, executor::execute);
+    // Initialize new animation system
+    this.animator = new CrateAnimatorV2(this, rewardManager::executeReward);
     this.animator.start();
 
     this.service = new CrateService(animator);
@@ -72,6 +73,7 @@ public final class CratesPlugin extends JavaPlugin {
     if (animator != null) animator.shutdown();
     animator = null;
     service = null;
+    rewardManager = null;
     store = null;
     registry = null;
     zakum = null;

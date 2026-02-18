@@ -10,6 +10,9 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 
+/**
+ * Loads crate definitions from plugin configuration.
+ */
 public final class CrateLoader {
 
   private CrateLoader() {}
@@ -27,6 +30,7 @@ public final class CrateLoader {
       String name = c.getString("name", id);
       boolean publicOpen = c.getBoolean("publicOpen", false);
       int publicRadius = Math.max(0, c.getInt("publicRadius", 8));
+      String animationType = c.getString("animationType", "roulette");
 
       ItemStack key = null;
       var keySec = c.getConfigurationSection("key");
@@ -36,13 +40,13 @@ public final class CrateLoader {
       var builder = WeightedTable.<RewardDef>builder();
 
       for (Map<?, ?> raw : c.getMapList("rewards")) {
+        String rewardId = String.valueOf(raw.getOrDefault("id", "reward_" + UUID.randomUUID()));
+        String rewardName = String.valueOf(raw.getOrDefault("name", "Unknown Reward"));
         double w = doubleOf(raw.get("weight"), 1.0);
-
-        double eco = economyAmount(raw.get("economy"), raw.get("economy.amount"));
 
         List<String> msgs = listOfStrings(raw.get("messages"));
         List<String> cmds = listOfStrings(raw.get("commands"));
-        List<String> script = listOfStrings(firstNonNull(raw.get("script[]"), raw.get("script")));
+        List<String> effects = listOfStrings(raw.get("effects"));
 
         List<ItemStack> items = new ArrayList<>();
         Object itemsObj = raw.get("items");
@@ -56,7 +60,7 @@ public final class CrateLoader {
           }
         }
 
-        RewardDef r = new RewardDef(w, eco, msgs, cmds, script, items);
+        RewardDef r = new RewardDef(rewardId, rewardName, w, items, cmds, effects, msgs);
         builder.add(r, w);
       }
 
@@ -67,22 +71,10 @@ public final class CrateLoader {
         continue;
       }
 
-      out.put(id, new CrateDef(id, name, publicOpen, publicRadius, key, rewards));
+      out.put(id, new CrateDef(id, name, publicOpen, publicRadius, key, rewards, animationType));
     }
 
     return Map.copyOf(out);
-  }
-
-  private static double economyAmount(Object direct, Object nested) {
-    if (nested != null) return doubleOf(nested, 0.0);
-    if (direct == null) return 0.0;
-
-    if (direct instanceof Map<?, ?> m) {
-      Object amt = m.get("amount");
-      return doubleOf(amt, 0.0);
-    }
-
-    return doubleOf(direct, 0.0);
   }
 
   private static double doubleOf(Object o, double def) {
@@ -99,9 +91,5 @@ public final class CrateLoader {
     List<String> out = new ArrayList<>();
     for (Object x : l) out.add(String.valueOf(x));
     return out;
-  }
-
-  private static Object firstNonNull(Object a, Object b) {
-    return a != null ? a : b;
   }
 }
