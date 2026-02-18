@@ -1,5 +1,8 @@
 package net.orbis.orbishud.render;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.orbis.orbishud.config.HudProfile;
 import net.orbis.orbishud.state.HudPlayerState;
 import net.orbis.zakum.api.util.BrandingText;
@@ -55,14 +58,21 @@ public final class ScoreboardHudRenderer {
     if (objective == null || objective.getScoreboard() != scoreboard) {
       objective = scoreboard.getObjective(OBJECTIVE_ID);
       if (objective == null) {
-        objective = scoreboard.registerNewObjective(OBJECTIVE_ID, "dummy", color(profile.title()));
+        objective = scoreboard.registerNewObjective(
+          OBJECTIVE_ID, 
+          "dummy", 
+          LegacyComponentSerializer.legacySection().deserialize(color(profile.title()))
+        );
       }
       objective.setDisplaySlot(DisplaySlot.SIDEBAR);
     }
 
     String title = truncate(color(profile.title()), 64);
-    if (!title.equals(objective.getDisplayName())) {
-      objective.setDisplayName(title);
+    Component titleComponent = LegacyComponentSerializer.legacySection().deserialize(title);
+    Component currentTitle = objective.displayName();
+    String currentTitlePlain = PlainTextComponentSerializer.plainText().serialize(currentTitle);
+    if (!title.equals(currentTitlePlain)) {
+      objective.displayName(titleComponent);
     }
 
     List<String> renderedEntries = buildEntries(profile, player, serverId);

@@ -204,8 +204,14 @@ public final class MenuRepository {
 
   private static Material parseMaterial(String raw) {
     if (raw == null || raw.isBlank()) return Material.STONE;
+    
+    // Try matchMaterial first (handles many formats)
+    Material mat = Material.matchMaterial(raw.trim());
+    if (mat != null) return mat;
+    
+    // Fallback to valueOf with normalization
     try {
-      return Material.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+      return Material.valueOf(raw.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
     } catch (IllegalArgumentException ex) {
       return Material.STONE;
     }

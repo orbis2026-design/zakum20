@@ -220,7 +220,17 @@ public final class StandardEffects {
         if (!(target instanceof Player player)) continue;
         String t = BrandingText.render(placeholders(title, ctx, target));
         String s = BrandingText.render(placeholders(subtitle, ctx, target));
-        runAtEntity(target, () -> player.sendTitle(t, s, fadeIn, stay, fadeOut));
+        runAtEntity(target, () -> {
+          player.showTitle(net.kyori.adventure.title.Title.title(
+            net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(t),
+            net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(s),
+            net.kyori.adventure.title.Title.Times.times(
+              java.time.Duration.ofMillis(fadeIn * 50L),
+              java.time.Duration.ofMillis(stay * 50L),
+              java.time.Duration.ofMillis(fadeOut * 50L)
+            )
+          ));
+        });
       }
     });
   }
@@ -234,9 +244,9 @@ public final class StandardEffects {
       try {
         sound = Sound.valueOf(id.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
       } catch (IllegalArgumentException ex) {
-        // If valueOf fails, try matchSound as a fallback
+        // If valueOf fails, try Registry as a fallback
         try {
-          sound = org.bukkit.Registry.SOUNDS.match(id.trim());
+          sound = org.bukkit.Registry.SOUND_EVENT.match(id.trim());
           if (sound == null) return;
         } catch (Exception e) {
           return;
@@ -260,9 +270,15 @@ public final class StandardEffects {
 
       Particle particle;
       try {
-        particle = Particle.valueOf(id.trim().toUpperCase(Locale.ROOT));
+        particle = Particle.valueOf(id.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
       } catch (IllegalArgumentException ex) {
-        return;
+        // Fallback to Registry for modern Paper API
+        try {
+          particle = org.bukkit.Registry.PARTICLE_TYPE.get(org.bukkit.NamespacedKey.minecraft(id.trim().toLowerCase()));
+          if (particle == null) return;
+        } catch (Exception e) {
+          return;
+        }
       }
 
       int count = intParam(params, "count", 8);
@@ -286,9 +302,11 @@ public final class StandardEffects {
 
       Material material;
       try {
-        material = Material.valueOf(materialRaw.trim().toUpperCase(Locale.ROOT));
+        material = Material.valueOf(materialRaw.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
       } catch (IllegalArgumentException ex) {
-        return;
+        // Try matchMaterial as fallback (handles common names better)
+        material = Material.matchMaterial(materialRaw.trim());
+        if (material == null) return;
       }
 
       int amount = Math.max(1, Math.min(64, intParam(params, "amount", 1)));
@@ -489,9 +507,11 @@ public final class StandardEffects {
 
       Material material;
       try {
-        material = Material.valueOf(materialRaw.trim().toUpperCase(Locale.ROOT));
+        material = Material.valueOf(materialRaw.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
       } catch (IllegalArgumentException ex) {
-        return;
+        // Try matchMaterial as fallback (handles common names better)
+        material = Material.matchMaterial(materialRaw.trim());
+        if (material == null) return;
       }
 
       int amount = intParam(params, "amount", 1);
@@ -542,7 +562,16 @@ public final class StandardEffects {
       try {
         mode = GameMode.valueOf(value.trim().toUpperCase(Locale.ROOT));
       } catch (IllegalArgumentException ex) {
-        return;
+        // Fallback to parsing common names
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        mode = switch (normalized) {
+          case "0", "s", "survival" -> GameMode.SURVIVAL;
+          case "1", "c", "creative" -> GameMode.CREATIVE;
+          case "2", "a", "adventure" -> GameMode.ADVENTURE;
+          case "3", "sp", "spectator" -> GameMode.SPECTATOR;
+          default -> null;
+        };
+        if (mode == null) return;
       }
 
       for (Entity target : targets) {

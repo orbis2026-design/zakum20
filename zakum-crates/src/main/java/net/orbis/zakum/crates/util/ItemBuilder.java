@@ -1,5 +1,7 @@
 package net.orbis.zakum.crates.util;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -25,13 +27,17 @@ public final class ItemBuilder {
     ItemMeta meta = it.getItemMeta();
     if (meta != null) {
       String name = str(m.get("name"));
-      if (!name.isBlank()) meta.setDisplayName(color(name));
+      if (!name.isBlank()) {
+        meta.displayName(LegacyComponentSerializer.legacySection().deserialize(color(name)));
+      }
 
       Object loreObj = m.get("lore");
       if (loreObj instanceof List<?> list) {
-        List<String> lore = new ArrayList<>();
-        for (Object o : list) lore.add(color(String.valueOf(o)));
-        meta.setLore(lore);
+        List<Component> lore = new ArrayList<>();
+        for (Object o : list) {
+          lore.add(LegacyComponentSerializer.legacySection().deserialize(color(String.valueOf(o))));
+        }
+        meta.lore(lore);
       }
 
       int md = intOf(m.getOrDefault("modelData", 0), 0);
@@ -47,7 +53,7 @@ public final class ItemBuilder {
     ItemStack it = new ItemStack(Material.BLACK_STAINED_GLASS_PANE, 1);
     ItemMeta meta = it.getItemMeta();
     if (meta != null) {
-      meta.setDisplayName(" ");
+      meta.displayName(Component.text(" "));
       it.setItemMeta(meta);
     }
     return it;
@@ -57,7 +63,7 @@ public final class ItemBuilder {
     ItemStack it = new ItemStack(Material.SPECTRAL_ARROW, 1);
     ItemMeta meta = it.getItemMeta();
     if (meta != null) {
-      meta.setDisplayName(color("&e▼"));
+      meta.displayName(LegacyComponentSerializer.legacySection().deserialize(color("&e▼")));
       it.setItemMeta(meta);
     }
     return it;

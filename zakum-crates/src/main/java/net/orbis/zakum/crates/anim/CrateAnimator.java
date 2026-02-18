@@ -124,7 +124,17 @@ public final class CrateAnimator {
 
     opener.openInventory(inv);
     opener.playSound(opener.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.2f);
-    opener.sendTitle(ItemBuilder.color("&bOpening..."), ItemBuilder.color(crate.name()), 0, 20, 10);
+    opener.showTitle(net.kyori.adventure.title.Title.title(
+      net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+        .deserialize(ItemBuilder.color("&bOpening...")),
+      net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+        .deserialize(ItemBuilder.color(crate.name())),
+      net.kyori.adventure.title.Title.Times.times(
+        java.time.Duration.ZERO,
+        java.time.Duration.ofSeconds(1),
+        java.time.Duration.ofMillis(500)
+      )
+    ));
 
     return true;
   }

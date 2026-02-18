@@ -41,7 +41,7 @@ public final class CrateGuiListener implements Listener {
       
       // Show item name as action bar message
       if (clicked.hasItemMeta() && clicked.getItemMeta().hasDisplayName()) {
-        player.sendActionBar(clicked.getItemMeta().getDisplayName());
+        player.sendActionBar(clicked.getItemMeta().displayName());
       }
     }
   }

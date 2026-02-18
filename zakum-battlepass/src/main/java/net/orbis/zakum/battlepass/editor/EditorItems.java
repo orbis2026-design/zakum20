@@ -17,8 +17,12 @@ final class EditorItems {
     ItemStack it = new ItemStack(mat);
     ItemMeta im = it.getItemMeta();
     if (im != null) {
-      im.setDisplayName(name);
-      if (lore != null && !lore.isEmpty()) im.setLore(lore);
+      im.displayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(name));
+      if (lore != null && !lore.isEmpty()) {
+        im.lore(lore.stream()
+          .map(line -> net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(line))
+          .toList());
+      }
       im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
       im.addItemFlags(ItemFlag.HIDE_ENCHANTS);
       it.setItemMeta(im);

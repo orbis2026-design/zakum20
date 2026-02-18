@@ -214,8 +214,12 @@ inv.setItem(22, item(Material.BARRIER, ChatColor.RED + "Close", List.of()));
     ItemStack it = new ItemStack(mat);
     ItemMeta meta = it.getItemMeta();
     if (meta != null) {
-      meta.setDisplayName(name);
-      if (lore != null) meta.setLore(lore);
+      meta.displayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(name));
+      if (lore != null) {
+        meta.lore(lore.stream()
+          .map(line -> net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(line))
+          .toList());
+      }
       meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
       it.setItemMeta(meta);
     }

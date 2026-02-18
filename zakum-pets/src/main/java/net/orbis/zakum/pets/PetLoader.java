@@ -27,7 +27,21 @@ public final class PetLoader {
       if (s == null) continue;
 
       String name = Colors.color(s.getString("name", id));
-      EntityType type = EntityType.valueOf(s.getString("entity", "WOLF").toUpperCase(Locale.ROOT));
+      String entityStr = s.getString("entity", "WOLF").toUpperCase(Locale.ROOT);
+      EntityType type;
+      try {
+        type = EntityType.valueOf(entityStr);
+      } catch (IllegalArgumentException ex) {
+        // Fallback to Registry for modern Paper API with NamespacedKey
+        try {
+          String key = entityStr.toLowerCase().replace("_", "");
+          type = org.bukkit.Registry.ENTITY_TYPE.get(org.bukkit.NamespacedKey.minecraft(key));
+          if (type == null) throw new IllegalArgumentException();
+        } catch (Exception e) {
+          plugin.getLogger().warning("Invalid entity type '" + entityStr + "' for pet '" + id + "', using WOLF");
+          type = EntityType.WOLF;
+        }
+      }
 
       FollowMode mode;
       try {

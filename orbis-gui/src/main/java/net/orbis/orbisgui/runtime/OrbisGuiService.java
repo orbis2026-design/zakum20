@@ -182,10 +182,14 @@ public final class OrbisGuiService implements GuiService, Listener {
     if (meta == null) return stack;
 
     if (def.name() != null && !def.name().isBlank()) {
-      meta.setDisplayName(color(def.name(), player, context));
+      meta.displayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+        .deserialize(color(def.name(), player, context)));
     }
     if (def.lore() != null && !def.lore().isEmpty()) {
-      meta.setLore(def.lore().stream().map(line -> color(line, player, context)).toList());
+      meta.lore(def.lore().stream()
+        .map(line -> net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+          .deserialize(color(line, player, context)))
+        .toList());
     }
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
     if (def.flags() != null && !def.flags().isEmpty()) {

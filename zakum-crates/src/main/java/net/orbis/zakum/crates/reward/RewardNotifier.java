@@ -100,30 +100,21 @@ public class RewardNotifier {
      * Send title to player.
      */
     private void sendTitle(Player player, String title, String subtitle) {
-        try {
-            // Try Paper Adventure API first
-            Component titleComponent = Component.text(title.replace('&', '§'));
-            Component subtitleComponent = Component.text(subtitle.replace('&', '§'));
-            
-            Title adventureTitle = Title.title(
-                titleComponent,
-                subtitleComponent,
-                Title.Times.times(
-                    Duration.ofMillis(500),
-                    Duration.ofMillis(2000),
-                    Duration.ofMillis(500)
-                )
-            );
-            
-            player.showTitle(adventureTitle);
-        } catch (Exception e) {
-            // Fallback to legacy method
-            player.sendTitle(
-                title.replace('&', '§'),
-                subtitle.replace('&', '§'),
-                10, 40, 10
-            );
-        }
+        // Use Paper Adventure API
+        Component titleComponent = Component.text(title.replace('&', '§'));
+        Component subtitleComponent = Component.text(subtitle.replace('&', '§'));
+        
+        Title adventureTitle = Title.title(
+            titleComponent,
+            subtitleComponent,
+            Title.Times.times(
+                Duration.ofMillis(500),
+                Duration.ofMillis(2000),
+                Duration.ofMillis(500)
+            )
+        );
+        
+        player.showTitle(adventureTitle);
     }
     
     /**

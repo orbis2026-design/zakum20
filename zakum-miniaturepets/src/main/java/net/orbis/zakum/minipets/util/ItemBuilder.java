@@ -1,5 +1,6 @@
 package net.orbis.zakum.minipets.util;
 
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -19,7 +20,9 @@ public final class ItemBuilder {
     ItemMeta meta = it.getItemMeta();
     if (meta != null) {
       String name = String.valueOf(m.getOrDefault("name", ""));
-      if (!name.isBlank()) meta.setDisplayName(Colors.color(name));
+      if (!name.isBlank()) {
+        meta.displayName(LegacyComponentSerializer.legacySection().deserialize(Colors.color(name)));
+      }
 
       Object md = m.get("modelData");
       if (md != null) {

@@ -48,7 +48,17 @@ public final class CrateService {
     for (Player p : opener.getWorld().getPlayers()) {
       if (p.getLocation().distanceSquared(opener.getLocation()) > r2) continue;
       p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.15f);
-      p.sendTitle(ItemBuilder.color("&bOpening..."), ItemBuilder.color(crate.name()), 0, 20, 10);
+      p.showTitle(net.kyori.adventure.title.Title.title(
+        net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+          .deserialize(ItemBuilder.color("&bOpening...")),
+        net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+          .deserialize(ItemBuilder.color(crate.name())),
+        net.kyori.adventure.title.Title.Times.times(
+          java.time.Duration.ZERO,
+          java.time.Duration.ofSeconds(1),
+          java.time.Duration.ofMillis(500)
+        )
+      ));
     }
   }
 

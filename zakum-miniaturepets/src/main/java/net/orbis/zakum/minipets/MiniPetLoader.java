@@ -28,7 +28,21 @@ public final class MiniPetLoader {
       if (s == null) continue;
 
       String name = Colors.color(s.getString("name", id));
-      EntityType type = EntityType.valueOf(s.getString("entity", "RABBIT").toUpperCase(Locale.ROOT));
+      String entityStr = s.getString("entity", "RABBIT").toUpperCase(Locale.ROOT);
+      EntityType type;
+      try {
+        type = EntityType.valueOf(entityStr);
+      } catch (IllegalArgumentException ex) {
+        // Fallback to Registry for modern Paper API with NamespacedKey
+        try {
+          String key = entityStr.toLowerCase().replace("_", "");
+          type = org.bukkit.Registry.ENTITY_TYPE.get(org.bukkit.NamespacedKey.minecraft(key));
+          if (type == null) throw new IllegalArgumentException();
+        } catch (Exception e) {
+          plugin.getLogger().warning("Invalid entity type '" + entityStr + "' for mini pet '" + id + "', using RABBIT");
+          type = EntityType.RABBIT;
+        }
+      }
 
       FollowMode mode;
       try {
@@ -44,7 +58,17 @@ public final class MiniPetLoader {
       EntityType ride = null;
       String rideRaw = s.getString("rideEntity", "");
       if (rideRaw != null && !rideRaw.isBlank()) {
-        try { ride = EntityType.valueOf(rideRaw.toUpperCase(Locale.ROOT)); } catch (Exception ignored) {}
+        try {
+          ride = EntityType.valueOf(rideRaw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+          // Fallback to Registry for modern Paper API
+          try {
+            String key = rideRaw.toLowerCase().replace("_", "");
+            ride = org.bukkit.Registry.ENTITY_TYPE.get(org.bukkit.NamespacedKey.minecraft(key));
+          } catch (Exception e) {
+            // ride is optional, null is fine
+          }
+        }
       }
 
       out.put(id, new MiniPetDef(id, name, type, mode, hat, ride));
