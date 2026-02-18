@@ -9,7 +9,7 @@ dependencies {
   compileOnly(libs.paper.api)
 
   // Soft dependency (present at runtime only when installed)
-  compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
+  compileOnly(libs.vault.api) {
     exclude(group = "org.bukkit", module = "bukkit")
     exclude(group = "org.spigotmc", module = "spigot-api")
   }

@@ -10,7 +10,7 @@ dependencies {
   compileOnly(project(":zakum-api"))
 
   // Optional (only if PlaceholderAPI installed)
-  compileOnly("me.clip:placeholderapi:2.11.6")
+  compileOnly(libs.placeholderapi)
 }
 
 tasks.processResources {

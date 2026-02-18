@@ -10,7 +10,7 @@ dependencies {
 
   // Soft dependency: NuVotifier provides VotifierEvent/Vote classes under com.vexsoftware.votifier.*
   // (pulled via JitPack)
-  compileOnly("com.github.NuVotifier:NuVotifier:2.7.1")
+  compileOnly(libs.nuvotifier)
 }
 
 tasks.processResources {

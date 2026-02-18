@@ -23,6 +23,8 @@ packetevents = "2.5.0"
 commandapi = "11.1.0"
 vault = "1.7.3"
 luckperms = "5.4"
+placeholderapi = "2.11.6"
+nuvotifier = "2.7.1"
 
 [libraries]
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
@@ -55,6 +57,8 @@ commandapi-paper = { module = "dev.jorel:commandapi-paper-1.21.11", version.ref 
 commandapi-bukkit = { module = "dev.jorel:commandapi-bukkit-1.21.11", version.ref = "commandapi" }
 vault-api = { module = "com.github.MilkBowl:VaultAPI", version.ref = "vault" }
 luckperms-api = { module = "net.luckperms:api", version.ref = "luckperms" }
+placeholderapi = { module = "me.clip:placeholderapi", version.ref = "placeholderapi" }
+nuvotifier = { module = "com.github.NuVotifier:NuVotifier", version.ref = "nuvotifier" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
