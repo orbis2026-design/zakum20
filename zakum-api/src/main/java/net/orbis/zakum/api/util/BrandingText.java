@@ -59,7 +59,7 @@ public final class BrandingText {
 
   private static String parseGradientTags(String input) {
     Matcher matcher = GRADIENT_PATTERN.matcher(input);
-    StringBuffer output = new StringBuffer();
+    StringBuilder output = new StringBuilder();
     while (matcher.find()) {
       String fromHex = matcher.group(1);
       String toHex = matcher.group(2);

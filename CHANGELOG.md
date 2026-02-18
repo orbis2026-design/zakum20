@@ -11,6 +11,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Phase 3: Production Readiness (2026-02-18 - COMPLETE ✅)
 
+### Gradle Build Configuration Fix - February 18, 2026
+
+**Fixed JVM crash during build**
+
+**Issues Resolved:**
+1. **Insufficient Memory**
+   - Problem: 2GB heap too small for 25 modules
+   - Fix: Increased to 4GB with proper metaspace allocation
+   - File: gradle.properties
+
+2. **Wrong Java Version**
+   - Problem: Gradle daemon using Java 17, project requires Java 21
+   - Fix: Enabled toolchain auto-detection and auto-download
+   - File: gradle.properties
+
+**Changes Made:**
+```properties
+# Before:
+org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+
+# After:
+org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+org.gradle.java.installations.auto-detect=true
+org.gradle.java.installations.auto-download=true
+```
+
+**Action Required:**
+1. Run: `gradlew --stop` (stop old daemons)
+2. Run: `gradlew :zakum-crates:build` (build with new config)
+
+**Result:** Build should now succeed without crashes ✅
+
+See GRADLE_BUILD_CRASH_FIXED.md for complete details.
+
+---
+
 ### Code Analysis & Error Fixes - February 18, 2026
 
 **Performed comprehensive code analysis across all 25 modules**

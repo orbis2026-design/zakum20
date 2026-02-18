@@ -232,9 +232,15 @@ public final class StandardEffects {
 
       Sound sound;
       try {
-        sound = Sound.valueOf(id.trim().toUpperCase(Locale.ROOT));
+        sound = Sound.valueOf(id.trim().toUpperCase(Locale.ROOT).replace('.', '_'));
       } catch (IllegalArgumentException ex) {
-        return;
+        // If valueOf fails, try matchSound as a fallback
+        try {
+          sound = org.bukkit.Registry.SOUNDS.match(id.trim());
+          if (sound == null) return;
+        } catch (Exception e) {
+          return;
+        }
       }
 
       float volume = (float) doubleParam(params, "volume", 1.0);

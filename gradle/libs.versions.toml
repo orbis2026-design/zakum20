@@ -21,6 +21,8 @@ junit-platform = "1.11.4"
 
 packetevents = "2.5.0"
 commandapi = "11.1.0"
+vault = "1.7.3"
+luckperms = "5.4"
 
 [libraries]
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
@@ -51,6 +53,8 @@ jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 packetevents-spigot = { group = "com.github.retrooper", name = "packetevents-spigot", version.ref = "packetevents" }
 commandapi-paper = { module = "dev.jorel:commandapi-paper-1.21.11", version.ref = "commandapi" }
 commandapi-bukkit = { module = "dev.jorel:commandapi-bukkit-1.21.11", version.ref = "commandapi" }
+vault-api = { module = "com.github.MilkBowl:VaultAPI", version.ref = "vault" }
+luckperms-api = { module = "net.luckperms:api", version.ref = "luckperms" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }

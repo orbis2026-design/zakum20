@@ -88,6 +88,9 @@ tasks.named<ShadowJar>("shadowJar") {
 
   isReproducibleFileOrder = true
   isPreserveFileTimestamps = false
+  
+  // Avoid concurrent access issues
+  isZip64 = true
 }
 
 tasks.build {

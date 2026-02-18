@@ -8,6 +8,10 @@ dependencies {
 
   // Provided by Zakum at runtime (plugin depend + ServicesManager)
   compileOnly(project(":zakum-api"))
+  
+  // Optional third-party integrations
+  compileOnly(libs.vault.api)
+  compileOnly(libs.luckperms.api)
 }
 
 tasks.processResources {
