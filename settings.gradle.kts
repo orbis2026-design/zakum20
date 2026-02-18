@@ -12,8 +12,7 @@ include(
   "zakum-battlepass",
   "zakum-crates",
   "zakum-pets",
-  "zakum-miniaturepets",
-  "zakum-teams"
+  "zakum-miniaturepets"
 )
 
 // Bridge modules
@@ -26,9 +25,7 @@ include(
   "zakum-bridge-essentialsx",
   "zakum-bridge-commandapi",
   "zakum-bridge-mythicmobs",
-  "zakum-bridge-jobs",
-  "zakum-bridge-worldguard",
-  "zakum-bridge-fawe"
+  "zakum-bridge-jobs"
 )
 
 // Orbis modules

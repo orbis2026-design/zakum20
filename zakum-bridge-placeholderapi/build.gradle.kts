@@ -9,7 +9,7 @@ dependencies {
   compileOnly(libs.paper.api)
 
   // Soft dependency (present at runtime only when installed)
-  compileOnly("me.clip:placeholderapi:2.11.6")
+  compileOnly(libs.placeholderapi)
 }
 
 tasks.processResources {

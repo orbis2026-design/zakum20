@@ -9,7 +9,7 @@ dependencies {
   compileOnly(libs.paper.api)
 
   // Soft dependency
-  compileOnly("net.luckperms:api:5.5")
+  compileOnly(libs.luckperms.api)
 }
 
 tasks.processResources {
