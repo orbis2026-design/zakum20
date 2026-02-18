@@ -10,6 +10,8 @@ import net.orbis.zakum.core.perf.PlayerVisualModeService;
 import net.orbis.zakum.core.perf.VisualCircuitState;
 import net.orbis.zakum.core.util.PdcKeys;
 import net.orbis.zakum.core.world.ZakumRtpService;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -534,7 +536,9 @@ public final class StandardEffects {
       String raw = raw(params);
       if (raw == null || raw.isBlank()) return;
       String msg = placeholders(raw, ctx, ctx.actor());
-      runGlobal(() -> Bukkit.broadcastMessage(msg));
+      // Use Adventure API instead of deprecated broadcastMessage
+      Component component = LegacyComponentSerializer.legacySection().deserialize(msg);
+      runGlobal(() -> Bukkit.getServer().broadcast(component));
     });
   }
 

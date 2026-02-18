@@ -2348,7 +2348,12 @@ public final class ZakumPlugin extends JavaPlugin {
     if (token.contains("-")) {
         try { return UUID.fromString(token); } catch (Exception ignored) {}
     }
-    OfflinePlayer op = Bukkit.getOfflinePlayer(token);
+    // Use getOfflinePlayerIfCached to avoid deprecated getOfflinePlayer(String)
+    OfflinePlayer op = Bukkit.getOfflinePlayerIfCached(token);
+    if (op == null) {
+      sender.sendMessage("Unknown player: " + token);
+      return null;
+    }
     UUID id = op.getUniqueId();
     if (id == null) sender.sendMessage("Unknown player: " + token);
     return id;
