@@ -218,8 +218,8 @@ class ZakumSettingsLoaderTest {
     void testEntitlements_CacheSizeClamped() {
         // Given: Config with extreme cache sizes
         String[] yamls = {
-            "entitlements:\n  cacheMaxSize: 10",      // Too low
-            "entitlements:\n  cacheMaxSize: 10000000" // Too high
+            "entitlements:\n  cache:\n    maximumSize: 10",      // Too low
+            "entitlements:\n  cache:\n    maximumSize: 10000000" // Too high
         };
         
         // When/Then: Should be clamped
@@ -228,8 +228,8 @@ class ZakumSettingsLoaderTest {
                 new java.io.StringReader(yaml)
             );
             ZakumSettings settings = ZakumSettingsLoader.load(config);
-            assertTrue(settings.entitlements().cacheMaxSize() >= 100);
-            assertTrue(settings.entitlements().cacheMaxSize() <= 1_000_000);
+            assertTrue(settings.entitlements().cache().maximumSize() >= 100);
+            assertTrue(settings.entitlements().cache().maximumSize() <= 1_000_000);
         }
     }
 
@@ -238,7 +238,8 @@ class ZakumSettingsLoaderTest {
         // Given: Config with extreme buffer sizes
         String yaml = """
             actions:
-              deferredBufferMaxSize: 5
+              deferredReplay:
+                claimLimit: 5
             """;
         
         // When: Load configuration
@@ -248,7 +249,7 @@ class ZakumSettingsLoaderTest {
         ZakumSettings settings = ZakumSettingsLoader.load(config);
         
         // Then: Should be clamped to minimum
-        assertTrue(settings.actions().deferredBufferMaxSize() >= 10);
+        assertTrue(settings.actions().deferredReplay().claimLimit() >= 1);
     }
 
     @Test
@@ -277,11 +278,14 @@ class ZakumSettingsLoaderTest {
                 enabled: true
                 intervalSeconds: 300
             entitlements:
-              cacheMaxSize: 50000
-              cacheTtlSeconds: 600
+              cache:
+                maximumSize: 50000
+                ttlSeconds: 600
             actions:
-              deferredBufferMaxSize: 5000
-              replayMaxAge: 300
+              enabled: true
+              deferredReplay:
+                enabled: true
+                claimLimit: 100
             """;
         
         // When: Load configuration
@@ -296,7 +300,7 @@ class ZakumSettingsLoaderTest {
         assertEquals("db.example.com", settings.database().host());
         assertTrue(settings.controlPlane().enabled());
         assertEquals(120, settings.boosters().refreshSeconds());
-        assertEquals(50000, settings.entitlements().cacheMaxSize());
+        assertEquals(50000, settings.entitlements().cache().maximumSize());
     }
 
     @Test

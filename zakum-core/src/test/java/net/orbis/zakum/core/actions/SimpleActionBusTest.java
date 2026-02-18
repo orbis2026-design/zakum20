@@ -77,7 +77,7 @@ class SimpleActionBusTest {
         bus.publish(createTestEvent("test1"));
         assertEquals(1, count.get());
         
-        subscription.cancel();
+        subscription.close();
         bus.publish(createTestEvent("test2"));
         
         // Then: Second event should not be received
@@ -106,7 +106,7 @@ class SimpleActionBusTest {
         List<UUID> capturedPlayers = new ArrayList<>();
         
         bus.subscribe(e -> {
-            capturedActions.add(e.action());
+            capturedActions.add(e.type());
             capturedPlayers.add(e.playerId());
         });
         
@@ -114,8 +114,8 @@ class SimpleActionBusTest {
         UUID player1 = UUID.randomUUID();
         UUID player2 = UUID.randomUUID();
         
-        bus.publish(new ActionEvent("action1", player1, null, null, null));
-        bus.publish(new ActionEvent("action2", player2, null, null, null));
+        bus.publish(new ActionEvent("action1", player1, 1L, null, null));
+        bus.publish(new ActionEvent("action2", player2, 1L, null, null));
         
         // Then: Data should be preserved
         assertEquals(List.of("action1", "action2"), capturedActions);
@@ -186,11 +186,11 @@ class SimpleActionBusTest {
         // Given: A subscription
         ActionSubscription subscription = bus.subscribe(e -> {});
         
-        // When: Cancel twice
-        subscription.cancel();
+        // When: Close twice
+        subscription.close();
         
         // Then: Should not throw
-        assertDoesNotThrow(() -> subscription.cancel());
+        assertDoesNotThrow(() -> subscription.close());
     }
 
     /**
@@ -200,7 +200,7 @@ class SimpleActionBusTest {
         return new ActionEvent(
             action,
             UUID.randomUUID(),
-            null,
+            1L,
             null,
             null
         );

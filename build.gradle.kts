@@ -4,6 +4,10 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 import java.io.File
 import java.util.zip.ZipFile
 
+plugins {
+  id("org.owasp.dependencycheck") version "9.0.9" apply false
+}
+
 allprojects {
   group = "net.orbis"
   version = "0.1.0-SNAPSHOT"
@@ -17,6 +21,18 @@ allprojects {
     // Needed for PacketEvents and a few other ecosystem libs.
     maven("https://jitpack.io")
   }
+}
+
+// Configure OWASP Dependency Check
+apply(plugin = "org.owasp.dependencycheck")
+
+configure<org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension> {
+  formats = listOf("HTML", "JSON", "SARIF")
+  failBuildOnCVSS = 7.0f
+  suppressionFile = "config/owasp-suppressions.xml"
+  analyzers.assemblyEnabled = false
+  analyzers.nodeEnabled = false
+  nvd.apiKey = System.getenv("NVD_API_KEY")
 }
 
 val apiBoundaryModules = listOf(

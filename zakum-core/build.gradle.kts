@@ -63,6 +63,9 @@ tasks.named<ShadowJar>("shadowJar") {
   archiveBaseName.set("Zakum")
   archiveClassifier.set("")
 
+  // Merge service files to avoid duplicates
+  mergeServiceFiles()
+  
   // Keep MySQL driver canonical (no relocation).
   relocate("com.github.benmanes.caffeine", "net.orbis.zakum.shaded.caffeine")
   relocate("com.zaxxer.hikari", "net.orbis.zakum.shaded.hikari")
@@ -98,7 +101,7 @@ tasks.jacocoTestReport {
   reports {
     xml.required.set(true)
     html.required.set(true)
-    html.outputLocation.set(file("${buildDir}/reports/jacoco/html"))
+    html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/html"))
   }
 }
 
