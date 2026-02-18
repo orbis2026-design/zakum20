@@ -1,7 +1,9 @@
-﻿# Next 100-Point Sprint Board (Dependency-First E2E)
+﻿﻿# Next 100-Point Sprint Board (Dependency-First E2E)
 
 Date: 2026-02-15
 Source baseline: `docs/27-CORE-PRIMER.md`
+
+**Status Update (2026-02-18):** This sprint board is being executed as part of Phase 1 Foundation Hardening. See `EXECUTION_STATUS.md` and `CURRENT_ROADMAP.md` for current progress tracking.
 
 This board preserves the approved point values while reordering implementation by dependency:
 `infrastructure reliability -> platform safety -> plugin capability -> cleanup`.

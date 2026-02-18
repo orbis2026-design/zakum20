@@ -1,38 +1,45 @@
 rootProject.name = "zakum"
 
+// Core modules
 include(
   "zakum-api",
   "zakum-core",
+  "zakum-packets"
+)
+
+// Feature modules
+include(
   "zakum-battlepass",
   "zakum-crates",
   "zakum-pets",
   "zakum-miniaturepets",
-  "zakum-packets"
+  "zakum-teams"
 )
 
+// Bridge modules
+include(
+  "zakum-bridge-placeholderapi",
+  "zakum-bridge-vault",
+  "zakum-bridge-luckperms",
+  "zakum-bridge-votifier",
+  "zakum-bridge-citizens",
+  "zakum-bridge-essentialsx",
+  "zakum-bridge-commandapi",
+  "zakum-bridge-mythicmobs",
+  "zakum-bridge-jobs",
+  "zakum-bridge-superiorskyblock2",
+  "zakum-bridge-rosestacker",
+  "zakum-bridge-worldguard",
+  "zakum-bridge-fawe"
+)
 
-include("zakum-bridge-placeholderapi")
-include("zakum-bridge-vault")
+// Orbis modules
+include(
+  "orbis-essentials",
+  "orbis-gui",
+  "orbis-hud",
+  "orbis-worlds",
+  "orbis-holograms",
+  "orbis-loot"
+)
 
-include("zakum-bridge-luckperms")
-
-include("zakum-bridge-votifier")
-include("zakum-bridge-citizens")
-
-include("zakum-bridge-essentialsx")
-
-include("zakum-bridge-commandapi")
-
-include("orbis-essentials")
-include("orbis-gui")
-include("orbis-hud")
-
-include("zakum-bridge-mythicmobs")
-include("zakum-bridge-jobs")
-include("zakum-bridge-superiorskyblock2")
-
-include("orbis-worlds")
-
-include("orbis-holograms")
-
-include("orbis-loot")
