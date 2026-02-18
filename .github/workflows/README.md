@@ -16,6 +16,8 @@ This directory contains the GitHub Actions workflows that power the Zakum 24/7 a
 | 07 | Worker Soak | Weekly | 24/7 uptime and performance testing |
 | 08 | Analytics Dashboard | Daily | Generates metrics and dashboards |
 | 09 | Cost Tracking | Twice daily | Monitors budget and costs |
+| 10 | Setup GitHub Labels | Manual | Configures repository labels |
+| 11 | Stop All Workflows | Manual | Emergency stop for all running workflows |
 
 ## Quick Start
 
@@ -52,4 +54,4 @@ For issues or questions:
 3. Open a GitHub issue
 
 ---
-*Last Updated: 2026-02-15*
+*Last Updated: 2026-02-16*

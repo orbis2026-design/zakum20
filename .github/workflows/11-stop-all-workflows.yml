@@ -1,0 +1,52 @@
+name: "11 - Stop All Workflows"
+
+on:
+  workflow_dispatch:
+    inputs:
+      exclude_current:
+        description: 'Exclude the current workflow from being stopped'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+
+jobs:
+  stop-workflows:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stop all running workflows
+        run: |
+          # Make script executable
+          chmod +x tools/stop-all-workflows.sh
+          
+          # Run the script
+          if [ "${{ github.event.inputs.exclude_current }}" == "true" ]; then
+            echo "🛑 Stopping all workflows except current one..."
+            ./tools/stop-all-workflows.sh --auto --exclude-current
+          else
+            echo "🛑 Stopping ALL workflows (including current)..."
+            ./tools/stop-all-workflows.sh --auto
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🛑 Stop All Workflows Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Exclude Current:** ${{ github.event.inputs.exclude_current }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "All running workflows have been requested to stop." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the [Actions tab](https://github.com/${{ github.repository }}/actions) to verify workflows are stopped" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review any workflows that failed to stop" >> $GITHUB_STEP_SUMMARY
+          echo "3. Restart any workflows that need to continue" >> $GITHUB_STEP_SUMMARY
